@@ -58,6 +58,9 @@ export default function TeamOverviewScreen() {
         <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/games`)}>
           <Text>Game Log</Text>
         </Pressable>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/leaderboard`)}>
+          <Text>Leaderboard</Text>
+        </Pressable>
         {isCoach && (
           <Pressable
             style={styles.secondaryButton}

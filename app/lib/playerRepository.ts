@@ -34,6 +34,7 @@ export interface PlayerSeasonLine {
 
 export interface PlayerProfile {
   playerId: string;
+  parentUserId: string;
   displayName: string;
   playerTag: string;
   visibilityScope: "public" | "private";
@@ -131,6 +132,7 @@ export async function getPlayerProfile(
 
   return {
     playerId: player.id,
+    parentUserId: player.parent_user_id,
     displayName: playerDisplayName(identity),
     playerTag: player.player_tag,
     visibilityScope: player.visibility_scope,
@@ -166,6 +168,37 @@ export async function listMyPlayers(supabase: SupabaseClient, userId: string): P
       revealFullName: p.reveal_full_name,
     }),
     visibilityScope: p.visibility_scope,
+  }));
+}
+
+export interface PlayerSearchResult {
+  playerId: string;
+  displayName: string;
+}
+
+// Search by PlayerTag only (spec Section 8: "Search results and profiles
+// display each player's PlayerTag by default" -- there's no stated
+// requirement to search by real name, and allowing it would let a
+// searcher discover a name the parent hasn't revealed). Results inherit
+// can_view_player() RLS automatically: a Private player invisible to the
+// searcher simply never comes back, no separate filtering needed here.
+export async function searchPlayers(supabase: SupabaseClient, query: string): Promise<PlayerSearchResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const { data, error } = await supabase
+    .from("player")
+    .select("id, player_tag, first_name, last_name, reveal_full_name")
+    .ilike("player_tag", `%${trimmed}%`)
+    .limit(25);
+  if (error) throw error;
+  return (data ?? []).map((p: any) => ({
+    playerId: p.id,
+    displayName: playerDisplayName({
+      playerTag: p.player_tag,
+      firstName: p.first_name,
+      lastName: p.last_name,
+      revealFullName: p.reveal_full_name,
+    }),
   }));
 }
 

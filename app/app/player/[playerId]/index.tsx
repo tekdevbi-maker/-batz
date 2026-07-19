@@ -1,14 +1,37 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getPlayerProfile, type PlayerProfile } from "../../../lib/playerRepository";
+import { calculateStarTiers } from "../../../lib/starTiers";
+import type { BattingCounts } from "../../../lib/stats";
+import {
+  describeMilestone,
+  followPlayer,
+  getFollowerCount,
+  isFollowing,
+  listPlayerActivity,
+  unfollowPlayer,
+  type ActivityFeedPost,
+} from "../../../lib/socialRepository";
+import BlockReportButtons from "../../../components/BlockReportButtons";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (err && typeof err === "object" && "message" in err) return String((err as { message: unknown }).message);
   return String(err);
+}
+
+function renderStars(counts: BattingCounts): string {
+  const tiers = calculateStarTiers(counts);
+  const parts = [
+    tiers.hits > 0 ? `Hits ${"⭐".repeat(tiers.hits)}` : null,
+    tiers.doubles > 0 ? `2B ${"⭐".repeat(tiers.doubles)}` : null,
+    tiers.triples > 0 ? `3B ${"⭐".repeat(tiers.triples)}` : null,
+    tiers.homeRuns > 0 ? `HR ${"⭐".repeat(tiers.homeRuns)}` : null,
+  ].filter((p): p is string => p !== null);
+  return parts.join("   ");
 }
 
 function fmt(avg: number): string {
@@ -23,6 +46,10 @@ export default function PlayerProfileScreen() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<ActivityFeedPost[]>([]);
 
   const load = useCallback(() => {
     if (!playerId || !session) return;
@@ -35,7 +62,30 @@ export default function PlayerProfileScreen() {
         setError(errorMessage(err));
         setLoaded(true);
       });
+    isFollowing(supabase, playerId, session.user.id).then(setFollowing).catch(() => {});
+    getFollowerCount(supabase, playerId).then(setFollowerCount).catch(() => {});
+    listPlayerActivity(supabase, playerId, session.user.id).then(setRecentActivity).catch(() => {});
   }, [playerId, session]);
+
+  async function toggleFollow() {
+    if (!playerId || !session) return;
+    setFollowBusy(true);
+    try {
+      if (following) {
+        await unfollowPlayer(supabase, playerId, session.user.id);
+        setFollowing(false);
+        setFollowerCount((c) => Math.max(0, c - 1));
+      } else {
+        await followPlayer(supabase, playerId, session.user.id);
+        setFollowing(true);
+        setFollowerCount((c) => c + 1);
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setFollowBusy(false);
+    }
+  }
 
   // Re-fetch on focus so settings changes (tag/visibility) show immediately
   // when navigating back from the settings screen.
@@ -71,6 +121,11 @@ export default function PlayerProfileScreen() {
     );
   }
 
+  // Star tiers reset each season (spec Section 9), so they're computed
+  // from the player's current in-season line, not the career aggregate --
+  // a player with no in-season team right now simply shows no stars.
+  const currentSeasonCounts = profile.seasons.find((s) => s.seasonStatus === "in_season")?.counts ?? null;
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>{profile.displayName}</Text>
@@ -86,6 +141,23 @@ export default function PlayerProfileScreen() {
         </View>
       )}
 
+      {!profile.isOwner && (
+        <View style={styles.ownerRow}>
+          <Pressable style={styles.secondaryButton} disabled={followBusy} onPress={toggleFollow}>
+            <Text>{following ? "Unfollow" : "Follow"}</Text>
+          </Pressable>
+          <Text style={styles.hint}>
+            {followerCount} follower{followerCount === 1 ? "" : "s"}
+          </Text>
+        </View>
+      )}
+
+      {currentSeasonCounts && <Text style={styles.starsLine}>{renderStars(currentSeasonCounts)}</Text>}
+
+      {session && !profile.isOwner && (
+        <BlockReportButtons myUserId={session.user.id} targetUserId={profile.parentUserId} />
+      )}
+
       <Text style={styles.label}>Career</Text>
       <Text style={styles.statLine}>
         AB {profile.careerCounts.ab} -- H {profile.careerCounts.h} -- 2B {profile.careerCounts.doubles} -- 3B{" "}
@@ -95,6 +167,17 @@ export default function PlayerProfileScreen() {
         AVG {fmt(profile.careerStats.avg)} -- OBP {fmt(profile.careerStats.obp)} -- SLG{" "}
         {fmt(profile.careerStats.slg)} -- OPS {fmt(profile.careerStats.ops)}
       </Text>
+
+      {recentActivity.length > 0 && (
+        <>
+          <Text style={styles.label}>Recent Activity</Text>
+          {recentActivity.map((post) => (
+            <Text key={post.id} style={styles.statLine}>
+              Reached {describeMilestone(post)} -- {post.gameDate}
+            </Text>
+          ))}
+        </>
+      )}
 
       <Text style={styles.label}>Seasons</Text>
       {profile.seasons.length === 0 && <Text style={styles.hint}>No seasons recorded yet.</Text>}
@@ -141,4 +224,5 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   seasonTitle: { fontWeight: "600", fontSize: 14 },
+  starsLine: { fontSize: 13, marginTop: 4 },
 });

@@ -28,6 +28,15 @@ export default function Home() {
       <Text style={styles.title}>@Batz</Text>
       <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
 
+      <View style={styles.buttonRow}>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push("/search")}>
+          <Text>Find a Player</Text>
+        </Pressable>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push("/activity")}>
+          <Text>Activity Feed</Text>
+        </Pressable>
+      </View>
+
       {coachedTeams.length > 0 && (
         <>
           <Text style={styles.label}>Teams You Coach</Text>
@@ -124,4 +133,5 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: "center",
   },
+  buttonRow: { flexDirection: "row", gap: 8 },
 });

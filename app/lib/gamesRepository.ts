@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ImportedBattingLine } from "./gameChangerImport";
+import { aggregateBattingCounts, type BattingCounts } from "./stats";
+import { calculateStarTiers } from "./starTiers";
 
 export interface ExistingGameSummary {
   id: string;
@@ -222,7 +224,106 @@ export async function importGame(
   const { error: statsError } = await supabase.from("game_batting_stat").insert(statRows);
   if (statsError) throw statsError;
 
+  // Best-effort (spec Section 8/9): a failure here shouldn't make an
+  // otherwise-successful import look like it failed to the coach, who'd
+  // then retry into the duplicate-file-hash check.
+  try {
+    await detectAndRecordMilestones(supabase, input.teamId, game.id, rosterEntryIds);
+  } catch (err) {
+    console.warn("Milestone detection failed (game import itself succeeded):", err);
+  }
+
   return { gameId: game.id };
+}
+
+type MilestoneCategory = "hits" | "doubles" | "triples" | "home_runs";
+
+function tierFor(category: MilestoneCategory, counts: BattingCounts): number {
+  const tiers = calculateStarTiers(counts);
+  return category === "hits" ? tiers.hits : category === "doubles" ? tiers.doubles : category === "triples" ? tiers.triples : tiers.homeRuns;
+}
+
+// One activity_feed_item per star-tier increase this game caused, compared
+// against the player's season totals before this game (spec Section 9:
+// current-season only). Unclaimed roster spots have no player_id and
+// therefore no feed to post to -- silently skipped, not an error.
+async function detectAndRecordMilestones(
+  supabase: SupabaseClient,
+  teamId: string,
+  gameId: string,
+  rosterEntryIds: string[]
+): Promise<void> {
+  if (rosterEntryIds.length === 0) return;
+
+  const { data: rosterRows, error: rosterError } = await supabase
+    .from("roster_entry")
+    .select("id, player_id")
+    .in("id", rosterEntryIds);
+  if (rosterError) throw rosterError;
+
+  const playerByRosterEntry = new Map<string, string>();
+  for (const r of rosterRows ?? []) {
+    if (r.player_id) playerByRosterEntry.set(r.id, r.player_id);
+  }
+  const claimedIds = [...playerByRosterEntry.keys()];
+  if (claimedIds.length === 0) return;
+
+  const { data: statRows, error: statError } = await supabase
+    .from("game_batting_stat")
+    .select("roster_entry_id, game_id, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf")
+    .in("roster_entry_id", claimedIds);
+  if (statError) throw statError;
+
+  const beforeByEntry = new Map<string, BattingCounts[]>();
+  const currentByEntry = new Map<string, BattingCounts>();
+  for (const row of statRows ?? []) {
+    const counts: BattingCounts = {
+      ab: row.ab,
+      h: row.h,
+      singles: row.singles,
+      doubles: row.doubles,
+      triples: row.triples,
+      hr: row.hr,
+      rbi: row.rbi,
+      bb: row.bb,
+      hbp: row.hbp,
+      sf: row.sf,
+    };
+    if (row.game_id === gameId) {
+      currentByEntry.set(row.roster_entry_id, counts);
+    } else {
+      const list = beforeByEntry.get(row.roster_entry_id) ?? [];
+      list.push(counts);
+      beforeByEntry.set(row.roster_entry_id, list);
+    }
+  }
+
+  const categories: MilestoneCategory[] = ["hits", "doubles", "triples", "home_runs"];
+  const newItems: Array<{ player_id: string; team_id: string; game_id: string; category: MilestoneCategory; tier: number }> = [];
+
+  for (const rosterEntryId of claimedIds) {
+    const current = currentByEntry.get(rosterEntryId);
+    if (!current) continue;
+    const before = aggregateBattingCounts(beforeByEntry.get(rosterEntryId) ?? []);
+    const after = aggregateBattingCounts([before, current]);
+    for (const category of categories) {
+      const beforeTier = tierFor(category, before);
+      const afterTier = tierFor(category, after);
+      if (afterTier > beforeTier) {
+        newItems.push({
+          player_id: playerByRosterEntry.get(rosterEntryId)!,
+          team_id: teamId,
+          game_id: gameId,
+          category,
+          tier: afterTier,
+        });
+      }
+    }
+  }
+
+  if (newItems.length === 0) return;
+  const { error: insertError } = await supabase.from("activity_feed_item").insert(newItems);
+  if (insertError) throw insertError;
 }
 
 // No partial edits (spec Section 3a) -- a coach who needs to fix a game
