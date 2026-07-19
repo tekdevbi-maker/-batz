@@ -71,15 +71,21 @@ export default function TeamOverviewScreen() {
       <Text style={styles.label}>Season Stats</Text>
       {roster.length === 0 && <Text style={styles.hint}>No roster yet.</Text>}
       {roster.map((r) => (
-        <View key={r.rosterEntryId} style={styles.rosterRow}>
+        <Pressable
+          key={r.rosterEntryId}
+          style={styles.rosterRow}
+          disabled={!r.playerId}
+          onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
+        >
           <Text style={styles.playerTag}>
             #{r.uniformNumber} {r.displayName}
+            {r.playerId ? "  ›" : ""}
           </Text>
           <Text style={styles.statLine}>
             AB {r.counts.ab} -- H {r.counts.h} -- AVG {fmt(r.stats.avg)} -- OBP {fmt(r.stats.obp)} -- SLG{" "}
             {fmt(r.stats.slg)} -- OPS {fmt(r.stats.ops)}
           </Text>
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
   );

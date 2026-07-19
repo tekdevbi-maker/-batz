@@ -28,6 +28,8 @@ export default function RootLayout() {
           <Stack.Screen name="team/[teamId]/index" options={{ title: "Team" }} />
           <Stack.Screen name="team/[teamId]/games/index" options={{ title: "Game Log" }} />
           <Stack.Screen name="team/[teamId]/games/[gameId]" options={{ title: "Box Score" }} />
+          <Stack.Screen name="player/[playerId]/index" options={{ title: "Player" }} />
+          <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
         </Stack>
       </Gate>
     </AuthProvider>

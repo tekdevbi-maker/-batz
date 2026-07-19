@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
+import { listMyPlayers, type MyPlayer } from "../lib/playerRepository";
 
 export default function Home() {
   const router = useRouter();
@@ -11,11 +12,13 @@ export default function Home() {
   const [teamId, setTeamId] = useState("");
   const [coachedTeams, setCoachedTeams] = useState<CoachedTeam[]>([]);
   const [memberTeams, setMemberTeams] = useState<CoachedTeam[]>([]);
+  const [myPlayers, setMyPlayers] = useState<MyPlayer[]>([]);
 
   useEffect(() => {
     if (!session) return;
     listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {});
     listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
+    listMyPlayers(supabase, session.user.id).then(setMyPlayers).catch(() => {});
   }, [session]);
 
   if (!session) return null;
@@ -45,6 +48,19 @@ export default function Home() {
             <Pressable key={team.id} style={styles.secondaryButton} onPress={() => router.push(`/team/${team.id}`)}>
               <Text>
                 {team.name} ({team.season} {team.year}) -- Parent
+              </Text>
+            </Pressable>
+          ))}
+        </>
+      )}
+
+      {myPlayers.length > 0 && (
+        <>
+          <Text style={styles.label}>Your Players</Text>
+          {myPlayers.map((p) => (
+            <Pressable key={p.playerId} style={styles.secondaryButton} onPress={() => router.push(`/player/${p.playerId}`)}>
+              <Text>
+                {p.displayName} {p.visibilityScope === "private" ? "(private)" : ""}
               </Text>
             </Pressable>
           ))}
