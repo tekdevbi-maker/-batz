@@ -138,7 +138,10 @@ async function main() {
     console.log("\nALL CHECKS PASSED");
   } finally {
     // Cascades to team/roster_entry/game/game_batting_stat.
-    await supabase.from("league").delete().eq("id", league.id);
+    const { error: cleanupError } = await supabase.from("league").delete().eq("id", league.id);
+    if (cleanupError) {
+      console.error("CLEANUP FAILED -- test data was left in the database:", cleanupError);
+    }
   }
 }
 

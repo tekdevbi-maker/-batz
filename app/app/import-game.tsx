@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
+import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { parseGameChangerBattingCsv, type ImportedBattingLine } from "../lib/gameChangerImport";
 import { hashFileContents } from "../lib/fileHash";
@@ -41,6 +42,7 @@ function todayIso(): string {
 }
 
 export default function ImportGameScreen() {
+  const { session } = useRequireAuth();
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
 
@@ -186,6 +188,8 @@ export default function ImportGameScreen() {
       setSubmitting(false);
     }
   }
+
+  if (!session) return null;
 
   if (!teamId) {
     return (
