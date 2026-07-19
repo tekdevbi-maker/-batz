@@ -18,3 +18,14 @@ export async function listMyCoachedTeams(supabase: SupabaseClient, userId: strin
   if (error) throw error;
   return (data ?? []).map((row: any) => row.team).filter(Boolean);
 }
+
+// Teams the signed-in user has claimed a player on (spec Section 6: "as
+// coach or as a claimed parent").
+export async function listMyMemberTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
+  const { data, error } = await supabase
+    .from("team_membership")
+    .select("team:team_id(id, name, season, year)")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []).map((row: any) => row.team).filter(Boolean);
+}

@@ -3,19 +3,19 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-
 import { useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
-import { listMyCoachedTeams, type CoachedTeam } from "../lib/teamsRepository";
+import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
 
 export default function Home() {
   const router = useRouter();
   const { session, isAdmin, signOut } = useRequireAuth();
   const [teamId, setTeamId] = useState("");
-  const [myTeams, setMyTeams] = useState<CoachedTeam[]>([]);
+  const [coachedTeams, setCoachedTeams] = useState<CoachedTeam[]>([]);
+  const [memberTeams, setMemberTeams] = useState<CoachedTeam[]>([]);
 
   useEffect(() => {
     if (!session) return;
-    listMyCoachedTeams(supabase, session.user.id)
-      .then(setMyTeams)
-      .catch(() => {});
+    listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {});
+    listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
   }, [session]);
 
   if (!session) return null;
@@ -25,10 +25,10 @@ export default function Home() {
       <Text style={styles.title}>@Batz</Text>
       <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
 
-      {myTeams.length > 0 && (
+      {coachedTeams.length > 0 && (
         <>
-          <Text style={styles.label}>Your Teams</Text>
-          {myTeams.map((team) => (
+          <Text style={styles.label}>Teams You Coach</Text>
+          {coachedTeams.map((team) => (
             <Pressable
               key={team.id}
               style={styles.secondaryButton}
@@ -39,6 +39,20 @@ export default function Home() {
               </Text>
             </Pressable>
           ))}
+        </>
+      )}
+
+      {memberTeams.length > 0 && (
+        <>
+          <Text style={styles.label}>Teams Your Player Is On</Text>
+          {memberTeams.map((team) => (
+            <View key={team.id} style={styles.secondaryButton}>
+              <Text>
+                {team.name} ({team.season} {team.year})
+              </Text>
+            </View>
+          ))}
+          <Text style={styles.hint}>(A stats/roster view for parents is Sprint 5 work.)</Text>
         </>
       )}
 

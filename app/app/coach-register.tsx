@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Linking from "expo-linking";
 import { useAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import {
@@ -130,7 +131,12 @@ export default function CoachRegisterScreen() {
         season,
         year: Number.parseInt(year, 10),
       });
-      await assignPrimaryCoach(supabase, { teamId: team.id, userId: session.user.id });
+      await assignPrimaryCoach(supabase, {
+        teamId: team.id,
+        userId: session.user.id,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
 
       setCreatedTeamId(team.id);
       setPendingLeagueName(leagueIsPending ? (enteringNewLeague ? newLeagueName.trim() : selectedLeague!.name) : null);
@@ -155,11 +161,11 @@ export default function CoachRegisterScreen() {
         )}
         <Text style={styles.label}>Share this with parents to join your team:</Text>
         <Text selectable style={styles.code}>
-          {createdTeamId}
+          {Linking.createURL(`/join/${createdTeamId}`)}
         </Text>
         <Text style={styles.hint}>
-          (The actual parent-facing claim link/screen is Sprint 4 work -- for now this is the team ID
-          they'll need.)
+          Paste this into your own welcome message to parents (text, email, whatever you'd already
+          send) -- the app never sends it for you.
         </Text>
         <Pressable style={styles.button} onPress={() => router.replace("/")}>
           <Text style={styles.buttonText}>Done</Text>

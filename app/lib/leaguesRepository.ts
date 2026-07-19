@@ -153,10 +153,14 @@ export async function createTeam(supabase: SupabaseClient, input: CreateTeamInpu
 
 export async function assignPrimaryCoach(
   supabase: SupabaseClient,
-  input: { teamId: string; userId: string }
+  input: { teamId: string; userId: string; firstName: string; lastName: string }
 ): Promise<void> {
-  const { error } = await supabase
-    .from("coach_assignment")
-    .insert({ team_id: input.teamId, user_id: input.userId, role: "primary" });
+  const { error } = await supabase.from("coach_assignment").insert({
+    team_id: input.teamId,
+    user_id: input.userId,
+    role: "primary",
+    first_name: input.firstName,
+    last_name: input.lastName,
+  });
   if (error) throw error;
 }
