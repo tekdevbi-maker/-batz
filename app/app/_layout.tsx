@@ -25,6 +25,9 @@ export default function RootLayout() {
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
           <Stack.Screen name="admin" options={{ title: "League/Division Admin" }} />
           <Stack.Screen name="join/[teamId]" options={{ title: "Join Team" }} />
+          <Stack.Screen name="team/[teamId]/index" options={{ title: "Team" }} />
+          <Stack.Screen name="team/[teamId]/games/index" options={{ title: "Game Log" }} />
+          <Stack.Screen name="team/[teamId]/games/[gameId]" options={{ title: "Box Score" }} />
         </Stack>
       </Gate>
     </AuthProvider>

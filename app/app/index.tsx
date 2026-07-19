@@ -29,13 +29,9 @@ export default function Home() {
         <>
           <Text style={styles.label}>Teams You Coach</Text>
           {coachedTeams.map((team) => (
-            <Pressable
-              key={team.id}
-              style={styles.secondaryButton}
-              onPress={() => router.push({ pathname: "/import-game", params: { teamId: team.id } })}
-            >
+            <Pressable key={team.id} style={styles.secondaryButton} onPress={() => router.push(`/team/${team.id}`)}>
               <Text>
-                {team.name} ({team.season} {team.year})
+                {team.name} ({team.season} {team.year}) -- Coach
               </Text>
             </Pressable>
           ))}
@@ -46,13 +42,12 @@ export default function Home() {
         <>
           <Text style={styles.label}>Teams Your Player Is On</Text>
           {memberTeams.map((team) => (
-            <View key={team.id} style={styles.secondaryButton}>
+            <Pressable key={team.id} style={styles.secondaryButton} onPress={() => router.push(`/team/${team.id}`)}>
               <Text>
-                {team.name} ({team.season} {team.year})
+                {team.name} ({team.season} {team.year}) -- Parent
               </Text>
-            </View>
+            </Pressable>
           ))}
-          <Text style={styles.hint}>(A stats/roster view for parents is Sprint 5 work.)</Text>
         </>
       )}
 
