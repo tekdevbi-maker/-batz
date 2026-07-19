@@ -1,0 +1,13 @@
+{
+  "name": "batz-root",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Root tooling for @Batz (Supabase CLI, project-wide scripts). App code lives in ./app.",
+  "scripts": {
+    "supabase": "supabase",
+    "web": "npm --prefix app run web"
+  },
+  "devDependencies": {
+    "supabase": "^2.109.1"
+  }
+}

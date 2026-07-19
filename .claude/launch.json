@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "expo-web",
+      "runtimeExecutable": "C:\\Users\\cbago\\Projects\\@Batz\\start-web.cmd",
+      "runtimeArgs": [],
+      "port": 8081
+    }
+  ]
+}
