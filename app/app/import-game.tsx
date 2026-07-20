@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { parseGameChangerBattingCsv, type ImportedBattingLine } from "../lib/gameChangerImport";
@@ -43,7 +44,7 @@ function todayIso(): string {
 
 export default function ImportGameScreen() {
   const { session } = useRequireAuth();
-  const { teamId } = useLocalSearchParams<{ teamId: string }>();
+  const { teamId, incomingFileUri } = useLocalSearchParams<{ teamId: string; incomingFileUri?: string }>();
   const router = useRouter();
 
   const [gameDate, setGameDate] = useState(todayIso());
@@ -120,15 +121,8 @@ export default function ImportGameScreen() {
       .catch(() => {});
   }, [teamId, gameDate]);
 
-  async function pickFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ["text/csv", "text/comma-separated-values", "application/vnd.ms-excel", "text/plain"],
-      copyToCacheDirectory: true,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-
-    const asset = result.assets[0];
-    setFileName(asset.name);
+  async function loadFile(uri: string, name: string) {
+    setFileName(name);
     setParseError(null);
     setDuplicateFileWarning(null);
     setParsedLines(null);
@@ -136,7 +130,7 @@ export default function ImportGameScreen() {
     setSubmitError(null);
 
     try {
-      const text = await (await fetch(asset.uri)).text();
+      const text = await new File(uri).text();
       setFileText(text);
 
       // Layer 1 duplicate check (spec Section 3a): byte-for-byte, before parsing.
@@ -155,6 +149,27 @@ export default function ImportGameScreen() {
       setParseError(errorMessage(err));
     }
   }
+
+  async function pickFile() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["text/csv", "text/comma-separated-values", "application/vnd.ms-excel", "text/plain"],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    await loadFile(asset.uri, asset.name);
+  }
+
+  // Arrived here from the OS "Open With @Batz" file-open flow (via
+  // /shared-csv) -- auto-run the same load/parse path a manual pick would.
+  useEffect(() => {
+    if (!incomingFileUri) return;
+    const name = decodeURIComponent(incomingFileUri).split(/[/\\]/).pop() || "Shared file";
+    loadFile(incomingFileUri, name);
+    // Only ever fire once per incoming URI, not on every teamId refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingFileUri]);
 
   const canSubmit =
     !!teamId &&
