@@ -53,6 +53,15 @@
             },
             {
               "mimeType": "application/vnd.ms-excel"
+            },
+            {
+              "mimeType": "text/plain"
+            },
+            {
+              "mimeType": "application/octet-stream"
+            },
+            {
+              "mimeType": "*/*"
             }
           ]
         }
