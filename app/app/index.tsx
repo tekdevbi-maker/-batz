@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
@@ -102,6 +102,12 @@ export default function Home() {
       <Pressable style={styles.secondaryButton} onPress={() => signOut()}>
         <Text>Sign Out</Text>
       </Pressable>
+
+      <Text style={styles.footerLinks}>
+        <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link>
+        {"  ·  "}
+        <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>
+      </Text>
     </ScrollView>
   );
 }
@@ -134,4 +140,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonRow: { flexDirection: "row", gap: 8 },
+  footerLinks: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#555" },
+  legalLink: { color: "#1d4ed8" },
 });

@@ -8,7 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { useAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -210,6 +210,11 @@ export default function CoachRegisterScreen() {
             <Text style={styles.buttonText}>Continue</Text>
           )}
         </Pressable>
+        <Text style={styles.legalText}>
+          By continuing, you agree to our{" "}
+          <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link> and{" "}
+          <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
+        </Text>
       </ScrollView>
     );
   }
@@ -339,6 +344,8 @@ export default function CoachRegisterScreen() {
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8 },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 8 },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#555" },
+  legalLink: { color: "#1d4ed8" },
   label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
   hint: { color: "#555", fontSize: 13 },
   warning: { color: "#92400e", backgroundColor: "#fef3c7", padding: 8, borderRadius: 6, fontSize: 13 },

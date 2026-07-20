@@ -130,7 +130,20 @@ export default function ImportGameScreen() {
     setSubmitError(null);
 
     try {
-      const text = await new File(uri).text();
+      // fetch() is the proven-reliable path (works on web and for the
+      // file:// URIs DocumentPicker normally returns) -- fall back to
+      // expo-file-system's File class only when fetch can't handle the
+      // URI, which is specifically Android's content:// scheme from an
+      // incoming share/open intent. Trying File() first isn't safe: its
+      // web implementation errored ("this.validatePath is not a
+      // function") during Sprint 10 verification, which would have
+      // broken the ordinary manual-pick flow on Expo web for everyone.
+      let text: string;
+      try {
+        text = await (await fetch(uri)).text();
+      } catch {
+        text = await new File(uri).text();
+      }
       setFileText(text);
 
       // Layer 1 duplicate check (spec Section 3a): byte-for-byte, before parsing.

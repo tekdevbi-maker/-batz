@@ -55,6 +55,11 @@ export default function LoginScreen() {
       <Link href="/forgot-password" style={styles.link}>
         <Text>Forgot password?</Text>
       </Link>
+      <Text style={styles.legalText}>
+        By continuing, you agree to our{" "}
+        <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link> and{" "}
+        <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
+      </Text>
     </View>
   );
 }
@@ -68,4 +73,6 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: "#93b4ec" },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
   link: { marginTop: 12, textAlign: "center" },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#555" },
+  legalLink: { color: "#1d4ed8" },
 });

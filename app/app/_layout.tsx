@@ -38,6 +38,8 @@ export default function RootLayout() {
           <Stack.Screen name="forgot-password" options={{ title: "Forgot Password" }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />
           <Stack.Screen name="team/[teamId]/customer-care" options={{ title: "Customer Care" }} />
+          <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
+          <Stack.Screen name="terms-of-service" options={{ title: "Terms of Service" }} />
         </Stack>
       </Gate>
     </AuthProvider>

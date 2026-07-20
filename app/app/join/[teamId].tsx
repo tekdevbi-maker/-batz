@@ -8,7 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabase";
 import {
@@ -168,6 +168,11 @@ export default function JoinTeamScreen() {
           >
             {creatingAccount ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue</Text>}
           </Pressable>
+          <Text style={styles.legalText}>
+            By continuing, you agree to our{" "}
+            <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link> and{" "}
+            <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
+          </Text>
         </>
       ) : (
         <>
@@ -214,4 +219,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: "#93b4ec" },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  legalText: { marginTop: 12, textAlign: "center", fontSize: 12, color: "#555" },
+  legalLink: { color: "#1d4ed8" },
 });
