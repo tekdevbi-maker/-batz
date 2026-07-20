@@ -38,8 +38,7 @@
         {
           "action": "VIEW",
           "category": [
-            "DEFAULT",
-            "BROWSABLE"
+            "DEFAULT"
           ],
           "data": [
             {
@@ -71,7 +70,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/withCsvIntentFilterFix.js"
     ],
     "extra": {
       "router": {},
