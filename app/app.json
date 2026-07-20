@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "@Batz",
+    "slug": "batz",
+    "owner": "tekdevbis-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +15,10 @@
         "CFBundleDocumentTypes": [
           {
             "CFBundleTypeName": "GameChanger Stats CSV",
-            "LSItemContentTypes": ["public.comma-separated-values-text", "public.plain-text"],
+            "LSItemContentTypes": [
+              "public.comma-separated-values-text",
+              "public.plain-text"
+            ],
             "LSHandlerRank": "Alternate",
             "CFBundleTypeRole": "Viewer"
           }
@@ -33,12 +37,23 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": ["DEFAULT", "BROWSABLE"],
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ],
           "data": [
-            { "mimeType": "text/csv" },
-            { "mimeType": "text/comma-separated-values" },
-            { "mimeType": "application/csv" },
-            { "mimeType": "application/vnd.ms-excel" }
+            {
+              "mimeType": "text/csv"
+            },
+            {
+              "mimeType": "text/comma-separated-values"
+            },
+            {
+              "mimeType": "application/csv"
+            },
+            {
+              "mimeType": "application/vnd.ms-excel"
+            }
           ]
         }
       ]
@@ -48,6 +63,12 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ae46142d-212e-4eef-a57b-45bcb7b4d7fe"
+      }
+    }
   }
 }
