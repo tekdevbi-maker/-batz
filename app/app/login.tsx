@@ -1,14 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
-import { Link } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../lib/AuthContext";
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { session, signIn } = useAuth();
+  const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Navigate off this screen only once AuthContext's session state has
+  // actually updated -- not right after signIn()'s promise resolves.
+  // Supabase updates the session via a separate async onAuthStateChange
+  // event, so replacing the route immediately after signIn() can land on
+  // the next screen before React has re-rendered with the new session,
+  // which bounces straight back to /login via useRequireAuth (looks like
+  // login silently does nothing: spinner runs, then you're right back
+  // where you started).
+  useEffect(() => {
+    if (session) {
+      router.replace(returnTo || "/");
+    }
+  }, [session, returnTo, router]);
 
   async function handleSubmit() {
     setSubmitting(true);

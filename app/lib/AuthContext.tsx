@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter, useGlobalSearchParams } from "expo-router";
 import * as Linking from "expo-linking";
 import { supabase } from "./supabase";
 
@@ -114,14 +114,24 @@ export function useAuth(): AuthContextValue {
 }
 
 // Redirects to /login when there's no session. Screens that need a signed-in
-// user call this instead of each rolling their own guard.
+// user call this instead of each rolling their own guard. Carries the
+// screen the user was trying to reach as a returnTo param, so login.tsx can
+// send them back after signing in instead of stranding them on Home --
+// this matters for flows like /shared-csv (opening a CSV from the OS
+// "Open With" menu while logged out) where losing the original params
+// means having to redo the OS-level action.
 export function useRequireAuth(): AuthContextValue {
   const auth = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useGlobalSearchParams<Record<string, string>>();
   useEffect(() => {
     if (!auth.loading && !auth.session) {
-      router.replace("/login");
+      const query = new URLSearchParams(params).toString();
+      const returnTo = query ? `${pathname}?${query}` : pathname;
+      router.replace({ pathname: "/login", params: { returnTo } });
     }
-  }, [auth.loading, auth.session, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.loading, auth.session, router, pathname]);
   return auth;
 }

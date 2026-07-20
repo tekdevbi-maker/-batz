@@ -71,7 +71,8 @@
     },
     "plugins": [
       "expo-router",
-      "./plugins/withCsvIntentFilterFix.js"
+      "./plugins/withCsvIntentFilterFix.js",
+      "./plugins/withCsvContentUriCopy.js"
     ],
     "extra": {
       "router": {},

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
-import { File } from "expo-file-system";
+import * as LegacyFileSystem from "expo-file-system/legacy";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { parseGameChangerBattingCsv, type ImportedBattingLine } from "../lib/gameChangerImport";
@@ -131,18 +131,23 @@ export default function ImportGameScreen() {
 
     try {
       // fetch() is the proven-reliable path (works on web and for the
-      // file:// URIs DocumentPicker normally returns) -- fall back to
-      // expo-file-system's File class only when fetch can't handle the
-      // URI, which is specifically Android's content:// scheme from an
-      // incoming share/open intent. Trying File() first isn't safe: its
-      // web implementation errored ("this.validatePath is not a
-      // function") during Sprint 10 verification, which would have
-      // broken the ordinary manual-pick flow on Expo web for everyone.
+      // file:// URIs DocumentPicker normally returns) -- fall back to a
+      // copy-then-read for content:// URIs from an incoming "Open with"
+      // intent. Ruled out via real device/emulator testing, in order:
+      // the new File class (web: "this.validatePath is not a function";
+      // Android: SecurityException reading an externally-granted
+      // content:// URI, since File is scoped to app-owned files) and
+      // legacy readAsStringAsync called directly on a content:// URI
+      // ("Unsupported scheme" -- per Expo's own docs, readAsStringAsync
+      // does NOT support content:// on Android, only copyAsync does,
+      // specifically documented for "content shared by other apps").
       let text: string;
       try {
         text = await (await fetch(uri)).text();
       } catch {
-        text = await new File(uri).text();
+        const localUri = `${LegacyFileSystem.cacheDirectory}shared-import-${Date.now()}.csv`;
+        await LegacyFileSystem.copyAsync({ from: uri, to: localUri });
+        text = await LegacyFileSystem.readAsStringAsync(localUri);
       }
       setFileText(text);
 
