@@ -156,11 +156,18 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:8081"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# Sprint 8: without an entry matching resetPasswordForEmail's redirectTo,
+# Supabase silently falls back to site_url instead of honoring it -- the
+# recovery link went to a placeholder dev URL instead of /reset-password.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "http://localhost:8081/reset-password",
+  "http://127.0.0.1:8081/reset-password",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -247,6 +254,19 @@ otp_expiry = 3600
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
+
+# Sprint 8: supabase/templates/recovery.html is ready (links to
+# /reset-password?token_hash=...&type=recovery so the client can call
+# verifyOtp() directly, instead of depending on the default template's
+# link through Supabase's own /auth/v1/verify redirect + detectSessionInUrl's
+# URL-fragment parsing). NOT enabled here: free-tier projects on Supabase's
+# default email provider reject any email template customization outright
+# ("upgrade your plan or configure a custom SMTP provider") -- the same
+# Resend/Postmark upgrade Section 10 already calls out. Uncomment once
+# either is in place:
+# [auth.email.template.recovery]
+# subject = "Reset your @Batz password"
+# content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

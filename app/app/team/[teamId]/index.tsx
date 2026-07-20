@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
+import { listTeamCoaches, type TeamCoach } from "../../../lib/coachesRepository";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -23,6 +25,7 @@ export default function TeamOverviewScreen() {
 
   const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [roster, setRoster] = useState<RosterSeasonStats[]>([]);
+  const [coaches, setCoaches] = useState<TeamCoach[]>([]);
   const [isCoach, setIsCoach] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +33,7 @@ export default function TeamOverviewScreen() {
     if (!teamId || !session) return;
     getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err)));
     getTeamRosterWithSeasonStats(supabase, teamId).then(setRoster).catch((err) => setError(errorMessage(err)));
+    listTeamCoaches(supabase, teamId).then(setCoaches).catch(() => {});
     supabase
       .from("coach_assignment")
       .select("id")
@@ -69,7 +73,27 @@ export default function TeamOverviewScreen() {
             <Text>Import a Game</Text>
           </Pressable>
         )}
+        {!isCoach && (
+          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/customer-care`)}>
+            <Text>Customer Care</Text>
+          </Pressable>
+        )}
       </View>
+
+      <Text style={styles.label}>Coaches ({coaches.length}/4)</Text>
+      {coaches.map((c) => (
+        <Text key={c.userId} style={styles.statLine}>
+          {c.firstName} {c.lastName} -- {c.role}
+        </Text>
+      ))}
+      {isCoach && coaches.length < 4 && (
+        <>
+          <Text style={styles.label}>Share this with an assistant coach:</Text>
+          <Text selectable style={styles.code}>
+            {Linking.createURL(`/coach-join/${teamId}`)}
+          </Text>
+        </>
+      )}
 
       <Text style={styles.label}>Season Stats</Text>
       {roster.length === 0 && <Text style={styles.hint}>No roster yet.</Text>}
@@ -116,4 +140,11 @@ const styles = StyleSheet.create({
   },
   playerTag: { fontWeight: "600", fontSize: 14 },
   statLine: { fontSize: 12, color: "#444" },
+  code: {
+    fontFamily: "monospace",
+    backgroundColor: "#f3f4f6",
+    padding: 10,
+    borderRadius: 6,
+    fontSize: 12,
+  },
 });

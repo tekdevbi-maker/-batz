@@ -15,6 +15,12 @@ import {
   type League,
   type SanctioningBody,
 } from "../lib/leaguesRepository";
+import {
+  CUSTOMER_CARE_CATEGORIES,
+  listAllCustomerCareRequests,
+  markCustomerCareRequestResolved,
+  type CustomerCareRequest,
+} from "../lib/customerCareRepository";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -137,6 +143,7 @@ function LeagueRow({ league, onChanged }: { league: League; onChanged: () => voi
 export default function AdminScreen() {
   const { isAdmin, loading } = useRequireAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [careRequests, setCareRequests] = useState<CustomerCareRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [newLeagueName, setNewLeagueName] = useState("");
@@ -144,11 +151,21 @@ export default function AdminScreen() {
 
   function refresh() {
     listLeagues(supabase).then(setLeagues).catch((err) => setError(errorMessage(err)));
+    listAllCustomerCareRequests(supabase).then(setCareRequests).catch((err) => setError(errorMessage(err)));
   }
 
   useEffect(() => {
     if (isAdmin) refresh();
   }, [isAdmin]);
+
+  async function handleResolve(id: string) {
+    try {
+      await markCustomerCareRequestResolved(supabase, id);
+      refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
 
   async function handleAddLeague() {
     if (!newLeagueName.trim()) return;
@@ -200,6 +217,24 @@ export default function AdminScreen() {
       <Pressable style={styles.button} onPress={handleAddLeague}>
         <Text style={styles.buttonText}>Add League</Text>
       </Pressable>
+
+      <Text style={styles.title}>Customer Care Requests</Text>
+      {careRequests.length === 0 && <Text style={styles.hint}>No requests.</Text>}
+      {careRequests.map((r) => (
+        <View key={r.id} style={styles.leagueRow}>
+          <View style={styles.leagueHeader}>
+            <Text style={styles.leagueName}>{CUSTOMER_CARE_CATEGORIES.find((c) => c.value === r.category)?.label}</Text>
+            <Text style={r.status === "open" ? styles.pendingBadge : styles.verifiedBadge}>{r.status}</Text>
+          </View>
+          <Text>{r.description}</Text>
+          <Text style={styles.hint}>{new Date(r.createdAt).toLocaleString()}</Text>
+          {r.status === "open" && (
+            <Pressable style={styles.secondaryButton} onPress={() => handleResolve(r.id)}>
+              <Text>Mark Resolved</Text>
+            </Pressable>
+          )}
+        </View>
+      ))}
     </ScrollView>
   );
 }
@@ -208,6 +243,7 @@ const styles = StyleSheet.create({
   container: { padding: 20, gap: 8 },
   title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
   label: { fontSize: 14, fontWeight: "600", marginTop: 16 },
+  hint: { color: "#555", fontSize: 12 },
   error: { color: "#b91c1c", fontSize: 13 },
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, fontSize: 16 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

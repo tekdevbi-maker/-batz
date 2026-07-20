@@ -33,6 +33,10 @@ export default function RootLayout() {
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="activity" options={{ title: "Activity Feed" }} />
           <Stack.Screen name="team/[teamId]/leaderboard" options={{ title: "Team Leaderboard" }} />
+          <Stack.Screen name="coach-join/[teamId]" options={{ title: "Join as Coach" }} />
+          <Stack.Screen name="forgot-password" options={{ title: "Forgot Password" }} />
+          <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />
+          <Stack.Screen name="team/[teamId]/customer-care" options={{ title: "Customer Care" }} />
         </Stack>
       </Gate>
     </AuthProvider>
