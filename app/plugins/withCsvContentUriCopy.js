@@ -1,22 +1,25 @@
-// Fixes the "Open With @Batz" file-open flow (spec Section 3a) on Android:
-// when another app (e.g. Files/Downloads) launches an ACTION_VIEW intent
-// pointing at a content:// URI, Android only grants OUR app a transient
-// read permission for that URI. By the time Expo Router's JS-level
-// native-intent routing/navigation runs and our screen tries to actually
-// read the file, that grant is gone -- confirmed via real device/emulator
-// testing: every expo-file-system read API (the new File class, legacy
-// readAsStringAsync, copyAsync) hit the identical SecurityException
-// ("Permission Denial ... requires ACTION_OPEN_DOCUMENT or related APIs")
-// regardless of which one was used, which rules out "wrong API" as the
-// cause. Neither expo-router nor expo-file-system do anything to capture
-// that grant at the moment the intent is actually received.
+// Fixes the "Open With @Batz" file-open flow (spec Section 3a) on Android
+// for BOTH ways another app can hand us a CSV: a file manager's "Open
+// with" (ACTION_VIEW, URI in intent.data) and a "Share"/"Export" flow like
+// GameChanger's own "Export Filtered Stats" (ACTION_SEND, URI in the
+// EXTRA_STREAM extra, not intent.data). Either way, Android only grants
+// OUR app a transient read permission for that URI. By the time Expo
+// Router's JS-level native-intent routing/navigation runs and our screen
+// tries to actually read the file, that grant is gone -- confirmed via
+// real device/emulator testing: every expo-file-system read API (the new
+// File class, legacy readAsStringAsync, copyAsync) hit the identical
+// SecurityException ("Permission Denial ... requires ACTION_OPEN_DOCUMENT
+// or related APIs") regardless of which one was used, which rules out
+// "wrong API" as the cause. Neither expo-router nor expo-file-system do
+// anything to capture that grant at the moment the intent is received.
 //
-// The fix has to happen natively, synchronously, before JS ever sees the
-// URL: copy the file's bytes to our own app storage in MainActivity's
+// The fix has to happen natively, synchronously, before JS ever sees
+// anything: copy the file's bytes to our own app storage in MainActivity's
 // onCreate/onNewIntent (while the transient grant is still valid), then
-// rewrite the intent's data to a file:// URI pointing at that copy. JS
-// then only ever sees a plain file:// URI, which fetch() already reads
-// reliably (the same path DocumentPicker-selected files already use).
+// rewrite the intent into a plain ACTION_VIEW pointing at a file:// copy.
+// This means JS only ever has to handle ONE shape of incoming intent
+// (VIEW + file://, already proven to work end-to-end) regardless of
+// which of the two ways the CSV actually arrived.
 const { withMainActivity } = require("expo/config-plugins");
 const { mergeContents } = require("@expo/config-plugins/build/utils/generateCode");
 
@@ -25,9 +28,13 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File`;
 
-const HELPER_FUNCTION = `  private fun rewriteIncomingContentUri(intent: Intent) {
-    if (intent.action != Intent.ACTION_VIEW) return
-    val uri = intent.data ?: return
+const HELPER_FUNCTION = `  @Suppress("DEPRECATION")
+  private fun rewriteIncomingContentUri(intent: Intent) {
+    val uri: Uri = when (intent.action) {
+      Intent.ACTION_VIEW -> intent.data
+      Intent.ACTION_SEND -> intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+      else -> null
+    } ?: return
     if (uri.scheme != "content") return
     try {
       var displayName = "shared-import-\${System.currentTimeMillis()}.csv"
@@ -41,10 +48,11 @@ const HELPER_FUNCTION = `  private fun rewriteIncomingContentUri(intent: Intent)
       contentResolver.openInputStream(uri)?.use { input ->
         localFile.outputStream().use { output -> input.copyTo(output) }
       }
+      intent.action = Intent.ACTION_VIEW
       intent.data = Uri.fromFile(localFile)
     } catch (e: Exception) {
-      // Leave the original content:// URI in place -- worst case, JS sees
-      // the same permission error it did before this fix existed.
+      // Leave the original intent in place -- worst case, JS sees the same
+      // permission error it did before this fix existed.
     }
   }`;
 
