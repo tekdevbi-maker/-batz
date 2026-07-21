@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
+import { colors } from "../lib/theme";
 import {
   SANCTIONING_BODIES,
   createDivision,
@@ -105,7 +106,7 @@ function LeagueRow({ league, onChanged }: { league: League; onChanged: () => voi
       <View style={styles.actionRow}>
         {league.verificationStatus === "pending" && (
           <Pressable style={styles.secondaryButton} onPress={handleVerify}>
-            <Text>Verify</Text>
+            <Text style={styles.secondaryButtonText}>Verify</Text>
           </Pressable>
         )}
         <Pressable style={styles.deleteButton} onPress={handleDelete}>
@@ -117,7 +118,7 @@ function LeagueRow({ league, onChanged }: { league: League; onChanged: () => voi
         <View style={styles.divisionsBlock}>
           {divisions.map((d) => (
             <View key={d.id} style={styles.divisionRow}>
-              <Text>{d.name}</Text>
+              <Text style={styles.plainText}>{d.name}</Text>
               <Pressable onPress={() => handleDeleteDivision(d.id)}>
                 <Text style={styles.deleteButtonText}>Remove</Text>
               </Pressable>
@@ -131,7 +132,7 @@ function LeagueRow({ league, onChanged }: { league: League; onChanged: () => voi
               placeholder="New division (e.g. 12U)"
             />
             <Pressable style={styles.secondaryButton} onPress={handleAddDivision}>
-              <Text>Add</Text>
+              <Text style={styles.secondaryButtonText}>Add</Text>
             </Pressable>
           </View>
         </View>
@@ -182,7 +183,7 @@ export default function AdminScreen() {
   if (!isAdmin) {
     return (
       <View style={styles.container}>
-        <Text>You're not an admin.</Text>
+        <Text style={styles.plainText}>You're not an admin.</Text>
       </View>
     );
   }
@@ -204,7 +205,7 @@ export default function AdminScreen() {
             style={[styles.chip, newLeagueBody === body && styles.chipSelected]}
             onPress={() => setNewLeagueBody(body)}
           >
-            <Text>{body}</Text>
+            <Text style={styles.chipText}>{body}</Text>
           </Pressable>
         ))}
       </View>
@@ -226,11 +227,11 @@ export default function AdminScreen() {
             <Text style={styles.leagueName}>{CUSTOMER_CARE_CATEGORIES.find((c) => c.value === r.category)?.label}</Text>
             <Text style={r.status === "open" ? styles.pendingBadge : styles.verifiedBadge}>{r.status}</Text>
           </View>
-          <Text>{r.description}</Text>
+          <Text style={styles.plainText}>{r.description}</Text>
           <Text style={styles.hint}>{new Date(r.createdAt).toLocaleString()}</Text>
           {r.status === "open" && (
             <Pressable style={styles.secondaryButton} onPress={() => handleResolve(r.id)}>
-              <Text>Mark Resolved</Text>
+              <Text style={styles.secondaryButtonText}>Mark Resolved</Text>
             </Pressable>
           )}
         </View>
@@ -240,39 +241,57 @@ export default function AdminScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 8 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 16 },
-  hint: { color: "#555", fontSize: 12 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, fontSize: 16 },
+  container: { padding: 20, gap: 8, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 12 },
+  error: { color: colors.error, fontSize: 13 },
+  plainText: { color: colors.textPrimary },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { borderWidth: 1, borderColor: "#ccc", borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
-  chipSelected: { backgroundColor: "#dbeafe", borderColor: "#1d4ed8" },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 12 },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: colors.surface,
+  },
+  chipText: { color: colors.textPrimary },
+  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 12 },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
+  secondaryButtonText: { color: colors.textPrimary },
   deleteButton: {
     borderWidth: 1,
-    borderColor: "#b91c1c",
+    borderColor: colors.danger,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  deleteButtonText: { color: "#b91c1c", fontWeight: "600" },
-  leagueRow: { borderWidth: 1, borderColor: "#eee", borderRadius: 8, padding: 12, gap: 8 },
+  deleteButtonText: { color: colors.danger, fontWeight: "600" },
+  leagueRow: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, gap: 8 },
   leagueHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  leagueName: { fontSize: 15, fontWeight: "600", flexShrink: 1 },
-  pendingBadge: { color: "#92400e", backgroundColor: "#fef3c7", paddingHorizontal: 8, borderRadius: 4 },
-  verifiedBadge: { color: "#15803d", backgroundColor: "#dcfce7", paddingHorizontal: 8, borderRadius: 4 },
+  leagueName: { fontSize: 15, fontWeight: "600", flexShrink: 1, color: colors.textPrimary },
+  pendingBadge: { color: colors.warningText, backgroundColor: colors.warningBg, paddingHorizontal: 8, borderRadius: 4 },
+  verifiedBadge: { color: colors.success, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
   actionRow: { flexDirection: "row", gap: 8 },
-  divisionsBlock: { gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#eee" },
+  divisionsBlock: { gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
   divisionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   divisionAddRow: { flexDirection: "row", gap: 8, alignItems: "center" },
 });

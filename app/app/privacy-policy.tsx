@@ -1,4 +1,5 @@
 import { ScrollView, Text, StyleSheet } from "react-native";
+import { colors } from "../lib/theme";
 
 // Sprint 10 (spec Section 10/13): required by both App Store and Play
 // Store before submission, "given the app handles data connected to
@@ -122,9 +123,9 @@ export default function PrivacyPolicyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 48, gap: 16 },
-  title: { fontSize: 24, fontWeight: "700" },
-  effectiveDate: { color: "#555", fontSize: 13, marginBottom: 4 },
-  section: { fontSize: 14, lineHeight: 21 },
-  heading: { fontSize: 16, fontWeight: "700" },
+  container: { padding: 20, paddingBottom: 48, gap: 16, backgroundColor: colors.background },
+  title: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
+  effectiveDate: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
+  section: { fontSize: 14, lineHeight: 21, color: colors.textPrimary },
+  heading: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
 });

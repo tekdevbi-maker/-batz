@@ -13,6 +13,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { getTeamJoinContext, type TeamJoinContext } from "../../lib/claimRepository";
 import { AlreadyCoachError, CoachCapacityError, joinAsAssistantCoach } from "../../lib/coachesRepository";
+import { colors } from "../../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -81,7 +82,7 @@ export default function CoachJoinScreen() {
   if (!teamId) {
     return (
       <View style={styles.container}>
-        <Text>No team specified.</Text>
+        <Text style={styles.plainText}>No team specified.</Text>
       </View>
     );
   }
@@ -163,13 +164,22 @@ export default function CoachJoinScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 8 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
-  hint: { color: "#555", fontSize: 13, marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
+  container: { padding: 24, gap: 8, backgroundColor: colors.background },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 12 },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 13 },
+  plainText: { color: colors.textPrimary },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
 });

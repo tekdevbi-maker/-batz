@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getPlayerProfile, updatePlayerSettings } from "../../../lib/playerRepository";
+import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -83,7 +84,7 @@ export default function PlayerSettingsScreen() {
   if (!isOwner) {
     return (
       <View style={styles.container}>
-        <Text>Only this player's parent can change their settings.</Text>
+        <Text style={styles.plainText}>Only this player's parent can change their settings.</Text>
       </View>
     );
   }
@@ -98,7 +99,7 @@ export default function PlayerSettingsScreen() {
       <View style={styles.chipRow}>
         {(["public", "private"] as const).map((v) => (
           <Pressable key={v} style={[styles.chip, visibility === v && styles.chipSelected]} onPress={() => setVisibility(v)}>
-            <Text>{v === "public" ? "Public" : "Private"}</Text>
+            <Text style={styles.chipText}>{v === "public" ? "Public" : "Private"}</Text>
           </Pressable>
         ))}
       </View>
@@ -121,25 +122,43 @@ export default function PlayerSettingsScreen() {
       </Pressable>
 
       <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-        <Text>Back to profile</Text>
+        <Text style={styles.secondaryButtonText}>Back to profile</Text>
       </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 8 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12, flexShrink: 1 },
-  hint: { color: "#555", fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  success: { color: "#15803d", fontSize: 14, fontWeight: "600" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
+  container: { padding: 20, gap: 8, backgroundColor: colors.background },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 12, flexShrink: 1, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
+  success: { color: colors.success, fontSize: 14, fontWeight: "600" },
+  plainText: { color: colors.textPrimary },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
   chipRow: { flexDirection: "row", gap: 8 },
-  chip: { borderWidth: 1, borderColor: "#ccc", borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
-  chipSelected: { backgroundColor: "#dbeafe", borderColor: "#1d4ed8" },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: colors.surface,
+  },
+  chipText: { color: colors.textPrimary },
+  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
-  secondaryButton: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, alignItems: "center" },
+  secondaryButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, alignItems: "center" },
+  secondaryButtonText: { color: colors.textPrimary },
 });

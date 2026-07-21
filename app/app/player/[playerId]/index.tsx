@@ -16,6 +16,7 @@ import {
   type ActivityFeedPost,
 } from "../../../lib/socialRepository";
 import BlockReportButtons from "../../../components/BlockReportButtons";
+import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -136,7 +137,7 @@ export default function PlayerProfileScreen() {
             {profile.visibilityScope}
           </Text>
           <Pressable style={styles.secondaryButton} onPress={() => router.push(`/player/${playerId}/settings`)}>
-            <Text>Settings</Text>
+            <Text style={styles.secondaryButtonText}>Settings</Text>
           </Pressable>
         </View>
       )}
@@ -144,7 +145,7 @@ export default function PlayerProfileScreen() {
       {!profile.isOwner && (
         <View style={styles.ownerRow}>
           <Pressable style={styles.secondaryButton} disabled={followBusy} onPress={toggleFollow}>
-            <Text>{following ? "Unfollow" : "Follow"}</Text>
+            <Text style={styles.secondaryButtonText}>{following ? "Unfollow" : "Follow"}</Text>
           </Pressable>
           <Text style={styles.hint}>
             {followerCount} follower{followerCount === 1 ? "" : "s"}
@@ -201,28 +202,29 @@ export default function PlayerProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 6 },
-  title: { fontSize: 22, fontWeight: "700" },
-  hint: { color: "#555", fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 16 },
-  statLine: { fontSize: 13, color: "#444" },
+  container: { padding: 20, gap: 6, backgroundColor: colors.background },
+  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
+  statLine: { fontSize: 13, color: colors.textSecondary },
   ownerRow: { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 8 },
-  publicBadge: { color: "#15803d", backgroundColor: "#dcfce7", paddingHorizontal: 8, borderRadius: 4 },
-  privateBadge: { color: "#92400e", backgroundColor: "#fef3c7", paddingHorizontal: 8, borderRadius: 4 },
+  publicBadge: { color: colors.success, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
+  privateBadge: { color: colors.warningText, backgroundColor: colors.warningBg, paddingHorizontal: 8, borderRadius: 4 },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
+  secondaryButtonText: { color: colors.textPrimary },
   seasonRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.border,
     gap: 2,
   },
-  seasonTitle: { fontWeight: "600", fontSize: 14 },
-  starsLine: { fontSize: 13, marginTop: 4 },
+  seasonTitle: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
+  starsLine: { fontSize: 13, marginTop: 4, color: colors.textPrimary },
 });

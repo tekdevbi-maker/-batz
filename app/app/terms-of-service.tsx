@@ -1,4 +1,5 @@
 import { ScrollView, Text, StyleSheet } from "react-native";
+import { colors } from "../lib/theme";
 
 // Companion to privacy-policy.tsx (Sprint 10, spec Section 10/13) --
 // same caveat applies: solid first draft, have it reviewed by a lawyer
@@ -114,9 +115,9 @@ export default function TermsOfServiceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 48, gap: 16 },
-  title: { fontSize: 24, fontWeight: "700" },
-  effectiveDate: { color: "#555", fontSize: 13, marginBottom: 4 },
-  section: { fontSize: 14, lineHeight: 21 },
-  heading: { fontSize: 16, fontWeight: "700" },
+  container: { padding: 20, paddingBottom: 48, gap: 16, backgroundColor: colors.background },
+  title: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
+  effectiveDate: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
+  section: { fontSize: 14, lineHeight: 21, color: colors.textPrimary },
+  heading: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
 });

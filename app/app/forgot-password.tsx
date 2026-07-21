@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -64,12 +65,20 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center" },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
-  hint: { color: "#555" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center" },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
+  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
+  title: { fontSize: 24, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
+  error: { color: colors.error, fontSize: 13 },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
 });

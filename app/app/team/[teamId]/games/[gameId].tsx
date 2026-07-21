@@ -4,6 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useRequireAuth } from "../../../../lib/AuthContext";
 import { supabase } from "../../../../lib/supabase";
 import { getGameBoxScore, type BoxScoreLine, type GameSummary } from "../../../../lib/statsRepository";
+import { colors } from "../../../../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -35,7 +36,7 @@ export default function BoxScoreScreen() {
   if (!session || !gameId) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       {game && (
         <Text style={styles.title}>
           Game #{game.gameNumber}
@@ -64,15 +65,16 @@ export default function BoxScoreScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  title: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
-  error: { color: "#b91c1c", fontSize: 13 },
+  title: { fontSize: 18, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 13 },
   lineRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.border,
     gap: 2,
   },
-  playerTag: { fontWeight: "600", fontSize: 14 },
-  statLine: { fontSize: 12, color: "#444" },
+  playerTag: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
+  statLine: { fontSize: 12, color: colors.textSecondary },
 });

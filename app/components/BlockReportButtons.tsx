@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { supabase } from "../lib/supabase";
 import { submitBlockOrReport } from "../lib/socialRepository";
+import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -89,8 +90,17 @@ export default function BlockReportButtons({
 const styles = StyleSheet.create({
   container: { marginTop: 4 },
   row: { flexDirection: "row", gap: 12, alignItems: "center", flexWrap: "wrap" },
-  link: { color: "#b91c1c", fontSize: 12 },
-  hint: { color: "#555", fontSize: 12 },
-  error: { color: "#b91c1c", fontSize: 12 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 6, fontSize: 12, minWidth: 160 },
+  link: { color: colors.danger, fontSize: 12 },
+  hint: { color: colors.textSecondary, fontSize: 12 },
+  error: { color: colors.error, fontSize: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 6,
+    padding: 6,
+    fontSize: 12,
+    minWidth: 160,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
 });

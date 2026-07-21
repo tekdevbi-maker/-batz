@@ -5,8 +5,9 @@ import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
-import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
 import { listTeamCoaches, type TeamCoach } from "../../../lib/coachesRepository";
+import { colors } from "../../../lib/theme";
+import TeamTabBar from "../../../components/TeamTabBar";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -14,17 +15,12 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-function fmt(avg: number): string {
-  return avg.toFixed(3).replace(/^0\./, ".");
-}
-
-export default function TeamOverviewScreen() {
+export default function TeamHomeScreen() {
   const { session } = useRequireAuth();
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
 
   const [context, setContext] = useState<TeamJoinContext | null>(null);
-  const [roster, setRoster] = useState<RosterSeasonStats[]>([]);
   const [coaches, setCoaches] = useState<TeamCoach[]>([]);
   const [isCoach, setIsCoach] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +28,6 @@ export default function TeamOverviewScreen() {
   useEffect(() => {
     if (!teamId || !session) return;
     getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err)));
-    getTeamRosterWithSeasonStats(supabase, teamId).then(setRoster).catch((err) => setError(errorMessage(err)));
     listTeamCoaches(supabase, teamId).then(setCoaches).catch(() => {});
     supabase
       .from("coach_assignment")
@@ -46,103 +41,81 @@ export default function TeamOverviewScreen() {
   if (!session || !teamId) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {context && (
-        <>
-          <Text style={styles.title}>{context.teamName}</Text>
-          <Text style={styles.hint}>
-            {context.leagueName}, {context.divisionName} -- {context.season} {context.year}
-          </Text>
-        </>
-      )}
-
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      <View style={styles.buttonRow}>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/games`)}>
-          <Text>Game Log</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/leaderboard`)}>
-          <Text>Leaderboard</Text>
-        </Pressable>
-        {isCoach && (
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
-          >
-            <Text>Import a Game</Text>
-          </Pressable>
+    <View style={styles.root}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+        {context && (
+          <>
+            <Text style={styles.title}>{context.teamName}</Text>
+            <Text style={styles.hint}>
+              {context.leagueName}, {context.divisionName} -- {context.season} {context.year}
+            </Text>
+          </>
         )}
-        {!isCoach && (
-          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/customer-care`)}>
-            <Text>Customer Care</Text>
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <View style={styles.buttonRow}>
+          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/games`)}>
+            <Text style={styles.buttonText}>Game Log</Text>
           </Pressable>
+          {isCoach && (
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
+            >
+              <Text style={styles.buttonText}>Import a Game</Text>
+            </Pressable>
+          )}
+          {!isCoach && (
+            <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/customer-care`)}>
+              <Text style={styles.buttonText}>Customer Care</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <Text style={styles.label}>Coaches ({coaches.length}/4)</Text>
+        {coaches.map((c) => (
+          <Text key={c.userId} style={styles.statLine}>
+            {c.firstName} {c.lastName} -- {c.role}
+          </Text>
+        ))}
+        {isCoach && coaches.length < 4 && (
+          <>
+            <Text style={styles.label}>Share this with an assistant coach:</Text>
+            <Text selectable style={styles.code}>
+              {Linking.createURL(`/coach-join/${teamId}`)}
+            </Text>
+          </>
         )}
-      </View>
-
-      <Text style={styles.label}>Coaches ({coaches.length}/4)</Text>
-      {coaches.map((c) => (
-        <Text key={c.userId} style={styles.statLine}>
-          {c.firstName} {c.lastName} -- {c.role}
-        </Text>
-      ))}
-      {isCoach && coaches.length < 4 && (
-        <>
-          <Text style={styles.label}>Share this with an assistant coach:</Text>
-          <Text selectable style={styles.code}>
-            {Linking.createURL(`/coach-join/${teamId}`)}
-          </Text>
-        </>
-      )}
-
-      <Text style={styles.label}>Season Stats</Text>
-      {roster.length === 0 && <Text style={styles.hint}>No roster yet.</Text>}
-      {roster.map((r) => (
-        <Pressable
-          key={r.rosterEntryId}
-          style={styles.rosterRow}
-          disabled={!r.playerId}
-          onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
-        >
-          <Text style={styles.playerTag}>
-            #{r.uniformNumber} {r.displayName}
-            {r.playerId ? "  ›" : ""}
-          </Text>
-          <Text style={styles.statLine}>
-            AB {r.counts.ab} -- H {r.counts.h} -- AVG {fmt(r.stats.avg)} -- OBP {fmt(r.stats.obp)} -- SLG{" "}
-            {fmt(r.stats.slg)} -- OPS {fmt(r.stats.ops)}
-          </Text>
-        </Pressable>
-      ))}
-    </ScrollView>
+      </ScrollView>
+      <TeamTabBar teamId={teamId} active="home" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  title: { fontSize: 22, fontWeight: "700" },
-  hint: { color: "#555", fontSize: 13, marginBottom: 8 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 16 },
+  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
+  error: { color: colors.error, fontSize: 13 },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
   buttonRow: { flexDirection: "row", gap: 8, marginTop: 8 },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     alignItems: "center",
+    backgroundColor: colors.surface,
   },
-  rosterRow: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    gap: 2,
-  },
-  playerTag: { fontWeight: "600", fontSize: 14 },
-  statLine: { fontSize: 12, color: "#444" },
+  buttonText: { color: colors.textPrimary },
+  statLine: { fontSize: 12, color: colors.textSecondary },
   code: {
     fontFamily: "monospace",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
     padding: 10,
     borderRadius: 6,
     fontSize: 12,

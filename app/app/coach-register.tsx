@@ -12,6 +12,7 @@ import { Link, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { useAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
+import { colors } from "../lib/theme";
 import {
   SANCTIONING_BODIES,
   assignPrimaryCoach,
@@ -231,7 +232,7 @@ export default function CoachRegisterScreen() {
             style={[styles.chip, sanctioningBody === body && styles.chipSelected]}
             onPress={() => setSanctioningBody(body)}
           >
-            <Text>{body}</Text>
+            <Text style={styles.chipText}>{body}</Text>
           </Pressable>
         ))}
       </View>
@@ -248,7 +249,7 @@ export default function CoachRegisterScreen() {
               setSelectedDivision(null);
             }}
           >
-            <Text>
+            <Text style={styles.chipText}>
               {league.name}
               {league.verificationStatus === "pending" ? " (pending)" : ""}
             </Text>
@@ -262,7 +263,7 @@ export default function CoachRegisterScreen() {
             setSelectedDivision(null);
           }}
         >
-          <Text>Other...</Text>
+          <Text style={styles.chipText}>Other...</Text>
         </Pressable>
       </View>
       {enteringNewLeague && (
@@ -291,7 +292,7 @@ export default function CoachRegisterScreen() {
               setEnteringNewDivision(false);
             }}
           >
-            <Text>{division.name}</Text>
+            <Text style={styles.chipText}>{division.name}</Text>
           </Pressable>
         ))}
         <Pressable
@@ -301,7 +302,7 @@ export default function CoachRegisterScreen() {
             setSelectedDivision(null);
           }}
         >
-          <Text>Other...</Text>
+          <Text style={styles.chipText}>Other...</Text>
         </Pressable>
       </View>
       {enteringNewDivision && (
@@ -317,7 +318,7 @@ export default function CoachRegisterScreen() {
       <View style={styles.chipRow}>
         {(["Spring", "Fall"] as const).map((s) => (
           <Pressable key={s} style={[styles.chip, season === s && styles.chipSelected]} onPress={() => setSeason(s)}>
-            <Text>{s}</Text>
+            <Text style={styles.chipText}>{s}</Text>
           </Pressable>
         ))}
       </View>
@@ -342,26 +343,43 @@ export default function CoachRegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 8 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8 },
-  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#555" },
-  legalLink: { color: "#1d4ed8" },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
-  hint: { color: "#555", fontSize: 13 },
-  warning: { color: "#92400e", backgroundColor: "#fef3c7", padding: 8, borderRadius: 6, fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
+  container: { padding: 24, gap: 8, backgroundColor: colors.background },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: colors.textSecondary },
+  legalLink: { color: colors.accent },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
   code: {
     fontFamily: "monospace",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: colors.surface,
     padding: 10,
     borderRadius: 6,
     fontSize: 13,
+    color: colors.textPrimary,
   },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { borderWidth: 1, borderColor: "#ccc", borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
-  chipSelected: { backgroundColor: "#dbeafe", borderColor: "#1d4ed8" },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: colors.surface,
+  },
+  chipText: { color: colors.textPrimary },
+  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
 });

@@ -21,6 +21,7 @@ import { parseGameChangerBattingCsv, type ImportedBattingLine } from "../lib/gam
 import { hashFileContents } from "../lib/fileHash";
 import { MLB_TEAMS } from "../lib/mlbTeams";
 import { formatDateDisplay, parseLocalIsoDate, toLocalIsoDate, todayIso } from "../lib/dateFormat";
+import { colors } from "../lib/theme";
 import {
   deleteGame,
   findDuplicateFileImport,
@@ -248,14 +249,16 @@ export default function ImportGameScreen() {
 
   if (!teamId) {
     return (
-      <View style={styles.container}>
-        <Text>No team selected.</Text>
+      <View style={styles.screen}>
+        <View style={styles.container}>
+          <Text style={styles.plainText}>No team selected.</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       {loadError && (
         <Text style={styles.error}>
           Couldn't load team data: {loadError}
@@ -265,7 +268,7 @@ export default function ImportGameScreen() {
 
       <Text style={styles.label}>Date</Text>
       <Pressable style={styles.input} onPress={openDatePicker}>
-        <Text>{formatDateDisplay(gameDate)}</Text>
+        <Text style={styles.inputText}>{formatDateDisplay(gameDate)}</Text>
       </Pressable>
       {Platform.OS === "ios" && showIosDatePicker && (
         <DateTimePicker
@@ -314,14 +317,14 @@ export default function ImportGameScreen() {
               setCustomOpponent(false);
             }}
           >
-            <Text>{team.name}</Text>
+            <Text style={styles.chipText}>{team.name}</Text>
           </Pressable>
         ))}
         <Pressable
           style={[styles.chip, customOpponent && styles.chipSelected]}
           onPress={() => setShowOpponentPicker(true)}
         >
-          <Text>{customOpponent && opponent ? opponent : "Other (MLB team)..."}</Text>
+          <Text style={styles.chipText}>{customOpponent && opponent ? opponent : "Other (MLB team)..."}</Text>
         </Pressable>
       </View>
 
@@ -348,7 +351,7 @@ export default function ImportGameScreen() {
             ))}
           </ScrollView>
           <Pressable style={styles.secondaryButton} onPress={() => setShowOpponentPicker(false)}>
-            <Text>Cancel</Text>
+            <Text style={styles.secondaryButtonText}>Cancel</Text>
           </Pressable>
         </View>
       </Modal>
@@ -361,15 +364,35 @@ export default function ImportGameScreen() {
             style={[styles.chip, timeOfDay === option && styles.chipSelected]}
             onPress={() => setTimeOfDay(option)}
           >
-            <Text>{option}</Text>
+            <Text style={styles.chipText}>{option}</Text>
           </Pressable>
         ))}
       </View>
 
       <Text style={styles.label}>GameChanger CSV</Text>
-      <Pressable style={styles.secondaryButton} onPress={pickFile}>
-        <Text>{fileName ?? "Choose file..."}</Text>
-      </Pressable>
+      {/*
+        Manual file-picking (pickFile(), still defined below) is
+        deliberately not wired into the UI: a coach choosing an arbitrary
+        local file could hand-edit stats in a spreadsheet app before
+        "importing" it, undermining the app's core fairness/auditability
+        mission (spec Section 7's founding rationale). The only sanctioned
+        path is exporting directly from GameChanger and sharing straight
+        to @Batz (Sprint 9's "Open With"/Share intent handling), which
+        this screen only ever receives via incomingFileUri below.
+        Re-enable by restoring this button if a manual fallback is ever
+        needed:
+        <Pressable style={styles.secondaryButton} onPress={pickFile}>
+          <Text>{fileName ?? "Choose file..."}</Text>
+        </Pressable>
+      */}
+      {fileName ? (
+        <Text style={styles.hint}>File: {fileName}</Text>
+      ) : (
+        <Text style={styles.hint}>
+          Waiting for a file -- export stats from the GameChanger app, then use its Share/Export
+          menu to send the CSV directly to @Batz.
+        </Text>
+      )}
 
       {duplicateFileWarning && (
         <Text style={styles.error}>
@@ -397,7 +420,7 @@ export default function ImportGameScreen() {
 
       {submitSuccess && (
         <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-          <Text>Done</Text>
+          <Text style={styles.secondaryButtonText}>Done</Text>
         </Pressable>
       )}
 
@@ -416,7 +439,7 @@ export default function ImportGameScreen() {
                 onPress={() => confirmDeleteGame(game)}
               >
                 {deletingGameId === game.id ? (
-                  <ActivityIndicator size="small" color="#b91c1c" />
+                  <ActivityIndicator size="small" color={colors.error} />
                 ) : (
                   <Text style={styles.deleteButtonText}>Delete</Text>
                 )}
@@ -430,63 +453,70 @@ export default function ImportGameScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
-  hint: { color: "#555", fontSize: 13 },
-  warning: { color: "#92400e", backgroundColor: "#fef3c7", padding: 8, borderRadius: 6, fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  success: { color: "#15803d", fontSize: 14, fontWeight: "600" },
+  plainText: { color: colors.textPrimary },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
+  success: { color: colors.success, fontSize: 14, fontWeight: "600" },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
+    backgroundColor: colors.surface,
   },
+  inputText: { color: colors.textPrimary },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 16,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  chipSelected: { backgroundColor: "#dbeafe", borderColor: "#1d4ed8" },
-  modalContainer: { flex: 1, padding: 20, paddingTop: 48 },
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
-  modalRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  modalRowText: { fontSize: 16 },
+  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
+  chipText: { color: colors.textPrimary },
+  modalContainer: { flex: 1, padding: 20, paddingTop: 48, backgroundColor: colors.background },
+  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 12, color: colors.textPrimary },
+  modalRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalRowText: { fontSize: 16, color: colors.textPrimary },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     alignItems: "center",
+    backgroundColor: colors.surface,
   },
+  secondaryButtonText: { color: colors.textPrimary },
   button: {
-    backgroundColor: "#1d4ed8",
+    backgroundColor: colors.accent,
     borderRadius: 8,
     padding: 14,
     alignItems: "center",
     marginTop: 12,
   },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
+  buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 16 },
   gameRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.border,
   },
-  gameRowText: { fontSize: 14 },
+  gameRowText: { fontSize: 14, color: colors.textPrimary },
   deleteButton: {
     borderWidth: 1,
-    borderColor: "#b91c1c",
+    borderColor: colors.danger,
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
-  deleteButtonText: { color: "#b91c1c", fontSize: 13, fontWeight: "600" },
+  deleteButtonText: { color: colors.danger, fontSize: 13, fontWeight: "600" },
 });

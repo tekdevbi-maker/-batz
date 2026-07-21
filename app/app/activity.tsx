@@ -11,6 +11,7 @@ import {
   type ActivityFeedPost,
 } from "../lib/socialRepository";
 import BlockReportButtons from "../components/BlockReportButtons";
+import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -96,18 +97,18 @@ export default function ActivityFeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 4 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  hint: { color: "#555", fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
+  container: { padding: 20, gap: 4, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
   postRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.border,
     gap: 4,
   },
-  playerName: { fontWeight: "600", fontSize: 14 },
-  postText: { fontSize: 13, color: "#444" },
-  link: { color: "#1d4ed8", fontSize: 13 },
-  likedLink: { color: "#b91c1c", fontSize: 13 },
+  playerName: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
+  postText: { fontSize: 13, color: colors.textSecondary },
+  link: { color: colors.accent, fontSize: 13 },
+  likedLink: { color: colors.danger, fontSize: 13 },
 });

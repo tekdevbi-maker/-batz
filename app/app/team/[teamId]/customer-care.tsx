@@ -8,6 +8,7 @@ import {
   submitCustomerCareRequest,
   type CustomerCareCategory,
 } from "../../../lib/customerCareRepository";
+import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -49,18 +50,20 @@ export default function CustomerCareScreen() {
 
   if (submitted) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Request submitted</Text>
-        <Text style={styles.hint}>We've logged your request and someone will follow up.</Text>
-        <Pressable style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Done</Text>
-        </Pressable>
+      <View style={styles.screen}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Request submitted</Text>
+          <Text style={styles.hint}>We've logged your request and someone will follow up.</Text>
+          <Pressable style={styles.button} onPress={() => router.back()}>
+            <Text style={styles.buttonText}>Done</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Reach Out to Customer Care</Text>
       <Text style={styles.hint}>Can't reach your team's coaches? Let us know what's going on.</Text>
 
@@ -72,7 +75,7 @@ export default function CustomerCareScreen() {
             style={[styles.chip, category === c.value && styles.chipSelected]}
             onPress={() => setCategory(c.value)}
           >
-            <Text>{c.label}</Text>
+            <Text style={styles.chipText}>{c.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -85,6 +88,7 @@ export default function CustomerCareScreen() {
         multiline
         numberOfLines={4}
         placeholder="What's happening?"
+        placeholderTextColor={colors.textMuted}
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -93,24 +97,26 @@ export default function CustomerCareScreen() {
         disabled={!description.trim() || submitting}
         onPress={handleSubmit}
       >
-        {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Submit Request</Text>}
+        {submitting ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.buttonText}>Submit Request</Text>}
       </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  title: { fontSize: 20, fontWeight: "700" },
-  hint: { color: "#555", fontSize: 13, marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
-  error: { color: "#b91c1c", fontSize: 13 },
+  title: { fontSize: 20, fontWeight: "700", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 13 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { borderWidth: 1, borderColor: "#ccc", borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
-  chipSelected: { backgroundColor: "#dbeafe", borderColor: "#1d4ed8" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
+  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
+  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
+  chipText: { color: colors.textPrimary },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, color: colors.textPrimary, backgroundColor: colors.surface },
   multiline: { minHeight: 100, textAlignVertical: "top" },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
+  buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 16 },
 });

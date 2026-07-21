@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { searchPlayers, type PlayerSearchResult } from "../lib/playerRepository";
+import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -53,7 +54,7 @@ export default function SearchScreen() {
       {results && results.length === 0 && <Text style={styles.hint}>No players found.</Text>}
       {results?.map((r) => (
         <Pressable key={r.playerId} style={styles.resultRow} onPress={() => router.push(`/player/${r.playerId}`)}>
-          <Text>{r.displayName}</Text>
+          <Text style={styles.resultText}>{r.displayName}</Text>
         </Pressable>
       ))}
     </ScrollView>
@@ -61,17 +62,26 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 8 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  hint: { color: "#555", fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center" },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
+  container: { padding: 20, gap: 8, backgroundColor: colors.background },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
   resultRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.border,
   },
+  resultText: { color: colors.textPrimary },
 });

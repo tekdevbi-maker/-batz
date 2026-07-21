@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listMyCoachedTeams, type CoachedTeam } from "../lib/teamsRepository";
+import { colors } from "../lib/theme";
 
 // Landing point for a CSV opened from outside the app (OS "Open With
 // @Batz", spec Section 3a). We know the file's URI but not which team it
@@ -39,7 +40,7 @@ export default function SharedCsvScreen() {
   if (!uri) {
     return (
       <View style={styles.container}>
-        <Text>No file was shared.</Text>
+        <Text style={styles.plainText}>No file was shared.</Text>
       </View>
     );
   }
@@ -63,7 +64,7 @@ export default function SharedCsvScreen() {
   if (teams.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>
+        <Text style={styles.plainText}>
           You're not coaching any in-season team, so there's nowhere to import this file into.
         </Text>
       </View>
@@ -104,16 +105,18 @@ export default function SharedCsvScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, gap: 8 },
-  label: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
-  error: { color: "#b91c1c", fontSize: 13 },
+  container: { flex: 1, padding: 20, gap: 8, backgroundColor: colors.background },
+  label: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 13 },
+  plainText: { color: colors.textPrimary },
   teamRow: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 14,
     marginBottom: 8,
+    backgroundColor: colors.surface,
   },
-  teamName: { fontSize: 16, fontWeight: "600" },
-  teamMeta: { color: "#555", fontSize: 13 },
+  teamName: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+  teamMeta: { color: colors.textSecondary, fontSize: 13 },
 });

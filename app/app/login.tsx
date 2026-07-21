@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../lib/AuthContext";
+import { colors } from "../lib/theme";
 
 export default function LoginScreen() {
   const { session, signIn } = useAuth();
@@ -81,14 +82,22 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center" },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
-  error: { color: "#b91c1c", fontSize: 13 },
-  button: { backgroundColor: "#1d4ed8", borderRadius: 8, padding: 14, alignItems: "center" },
-  buttonDisabled: { backgroundColor: "#93b4ec" },
+  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
+  title: { fontSize: 24, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+  },
+  error: { color: colors.error, fontSize: 13 },
+  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
-  link: { marginTop: 12, textAlign: "center" },
-  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#555" },
-  legalLink: { color: "#1d4ed8" },
+  link: { marginTop: 12, textAlign: "center", color: colors.textPrimary },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: colors.textSecondary },
+  legalLink: { color: colors.accent },
 });

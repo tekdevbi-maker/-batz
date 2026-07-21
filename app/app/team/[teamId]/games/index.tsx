@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../../lib/AuthContext";
 import { supabase } from "../../../../lib/supabase";
 import { listGamesForTeam, type GameSummary } from "../../../../lib/statsRepository";
+import { colors } from "../../../../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -26,7 +27,7 @@ export default function GameLogScreen() {
   if (!session || !teamId) return null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Game Log</Text>
       {error && <Text style={styles.error}>{error}</Text>}
       {games.length === 0 && !error && <Text style={styles.hint}>No games imported yet.</Text>}
@@ -48,14 +49,15 @@ export default function GameLogScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  hint: { color: "#555", fontSize: 13 },
-  error: { color: "#b91c1c", fontSize: 13 },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13 },
+  error: { color: colors.error, fontSize: 13 },
   gameRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.border,
   },
-  gameRowText: { fontSize: 14 },
+  gameRowText: { fontSize: 14, color: colors.textPrimary },
 });
