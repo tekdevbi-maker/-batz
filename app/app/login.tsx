@@ -12,6 +12,17 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Guards the redirect effect below so it only fires because of THIS
+  // screen's own successful sign-in -- not because some unrelated screen
+  // (e.g. a signup on /join/[teamId]) happened to update the same shared
+  // session. Confirmed via real device testing: on a cold start via deep
+  // link, Home briefly mounts first, its useRequireAuth() sees no
+  // session yet and redirects here before the deep link finishes
+  // resolving to its real target -- this /login instance then stays
+  // mounted in the background, and without this guard, ANY later session
+  // change (from a totally different screen) would fire this effect and
+  // hijack navigation back to Home mid-flow.
+  const [attemptedLogin, setAttemptedLogin] = useState(false);
 
   // Navigate off this screen only once AuthContext's session state has
   // actually updated -- not right after signIn()'s promise resolves.
@@ -22,16 +33,17 @@ export default function LoginScreen() {
   // login silently does nothing: spinner runs, then you're right back
   // where you started).
   useEffect(() => {
-    if (session) {
+    if (session && attemptedLogin) {
       router.replace(returnTo || "/");
     }
-  }, [session, returnTo, router]);
+  }, [session, attemptedLogin, returnTo, router]);
 
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
     try {
       await signIn(email, password);
+      setAttemptedLogin(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

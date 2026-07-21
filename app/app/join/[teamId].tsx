@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import type { Session } from "@supabase/supabase-js";
 import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabase";
 import {
@@ -28,7 +29,15 @@ function errorMessage(err: unknown): string {
 export default function JoinTeamScreen() {
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
-  const { session, signUp } = useAuth();
+  const { session: contextSession, signUp } = useAuth();
+  // Confirmed via real device testing: this screen doesn't reliably see
+  // AuthContext's session update on this same mount right after a fresh
+  // signUp() (some context-propagation lag specific to that event,
+  // separate from the analogous sign-IN case already fixed on the login
+  // screen) -- so handleCreateAccount fetches the session directly and
+  // keeps it here, instead of trusting context to flip in time.
+  const [localSession, setLocalSession] = useState<Session | null>(null);
+  const session = contextSession ?? localSession;
 
   const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [contextError, setContextError] = useState<string | null>(null);
@@ -61,6 +70,10 @@ export default function JoinTeamScreen() {
     setAccountError(null);
     try {
       await signUp(email, password);
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      if (!data.session) throw new Error("Account created, but no session came back -- try signing in instead.");
+      setLocalSession(data.session);
     } catch (err) {
       setAccountError(errorMessage(err));
     } finally {
