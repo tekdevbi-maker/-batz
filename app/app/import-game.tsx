@@ -8,14 +8,19 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as LegacyFileSystem from "expo-file-system/legacy";
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { parseGameChangerBattingCsv, type ImportedBattingLine } from "../lib/gameChangerImport";
 import { hashFileContents } from "../lib/fileHash";
+import { MLB_TEAMS } from "../lib/mlbTeams";
+import { formatDateDisplay, parseLocalIsoDate, toLocalIsoDate, todayIso } from "../lib/dateFormat";
 import {
   deleteGame,
   findDuplicateFileImport,
@@ -38,19 +43,17 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export default function ImportGameScreen() {
   const { session } = useRequireAuth();
   const { teamId, incomingFileUri } = useLocalSearchParams<{ teamId: string; incomingFileUri?: string }>();
   const router = useRouter();
 
   const [gameDate, setGameDate] = useState(todayIso());
+  const [showIosDatePicker, setShowIosDatePicker] = useState(false);
   const [gameNumber, setGameNumber] = useState("1");
   const [opponent, setOpponent] = useState("");
   const [customOpponent, setCustomOpponent] = useState(false);
+  const [showOpponentPicker, setShowOpponentPicker] = useState(false);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("Afternoon");
 
   const [lastGame, setLastGame] = useState<ExistingGameSummary | null>(null);
@@ -120,6 +123,25 @@ export default function ImportGameScreen() {
       .then(setSameDateGames)
       .catch(() => {});
   }, [teamId, gameDate]);
+
+  // Android's picker is a self-dismissing native dialog (imperative API,
+  // per the library's own recommendation); iOS renders inline via the
+  // <DateTimePicker> component below, toggled by showIosDatePicker.
+  function openDatePicker() {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: parseLocalIsoDate(gameDate),
+        mode: "date",
+        onChange: (event, selectedDate) => {
+          if (event.type === "set" && selectedDate) {
+            setGameDate(toLocalIsoDate(selectedDate));
+          }
+        },
+      });
+    } else {
+      setShowIosDatePicker(true);
+    }
+  }
 
   async function loadFile(uri: string, name: string) {
     setFileName(name);
@@ -242,12 +264,22 @@ export default function ImportGameScreen() {
       )}
 
       <Text style={styles.label}>Date</Text>
-      <TextInput
-        style={styles.input}
-        value={gameDate}
-        onChangeText={setGameDate}
-        placeholder="YYYY-MM-DD"
-      />
+      <Pressable style={styles.input} onPress={openDatePicker}>
+        <Text>{formatDateDisplay(gameDate)}</Text>
+      </Pressable>
+      {Platform.OS === "ios" && showIosDatePicker && (
+        <DateTimePicker
+          value={parseLocalIsoDate(gameDate)}
+          mode="date"
+          display="inline"
+          onChange={(event, selectedDate) => {
+            if (event.type === "set" && selectedDate) {
+              setGameDate(toLocalIsoDate(selectedDate));
+            }
+            setShowIosDatePicker(false);
+          }}
+        />
+      )}
 
       <Text style={styles.label}>Game Number</Text>
       {lastGame && (
@@ -287,22 +319,39 @@ export default function ImportGameScreen() {
         ))}
         <Pressable
           style={[styles.chip, customOpponent && styles.chipSelected]}
-          onPress={() => {
-            setCustomOpponent(true);
-            setOpponent("");
-          }}
+          onPress={() => setShowOpponentPicker(true)}
         >
-          <Text>Other...</Text>
+          <Text>{customOpponent && opponent ? opponent : "Other (MLB team)..."}</Text>
         </Pressable>
       </View>
-      {customOpponent && (
-        <TextInput
-          style={styles.input}
-          value={opponent}
-          onChangeText={setOpponent}
-          placeholder="Opponent name"
-        />
-      )}
+
+      <Modal
+        visible={showOpponentPicker}
+        animationType="slide"
+        onRequestClose={() => setShowOpponentPicker(false)}
+      >
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Select Opponent</Text>
+          <ScrollView>
+            {MLB_TEAMS.map((team) => (
+              <Pressable
+                key={team}
+                style={styles.modalRow}
+                onPress={() => {
+                  setOpponent(team);
+                  setCustomOpponent(true);
+                  setShowOpponentPicker(false);
+                }}
+              >
+                <Text style={styles.modalRowText}>{team}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Pressable style={styles.secondaryButton} onPress={() => setShowOpponentPicker(false)}>
+            <Text>Cancel</Text>
+          </Pressable>
+        </View>
+      </Modal>
 
       <Text style={styles.label}>Time of Day</Text>
       <View style={styles.chipRow}>
@@ -403,6 +452,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipSelected: { backgroundColor: "#dbeafe", borderColor: "#1d4ed8" },
+  modalContainer: { flex: 1, padding: 20, paddingTop: 48 },
+  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
+  modalRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  modalRowText: { fontSize: 16 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: "#ccc",
