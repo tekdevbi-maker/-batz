@@ -64,12 +64,20 @@ export function parseGameChangerBattingCsv(csvText: string): ImportedBattingLine
   }
 
   const lines: ImportedBattingLine[] = [];
-  let sawTotalsRow = false;
+  let sawSectionEndRow = false;
+
+  // GameChanger's own export tooling isn't consistent about the section-
+  // boundary marker in column A: the desktop/web "Export stats" flow uses
+  // "Totals", but a real mobile-app export (app/lib/__fixtures__/game2-team-marker.csv)
+  // uses "Team" instead, immediately followed by a Glossary section. Either
+  // one means "stop here" -- the row itself and everything after it
+  // (Glossary, blank rows) is discarded, never counted as a player line.
+  const SECTION_END_MARKERS = new Set(["Totals", "Team"]);
 
   for (const row of rows.slice(2)) {
     const jerseyNumber = row[0]?.trim() ?? "";
-    if (jerseyNumber === "Totals") {
-      sawTotalsRow = true;
+    if (SECTION_END_MARKERS.has(jerseyNumber)) {
+      sawSectionEndRow = true;
       break;
     }
     if (jerseyNumber === "") {
@@ -102,9 +110,9 @@ export function parseGameChangerBattingCsv(csvText: string): ImportedBattingLine
     lines.push(line);
   }
 
-  if (!sawTotalsRow) {
+  if (!sawSectionEndRow) {
     throw new GameChangerFormatError(
-      "No \"Totals\" row found — this doesn't look like a complete GameChanger stats export."
+      "No \"Totals\" or \"Team\" row found — this doesn't look like a complete GameChanger stats export."
     );
   }
 

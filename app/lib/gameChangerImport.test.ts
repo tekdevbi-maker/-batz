@@ -11,6 +11,15 @@ const fixtureCsv = fs.readFileSync(
   "utf-8"
 );
 
+// Same underlying game, but exported from GameChanger's mobile app rather
+// than the desktop "Export stats" flow -- confirmed via a real Sprint 9
+// device test that this variant uses "Team" as the section-end marker in
+// column A instead of "Totals", which the parser didn't originally handle.
+const teamMarkerFixtureCsv = fs.readFileSync(
+  path.join(__dirname, "__fixtures__", "game2-team-marker.csv"),
+  "utf-8"
+);
+
 function line(overrides: Partial<ImportedBattingLine>): ImportedBattingLine {
   return {
     jerseyNumber: "",
@@ -107,6 +116,30 @@ describe("parseGameChangerBattingCsv against a real export (game1.csv)", () => {
   });
 
   test("team totals for the game sum correctly across all 11 lines (matches the file's own Totals row: 16 AB, 3 H, 5 BB, 1 HBP)", () => {
+    const totals = lines.reduce(
+      (acc, l) => ({
+        ab: acc.ab + l.ab,
+        h: acc.h + l.h,
+        bb: acc.bb + l.bb,
+        hbp: acc.hbp + l.hbp,
+      }),
+      { ab: 0, h: 0, bb: 0, hbp: 0 }
+    );
+    expect(totals).toEqual({ ab: 16, h: 3, bb: 5, hbp: 1 });
+  });
+});
+
+describe("parseGameChangerBattingCsv against a real export using \"Team\" as the section-end marker (game2-team-marker.csv)", () => {
+  const lines = parseGameChangerBattingCsv(teamMarkerFixtureCsv);
+
+  test("parses exactly the 11 player rows, excluding the Team/blank/Glossary rows", () => {
+    expect(lines).toHaveLength(11);
+    expect(lines.map((l) => l.jerseyNumber)).toEqual([
+      "8", "22", "99", "78", "45", "23", "17", "12", "10", "5", "2",
+    ]);
+  });
+
+  test("team totals sum correctly across all 11 lines (matches the file's own Team row: 16 AB, 3 H, 5 BB, 1 HBP)", () => {
     const totals = lines.reduce(
       (acc, l) => ({
         ab: acc.ab + l.ab,
