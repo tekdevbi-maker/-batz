@@ -10,7 +10,9 @@ import {
   unlikePost,
   type ActivityFeedPost,
 } from "../lib/socialRepository";
-import BlockReportButtons from "../components/BlockReportButtons";
+// Block/Report is disabled for now -- kept here, commented out, in case it's
+// wanted again later.
+// import BlockReportButtons from "../components/BlockReportButtons";
 import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -83,6 +85,7 @@ export default function ActivityFeedScreen() {
               {post.likedByMe ? "♥" : "♡"} {post.likeCount}
             </Text>
           </Pressable>
+          {/* Block/Report disabled for now -- see the commented-out import above.
           {post.playerParentUserId && (
             <BlockReportButtons
               myUserId={session.user.id}
@@ -90,6 +93,7 @@ export default function ActivityFeedScreen() {
               activityFeedItemId={post.id}
             />
           )}
+          */}
         </View>
       ))}
     </ScrollView>
@@ -98,17 +102,17 @@ export default function ActivityFeedScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 4, backgroundColor: colors.background },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13 },
-  error: { color: colors.error, fontSize: 13 },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14 },
+  error: { color: colors.error, fontSize: 14 },
   postRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 4,
   },
-  playerName: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
-  postText: { fontSize: 13, color: colors.textSecondary },
-  link: { color: colors.accent, fontSize: 13 },
-  likedLink: { color: colors.danger, fontSize: 13 },
+  playerName: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
+  postText: { fontSize: 14, color: colors.textSecondary },
+  link: { color: colors.accent, fontSize: 14 },
+  likedLink: { color: colors.danger, fontSize: 14 },
 });

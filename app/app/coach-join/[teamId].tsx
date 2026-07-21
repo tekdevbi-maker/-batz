@@ -165,21 +165,21 @@ export default function CoachJoinScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 13 },
+  title: { fontSize: 24, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 12 },
+  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14 },
   plainText: { color: colors.textPrimary },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
 });

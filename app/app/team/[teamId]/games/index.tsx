@@ -51,13 +51,13 @@ export default function GameLogScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13 },
-  error: { color: colors.error, fontSize: 13 },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14 },
+  error: { color: colors.error, fontSize: 14 },
   gameRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  gameRowText: { fontSize: 14, color: colors.textPrimary },
+  gameRowText: { fontSize: 15, color: colors.textPrimary },
 });

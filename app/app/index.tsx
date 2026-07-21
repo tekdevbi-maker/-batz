@@ -98,10 +98,10 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, gap: 12 },
-  title: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
+  title: { fontSize: 26, fontWeight: "700", color: colors.textPrimary },
   hint: { color: colors.textSecondary },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 16 },
+  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   buttonRow: { flexDirection: "row", gap: 8 },
-  footerLinks: { marginTop: 16, textAlign: "center", fontSize: 12, color: colors.textSecondary },
+  footerLinks: { marginTop: 16, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });

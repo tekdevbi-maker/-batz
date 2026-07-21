@@ -106,8 +106,8 @@ export default function SharedCsvScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, gap: 8, backgroundColor: colors.background },
-  label: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 13 },
+  label: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14 },
   plainText: { color: colors.textPrimary },
   teamRow: {
     borderWidth: 1,
@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: colors.surface,
   },
-  teamName: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
-  teamMeta: { color: colors.textSecondary, fontSize: 13 },
+  teamName: { fontSize: 18, fontWeight: "600", color: colors.textPrimary },
+  teamMeta: { color: colors.textSecondary, fontSize: 14 },
 });

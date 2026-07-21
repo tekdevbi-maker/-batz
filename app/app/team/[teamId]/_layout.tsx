@@ -62,5 +62,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 8,
   },
-  adBannerText: { color: colors.textMuted, fontSize: 11 },
+  adBannerText: { color: colors.textMuted, fontSize: 12 },
 });

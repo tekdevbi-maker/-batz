@@ -50,7 +50,7 @@ export default function LeagueLeaderboardScreen() {
 
   const [entries, setEntries] = useState<DivisionLeaderboardEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [categoryKey, setCategoryKey] = useState<(typeof CATEGORIES)[number]["key"]>("avg");
+  const [categoryKey, setCategoryKey] = useState<(typeof CATEGORIES)[number]["key"]>("hits");
 
   useEffect(() => {
     if (!teamId || !session) return;
@@ -92,12 +92,11 @@ export default function LeagueLeaderboardScreen() {
             onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
           >
             <Text style={styles.rank}>{i + 1}.</Text>
-            <View style={styles.rowMain}>
-              <Text style={styles.name}>
-                #{r.uniformNumber} {r.displayName} {starsFor(r)}
-              </Text>
-              <Text style={styles.teamName}>{r.teamName}</Text>
-            </View>
+            <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
+            <Text style={styles.name}>
+              {r.playerId ? r.displayName : ""} {starsFor(r)}
+            </Text>
+            <Text style={styles.teamName}>{r.teamName}</Text>
             <Text style={styles.value}>{category.format(category.value(r))}</Text>
           </Pressable>
         ))}
@@ -111,9 +110,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 20, fontWeight: "700", color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
-  error: { color: colors.error, fontSize: 13 },
+  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
+  error: { color: colors.error, fontSize: 14 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
   chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingVertical: 4, paddingHorizontal: 10 },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
@@ -126,9 +125,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 8,
   },
-  rank: { width: 24, color: colors.textSecondary, fontSize: 13 },
-  rowMain: { flex: 1 },
-  name: { fontSize: 14, color: colors.textPrimary },
-  teamName: { fontSize: 11, color: colors.textSecondary },
-  value: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
+  rank: { width: 24, color: colors.textSecondary, fontSize: 14 },
+  uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14 },
+  name: { flex: 1.2, fontSize: 15, color: colors.textPrimary },
+  teamName: { flex: 1, fontSize: 13, color: colors.textSecondary },
+  value: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
 });

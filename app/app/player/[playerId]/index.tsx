@@ -3,9 +3,8 @@ import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { getPlayerProfile, type PlayerProfile } from "../../../lib/playerRepository";
+import { getPlayerProfile, currentSeasonLine, type PlayerProfile } from "../../../lib/playerRepository";
 import { calculateStarTiers } from "../../../lib/starTiers";
-import type { BattingCounts } from "../../../lib/stats";
 import {
   describeMilestone,
   followPlayer,
@@ -15,7 +14,10 @@ import {
   unfollowPlayer,
   type ActivityFeedPost,
 } from "../../../lib/socialRepository";
-import BlockReportButtons from "../../../components/BlockReportButtons";
+// Block/Report is disabled for now -- kept here, commented out, in case it's
+// wanted again later.
+// import BlockReportButtons from "../../../components/BlockReportButtons";
+import StatColumns from "../../../components/StatColumns";
 import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -24,19 +26,23 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-function renderStars(counts: BattingCounts): string {
-  const tiers = calculateStarTiers(counts);
-  const parts = [
-    tiers.hits > 0 ? `Hits ${"⭐".repeat(tiers.hits)}` : null,
-    tiers.doubles > 0 ? `2B ${"⭐".repeat(tiers.doubles)}` : null,
-    tiers.triples > 0 ? `3B ${"⭐".repeat(tiers.triples)}` : null,
-    tiers.homeRuns > 0 ? `HR ${"⭐".repeat(tiers.homeRuns)}` : null,
-  ].filter((p): p is string => p !== null);
-  return parts.join("   ");
-}
-
 function fmt(avg: number): string {
   return avg.toFixed(3).replace(/^0\./, ".");
+}
+
+function stars(n: number): string {
+  return n > 0 ? "⭐".repeat(n) : "";
+}
+
+// Voluntary fields (spec: parent fills these in via Player Settings) --
+// only render the parts that have actually been set.
+function formatDemographics(p: PlayerProfile): string | null {
+  const parts: string[] = [];
+  if (p.heightFeet != null) parts.push(`${p.heightFeet}'${p.heightInches ?? 0}"`);
+  if (p.weightLbs != null) parts.push(`${p.weightLbs} lbs`);
+  if (p.bats) parts.push(`Bats: ${p.bats}`);
+  if (p.throws) parts.push(`Throws: ${p.throws}`);
+  return parts.length > 0 ? parts.join("   ") : null;
 }
 
 export default function PlayerProfileScreen() {
@@ -51,6 +57,8 @@ export default function PlayerProfileScreen() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followBusy, setFollowBusy] = useState(false);
   const [recentActivity, setRecentActivity] = useState<ActivityFeedPost[]>([]);
+  const [careerOpen, setCareerOpen] = useState(false);
+  const [seasonsOpen, setSeasonsOpen] = useState(false);
 
   const load = useCallback(() => {
     if (!playerId || !session) return;
@@ -88,8 +96,8 @@ export default function PlayerProfileScreen() {
     }
   }
 
-  // Re-fetch on focus so settings changes (tag/visibility) show immediately
-  // when navigating back from the settings screen.
+  // Re-fetch on focus so settings changes (tag/visibility/demographics)
+  // show immediately when navigating back from the settings screen.
   useFocusEffect(load);
 
   if (!session || !playerId) return null;
@@ -122,15 +130,29 @@ export default function PlayerProfileScreen() {
     );
   }
 
+  const current = currentSeasonLine(profile);
   // Star tiers reset each season (spec Section 9), so they're computed
   // from the player's current in-season line, not the career aggregate --
   // a player with no in-season team right now simply shows no stars.
-  const currentSeasonCounts = profile.seasons.find((s) => s.seasonStatus === "in_season")?.counts ?? null;
+  const tiers = current ? calculateStarTiers(current.counts) : null;
+  const demographics = formatDemographics(profile);
+
+  const categoryRows = current
+    ? [
+        { label: "Hits", value: String(current.counts.h), stars: stars(tiers!.hits) },
+        { label: "2B", value: String(current.counts.doubles), stars: stars(tiers!.doubles) },
+        { label: "3B", value: String(current.counts.triples), stars: stars(tiers!.triples) },
+        { label: "HR", value: String(current.counts.hr), stars: stars(tiers!.homeRuns) },
+        { label: "RBI", value: String(current.counts.rbi), stars: "" },
+        { label: "AVG", value: fmt(current.stats.avg), stars: "" },
+        { label: "OBP", value: fmt(current.stats.obp), stars: "" },
+        { label: "SLG", value: fmt(current.stats.slg), stars: "" },
+        { label: "OPS", value: fmt(current.stats.ops), stars: "" },
+      ]
+    : [];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{profile.displayName}</Text>
-      {profile.displayName !== profile.playerTag && <Text style={styles.hint}>{profile.playerTag}</Text>}
       {profile.isOwner && (
         <View style={styles.ownerRow}>
           <Text style={profile.visibilityScope === "private" ? styles.privateBadge : styles.publicBadge}>
@@ -153,21 +175,45 @@ export default function PlayerProfileScreen() {
         </View>
       )}
 
-      {currentSeasonCounts && <Text style={styles.starsLine}>{renderStars(currentSeasonCounts)}</Text>}
+      <View style={styles.demographicsBlock}>
+        <Text style={styles.title}>
+          {current ? `#${current.uniformNumber} - ${profile.displayName}` : profile.displayName}
+        </Text>
+        {current && <Text style={styles.teamName}>{current.teamName}</Text>}
+        {demographics && <Text style={styles.hint}>{demographics}</Text>}
+      </View>
 
+      {/* Block/Report disabled for now -- see the commented-out import above.
       {session && !profile.isOwner && (
         <BlockReportButtons myUserId={session.user.id} targetUserId={profile.parentUserId} />
       )}
+      */}
 
-      <Text style={styles.label}>Career</Text>
-      <Text style={styles.statLine}>
-        AB {profile.careerCounts.ab} -- H {profile.careerCounts.h} -- 2B {profile.careerCounts.doubles} -- 3B{" "}
-        {profile.careerCounts.triples} -- HR {profile.careerCounts.hr} -- RBI {profile.careerCounts.rbi}
-      </Text>
-      <Text style={styles.statLine}>
-        AVG {fmt(profile.careerStats.avg)} -- OBP {fmt(profile.careerStats.obp)} -- SLG{" "}
-        {fmt(profile.careerStats.slg)} -- OPS {fmt(profile.careerStats.ops)}
-      </Text>
+      {categoryRows.length > 0 && (
+        <>
+          <Text style={styles.label}>Current Season</Text>
+          <View style={styles.table}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderCell, styles.categoryCell]}>Category</Text>
+              <Text style={[styles.tableHeaderCell, styles.valueCell]}>Season Stats</Text>
+              <Text style={[styles.tableHeaderCell, styles.starsCell]}>Star Rating</Text>
+            </View>
+            {categoryRows.map((row) => (
+              <View key={row.label} style={styles.tableRow}>
+                <Text style={[styles.tableCell, styles.categoryCell]}>{row.label}</Text>
+                <Text style={[styles.tableCell, styles.valueCell]}>{row.value}</Text>
+                <Text style={[styles.tableCell, styles.starsCell]}>{row.stars}</Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      <Pressable style={styles.sectionHeader} onPress={() => setCareerOpen((v) => !v)}>
+        <Text style={styles.label}>Career</Text>
+        <Text style={styles.chevron}>{careerOpen ? "▾" : "▸"}</Text>
+      </Pressable>
+      {careerOpen && <StatColumns counts={profile.careerCounts} stats={profile.careerStats} hideZero />}
 
       {recentActivity.length > 0 && (
         <>
@@ -180,34 +226,39 @@ export default function PlayerProfileScreen() {
         </>
       )}
 
-      <Text style={styles.label}>Seasons</Text>
-      {profile.seasons.length === 0 && <Text style={styles.hint}>No seasons recorded yet.</Text>}
-      {profile.seasons.map((s) => (
-        <Pressable key={s.rosterEntryId} style={styles.seasonRow} onPress={() => router.push(`/team/${s.teamId}`)}>
-          <Text style={styles.seasonTitle}>
-            {s.teamName} #{s.uniformNumber} -- {s.season} {s.year}
-            {s.seasonStatus === "ended" ? " (ended)" : ""}
-          </Text>
-          <Text style={styles.hint}>
-            {s.leagueName}, {s.divisionName}
-          </Text>
-          <Text style={styles.statLine}>
-            AB {s.counts.ab} -- H {s.counts.h} -- AVG {fmt(s.stats.avg)} -- OBP {fmt(s.stats.obp)} -- SLG{" "}
-            {fmt(s.stats.slg)} -- OPS {fmt(s.stats.ops)}
-          </Text>
-        </Pressable>
-      ))}
+      <Pressable style={styles.sectionHeader} onPress={() => setSeasonsOpen((v) => !v)}>
+        <Text style={styles.label}>Seasons</Text>
+        <Text style={styles.chevron}>{seasonsOpen ? "▾" : "▸"}</Text>
+      </Pressable>
+      {seasonsOpen && profile.seasons.length === 0 && <Text style={styles.hint}>No seasons recorded yet.</Text>}
+      {seasonsOpen &&
+        profile.seasons.map((s) => (
+          <Pressable key={s.rosterEntryId} style={styles.seasonRow} onPress={() => router.push(`/team/${s.teamId}`)}>
+            <Text style={styles.seasonTitle}>
+              {s.teamName} #{s.uniformNumber} -- {s.season} {s.year}
+              {s.seasonStatus === "ended" ? " (ended)" : ""}
+            </Text>
+            <Text style={styles.hint}>
+              {s.leagueName}, {s.divisionName}
+            </Text>
+            <StatColumns counts={s.counts} stats={s.stats} hideZero />
+          </Pressable>
+        ))}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 6, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13 },
-  error: { color: colors.error, fontSize: 13 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
-  statLine: { fontSize: 13, color: colors.textSecondary },
+  title: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
+  teamName: { fontSize: 17, fontWeight: "600", color: colors.textSecondary, marginTop: 2 },
+  hint: { color: colors.textSecondary, fontSize: 14 },
+  error: { color: colors.error, fontSize: 14 },
+  label: { fontSize: 15, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  chevron: { fontSize: 15, marginTop: 16, color: colors.textSecondary },
+  statLine: { fontSize: 14, color: colors.textSecondary },
+  demographicsBlock: { marginTop: 8, gap: 2 },
   ownerRow: { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 8 },
   publicBadge: { color: colors.success, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
   privateBadge: { color: colors.warningText, backgroundColor: colors.warningBg, paddingHorizontal: 8, borderRadius: 4 },
@@ -225,6 +276,30 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 2,
   },
-  seasonTitle: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
-  starsLine: { fontSize: 13, marginTop: 4, color: colors.textPrimary },
+  seasonTitle: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
+  table: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  tableHeaderRow: {
+    flexDirection: "row",
+    backgroundColor: colors.surfaceAlt,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  tableHeaderCell: { fontSize: 13, fontWeight: "700", color: colors.textPrimary },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  tableCell: { fontSize: 14, color: colors.textSecondary },
+  categoryCell: { flex: 1, textAlign: "center" },
+  valueCell: { flex: 1, textAlign: "center" },
+  starsCell: { flex: 1, textAlign: "center" },
 });

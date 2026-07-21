@@ -141,6 +141,9 @@ export default function JoinTeamScreen() {
             ? "Linked to your player's existing game stats."
             : "Your player is registered -- their stats will show up as the coach imports games."}
         </Text>
+        <Text style={styles.hint}>
+          Make sure to check out Player Settings to fill out the rest of your Player's Info.
+        </Text>
         <Pressable style={styles.button} onPress={() => router.replace("/")}>
           <Text style={styles.buttonText}>Go to @Batz</Text>
         </Pressable>
@@ -225,23 +228,23 @@ export default function JoinTeamScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 13 },
+  title: { fontSize: 24, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 12 },
+  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14 },
   plainText: { color: colors.textPrimary },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
-  legalText: { marginTop: 12, textAlign: "center", fontSize: 12, color: colors.textSecondary },
+  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  legalText: { marginTop: 12, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });

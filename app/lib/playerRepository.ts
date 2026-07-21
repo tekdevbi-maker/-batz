@@ -32,7 +32,17 @@ export interface PlayerSeasonLine {
   stats: CalculatedStats;
 }
 
-export interface PlayerProfile {
+export type BatsThrows = "Right" | "Left" | "Switch";
+
+export interface PlayerDemographics {
+  heightFeet: number | null;
+  heightInches: number | null;
+  weightLbs: number | null;
+  bats: BatsThrows | null;
+  throws: BatsThrows | null;
+}
+
+export interface PlayerProfile extends PlayerDemographics {
   playerId: string;
   parentUserId: string;
   displayName: string;
@@ -72,7 +82,9 @@ export async function getPlayerProfile(
 ): Promise<PlayerProfile | null> {
   const { data: player, error: playerError } = await supabase
     .from("player")
-    .select("id, parent_user_id, first_name, last_name, reveal_full_name, player_tag, visibility_scope")
+    .select(
+      "id, parent_user_id, first_name, last_name, reveal_full_name, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws"
+    )
     .eq("id", playerId)
     .maybeSingle();
   if (playerError) throw playerError;
@@ -141,7 +153,19 @@ export async function getPlayerProfile(
     seasons,
     careerCounts,
     careerStats: calculateStats(careerCounts),
+    heightFeet: player.height_feet,
+    heightInches: player.height_inches,
+    weightLbs: player.weight_lbs,
+    bats: player.bats,
+    throws: player.throws,
   };
+}
+
+// The season to show alongside demographics (spec: "Team Name" and
+// "Uniform Number" in the Career Profile header) -- the current in-season
+// entry if there is one, otherwise just the most recent by year.
+export function currentSeasonLine(profile: PlayerProfile): PlayerSeasonLine | null {
+  return profile.seasons.find((s) => s.seasonStatus === "in_season") ?? profile.seasons[0] ?? null;
 }
 
 export interface MyPlayer {
@@ -206,10 +230,17 @@ export interface PlayerSettingsInput {
   playerTag?: string;
   visibilityScope?: "public" | "private";
   revealFullName?: boolean;
+  heightFeet?: number | null;
+  heightInches?: number | null;
+  weightLbs?: number | null;
+  bats?: BatsThrows | null;
+  throws?: BatsThrows | null;
 }
 
 // Only the owning parent can update (enforced by RLS, spec Section 7:
-// parent-controlled settings / Section 10 accountability rule).
+// parent-controlled settings / Section 10 accountability rule). All
+// demographics fields are voluntary -- explicitly passing null clears a
+// field, leaving a key out of the input entirely leaves it untouched.
 export async function updatePlayerSettings(
   supabase: SupabaseClient,
   playerId: string,
@@ -219,6 +250,11 @@ export async function updatePlayerSettings(
   if (input.playerTag !== undefined) update.player_tag = input.playerTag.trim();
   if (input.visibilityScope !== undefined) update.visibility_scope = input.visibilityScope;
   if (input.revealFullName !== undefined) update.reveal_full_name = input.revealFullName;
+  if (input.heightFeet !== undefined) update.height_feet = input.heightFeet;
+  if (input.heightInches !== undefined) update.height_inches = input.heightInches;
+  if (input.weightLbs !== undefined) update.weight_lbs = input.weightLbs;
+  if (input.bats !== undefined) update.bats = input.bats;
+  if (input.throws !== undefined) update.throws = input.throws;
   if (Object.keys(update).length === 0) return;
 
   const { data, error } = await supabase.from("player").update(update).eq("id", playerId).select("id").maybeSingle();

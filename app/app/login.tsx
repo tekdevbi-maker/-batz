@@ -95,21 +95,21 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
-  error: { color: colors.error, fontSize: 13 },
+  error: { color: colors.error, fontSize: 14 },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
   link: { marginTop: 12, textAlign: "center", color: colors.textPrimary },
-  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: colors.textSecondary },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });

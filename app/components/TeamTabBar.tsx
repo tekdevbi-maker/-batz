@@ -15,8 +15,8 @@ export type TeamTab = "home" | "roster" | "leaderboard" | "league-leaderboard";
 const TABS: Array<{ key: TeamTab; label: string; path: (teamId: string) => string }> = [
   { key: "home", label: "Home", path: (teamId) => `/team/${teamId}` },
   { key: "roster", label: "Roster", path: (teamId) => `/team/${teamId}/roster` },
-  { key: "leaderboard", label: "Team Leaderboards", path: (teamId) => `/team/${teamId}/leaderboard` },
-  { key: "league-leaderboard", label: "League Leaderboards", path: (teamId) => `/team/${teamId}/league-leaderboard` },
+  { key: "leaderboard", label: "Team Leaders", path: (teamId) => `/team/${teamId}/leaderboard` },
+  { key: "league-leaderboard", label: "League Leaders", path: (teamId) => `/team/${teamId}/league-leaderboard` },
 ];
 
 export default function TeamTabBar({ teamId, active }: { teamId: string; active: TeamTab }) {
@@ -43,9 +43,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 2,
+    paddingVertical: 18,
+    paddingHorizontal: 4,
+    minHeight: 64,
   },
-  label: { fontSize: 11, color: colors.textSecondary, textAlign: "center" },
+  label: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
   labelActive: { color: colors.accent, fontWeight: "600" },
 });

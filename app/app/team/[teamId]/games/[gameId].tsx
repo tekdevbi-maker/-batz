@@ -5,15 +5,12 @@ import { useRequireAuth } from "../../../../lib/AuthContext";
 import { supabase } from "../../../../lib/supabase";
 import { getGameBoxScore, type BoxScoreLine, type GameSummary } from "../../../../lib/statsRepository";
 import { colors } from "../../../../lib/theme";
+import StatColumns from "../../../../components/StatColumns";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (err && typeof err === "object" && "message" in err) return String((err as { message: unknown }).message);
   return String(err);
-}
-
-function fmt(avg: number): string {
-  return avg.toFixed(3).replace(/^0\./, ".");
 }
 
 export default function BoxScoreScreen() {
@@ -49,15 +46,7 @@ export default function BoxScoreScreen() {
           <Text style={styles.playerTag}>
             #{line.jerseyNumber ?? "?"} {line.displayName}
           </Text>
-          <Text style={styles.statLine}>
-            {line.counts.ab} AB, {line.counts.h} H, {line.counts.singles} 1B, {line.counts.doubles} 2B,{" "}
-            {line.counts.triples} 3B, {line.counts.hr} HR, {line.counts.rbi} RBI, {line.counts.bb} BB,{" "}
-            {line.counts.hbp} HBP, {line.counts.sf} SF
-          </Text>
-          <Text style={styles.statLine}>
-            AVG {fmt(line.stats.avg)} -- OBP {fmt(line.stats.obp)} -- SLG {fmt(line.stats.slg)} -- OPS{" "}
-            {fmt(line.stats.ops)}
-          </Text>
+          <StatColumns counts={line.counts} stats={line.stats} />
         </View>
       ))}
     </ScrollView>
@@ -67,14 +56,13 @@ export default function BoxScoreScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  title: { fontSize: 18, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 13 },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14 },
   lineRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 2,
   },
-  playerTag: { fontWeight: "600", fontSize: 14, color: colors.textPrimary },
-  statLine: { fontSize: 12, color: colors.textSecondary },
+  playerTag: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
 });

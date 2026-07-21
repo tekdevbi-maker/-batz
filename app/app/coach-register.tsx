@@ -344,19 +344,19 @@ export default function CoachRegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, color: colors.textSecondary },
+  title: { fontSize: 24, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
-  label: { fontSize: 14, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13 },
-  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 13 },
-  error: { color: colors.error, fontSize: 13 },
+  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14 },
+  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 14 },
+  error: { color: colors.error, fontSize: 14 },
   code: {
     fontFamily: "monospace",
     backgroundColor: colors.surface,
     padding: 10,
     borderRadius: 6,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textPrimary,
   },
   input: {
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 18,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
@@ -381,5 +381,5 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
 });

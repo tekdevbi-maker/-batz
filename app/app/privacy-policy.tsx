@@ -124,8 +124,8 @@ export default function PrivacyPolicyScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 48, gap: 16, backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: "700", color: colors.textPrimary },
-  effectiveDate: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
-  section: { fontSize: 14, lineHeight: 21, color: colors.textPrimary },
-  heading: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  title: { fontSize: 26, fontWeight: "700", color: colors.textPrimary },
+  effectiveDate: { color: colors.textSecondary, fontSize: 14, marginBottom: 4 },
+  section: { fontSize: 15, lineHeight: 21, color: colors.textPrimary },
+  heading: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
 });
