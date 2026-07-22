@@ -102,7 +102,8 @@
       "expo-router",
       "./plugins/withCsvIntentFilterFix.js",
       "./plugins/withCsvContentUriCopy.js",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-splash-screen"
     ],
     "extra": {
       "router": {},
