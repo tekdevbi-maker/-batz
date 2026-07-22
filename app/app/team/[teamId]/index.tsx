@@ -69,18 +69,24 @@ export default function TeamHomeScreen() {
           </>
         )}
 
-        <View style={styles.buttonRow}>
-          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/games`)}>
-            <Text style={styles.buttonText}>Game Log</Text>
+        <View style={styles.tileGrid}>
+          <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/games`)}>
+            <Text style={styles.tileText}>Game Log</Text>
           </Pressable>
           {isCoach && (
             <Pressable
-              style={styles.secondaryButton}
+              style={styles.tile}
               onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
             >
-              <Text style={styles.buttonText}>Import a Game</Text>
+              <Text style={styles.tileText}>Import a Game</Text>
             </Pressable>
           )}
+          <Pressable style={styles.tile} onPress={() => router.push("/search")}>
+            <Text style={styles.tileText}>Find a Player</Text>
+          </Pressable>
+          <Pressable style={styles.tile} onPress={() => router.push("/activity")}>
+            <Text style={styles.tileText}>Activity Feed</Text>
+          </Pressable>
         </View>
       </ScrollView>
       <TeamTabBar teamId={teamId} active="home" />
@@ -96,16 +102,19 @@ const styles = StyleSheet.create({
   hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
   error: { color: colors.error, fontSize: 14 },
   label: { fontSize: 15, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
-  buttonRow: { flexDirection: "row", gap: 8, marginTop: 8 },
-  secondaryButton: {
+  tileGrid: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  tile: {
+    width: "23%",
+    aspectRatio: 1,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
+    borderRadius: 12,
     backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 4,
   },
-  buttonText: { color: colors.textPrimary },
+  tileText: { color: colors.textPrimary, fontWeight: "600", fontSize: 12, textAlign: "center" },
   statLine: { fontSize: 13, color: colors.textSecondary },
   code: {
     fontFamily: "monospace",

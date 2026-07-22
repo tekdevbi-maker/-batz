@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export interface CoachedTeam {
   id: string;
   name: string;
+  divisionName: string;
   season: string;
   year: number;
 }
@@ -11,7 +12,13 @@ function inSeasonOnly(rows: any[]): CoachedTeam[] {
   return rows
     .map((row) => row.team)
     .filter((team) => team && team.season_status === "in_season")
-    .map((team) => ({ id: team.id, name: team.name, season: team.season, year: team.year }));
+    .map((team) => ({
+      id: team.id,
+      name: team.name,
+      divisionName: team.division?.name ?? "",
+      season: team.season,
+      year: team.year,
+    }));
 }
 
 // Teams the signed-in user coaches. Only in-season teams surface here
@@ -20,7 +27,7 @@ function inSeasonOnly(rows: any[]): CoachedTeam[] {
 export async function listMyCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
     .from("coach_assignment")
-    .select("team:team_id(id, name, season, year, season_status)")
+    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
     .eq("user_id", userId);
   if (error) throw error;
   return inSeasonOnly(data ?? []);
@@ -31,7 +38,7 @@ export async function listMyCoachedTeams(supabase: SupabaseClient, userId: strin
 export async function listMyMemberTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
     .from("team_membership")
-    .select("team:team_id(id, name, season, year, season_status)")
+    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
     .eq("user_id", userId);
   if (error) throw error;
   return inSeasonOnly(data ?? []);

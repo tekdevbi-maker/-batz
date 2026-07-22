@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator, Image } from "react-native";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
+import BackButton from "../components/BackButton";
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
@@ -26,6 +27,8 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: colors.surface },
             headerTintColor: colors.textPrimary,
             headerTitleStyle: { color: colors.textPrimary },
+            headerBackButtonDisplayMode: "minimal",
+            headerLeft: (props) => <BackButton canGoBack={props.canGoBack} />,
             contentStyle: { backgroundColor: colors.background },
           }}
         >

@@ -23,43 +23,24 @@ export default function Home() {
 
   if (!session) return null;
 
+  // Coach and member teams shown under one flat "Teams" list -- a user can
+  // be both on the same team, so dedupe by id rather than rendering twice.
+  const allTeams = [...coachedTeams, ...memberTeams].filter(
+    (team, i, arr) => arr.findIndex((t) => t.id === team.id) === i
+  );
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
       <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
 
-      <View style={styles.buttonRow}>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push("/search")}>
-          <Text style={styles.buttonText}>Find a Player</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push("/activity")}>
-          <Text style={styles.buttonText}>Activity Feed</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push("/customer-care")}>
-          <Text style={styles.buttonText}>Customer Care</Text>
-        </Pressable>
-      </View>
-
-      {coachedTeams.length > 0 && (
+      {allTeams.length > 0 && (
         <>
-          <Text style={styles.label}>Teams You Coach</Text>
-          {coachedTeams.map((team) => (
+          <Text style={styles.label}>Teams</Text>
+          {allTeams.map((team) => (
             <Pressable key={team.id} style={styles.secondaryButton} onPress={() => router.push(`/team/${team.id}`)}>
               <Text style={styles.buttonText}>
-                {team.name} ({team.season} {team.year}) -- Coach
-              </Text>
-            </Pressable>
-          ))}
-        </>
-      )}
-
-      {memberTeams.length > 0 && (
-        <>
-          <Text style={styles.label}>Teams Your Player Is On</Text>
-          {memberTeams.map((team) => (
-            <Pressable key={team.id} style={styles.secondaryButton} onPress={() => router.push(`/team/${team.id}`)}>
-              <Text style={styles.buttonText}>
-                {team.name} ({team.season} {team.year}) -- Parent
+                {team.name} {team.divisionName ? `[${team.divisionName}] ` : ""}({team.season} {team.year})
               </Text>
             </Pressable>
           ))}
@@ -85,14 +66,14 @@ export default function Home() {
         </Pressable>
       )}
 
-      <Pressable style={styles.secondaryButton} onPress={() => signOut()}>
-        <Text style={styles.buttonText}>Sign Out</Text>
-      </Pressable>
-
       <Text style={styles.footerLinks}>
+        <Text style={styles.legalLink} onPress={() => signOut()}>Sign Out</Text>
+        {"  ·  "}
         <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link>
         {"  ·  "}
         <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>
+        {"  ·  "}
+        <Link href="/customer-care"><Text style={styles.legalLink}>Need Help?</Text></Link>
       </Text>
     </ScrollView>
   );
@@ -113,7 +94,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
   },
-  buttonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   footerLinks: { marginTop: 16, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });
