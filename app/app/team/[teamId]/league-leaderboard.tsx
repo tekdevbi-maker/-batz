@@ -5,8 +5,10 @@ import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getDivisionLeaderboard, type DivisionLeaderboardEntry } from "../../../lib/statsRepository";
 import { calculateStarTiers } from "../../../lib/starTiers";
+import { computeStandardCompetitionRanks } from "../../../lib/ranking";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
+import CategoryTabs from "../../../components/CategoryTabs";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -62,6 +64,7 @@ export default function LeagueLeaderboardScreen() {
     () => [...entries].sort((a, b) => category.value(b) - category.value(a)).slice(0, TOP_N),
     [entries, category]
   );
+  const ranks = useMemo(() => computeStandardCompetitionRanks(sorted, category.value), [sorted, category]);
 
   if (!session || !teamId) return null;
 
@@ -72,17 +75,7 @@ export default function LeagueLeaderboardScreen() {
         <Text style={styles.hint}>Top {TOP_N} in your division, current season.</Text>
         {error && <Text style={styles.error}>{error}</Text>}
 
-        <View style={styles.chipRow}>
-          {CATEGORIES.map((c) => (
-            <Pressable
-              key={c.key}
-              style={[styles.chip, categoryKey === c.key && styles.chipSelected]}
-              onPress={() => setCategoryKey(c.key)}
-            >
-              <Text style={styles.chipText}>{c.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <CategoryTabs categories={CATEGORIES} selectedKey={categoryKey} onSelect={setCategoryKey} />
 
         {sorted.map((r, i) => (
           <Pressable
@@ -91,7 +84,7 @@ export default function LeagueLeaderboardScreen() {
             disabled={!r.playerId}
             onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
           >
-            <Text style={styles.rank}>{i + 1}.</Text>
+            <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
             <Text style={styles.name}>
               {r.playerId ? r.displayName : ""} {starsFor(r)}
@@ -113,10 +106,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
   hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
   error: { color: colors.error, fontSize: 14 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingVertical: 4, paddingHorizontal: 10 },
-  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
-  chipText: { color: colors.textPrimary },
   row: {
     flexDirection: "row",
     alignItems: "center",

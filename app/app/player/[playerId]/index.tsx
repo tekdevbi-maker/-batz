@@ -18,6 +18,7 @@ import {
 // wanted again later.
 // import BlockReportButtons from "../../../components/BlockReportButtons";
 import StatColumns from "../../../components/StatColumns";
+import { formatDateDisplay } from "../../../lib/dateFormat";
 import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -209,22 +210,22 @@ export default function PlayerProfileScreen() {
         </>
       )}
 
-      <Pressable style={styles.sectionHeader} onPress={() => setCareerOpen((v) => !v)}>
-        <Text style={styles.label}>Career</Text>
-        <Text style={styles.chevron}>{careerOpen ? "▾" : "▸"}</Text>
-      </Pressable>
-      {careerOpen && <StatColumns counts={profile.careerCounts} stats={profile.careerStats} hideZero />}
-
       {recentActivity.length > 0 && (
         <>
           <Text style={styles.label}>Recent Activity</Text>
           {recentActivity.map((post) => (
             <Text key={post.id} style={styles.statLine}>
-              Reached {describeMilestone(post)} -- {post.gameDate}
+              Reached {describeMilestone(post)} ({formatDateDisplay(post.gameDate)})
             </Text>
           ))}
         </>
       )}
+
+      <Pressable style={styles.sectionHeader} onPress={() => setCareerOpen((v) => !v)}>
+        <Text style={styles.label}>Career</Text>
+        <Text style={styles.chevron}>{careerOpen ? "▾" : "▸"}</Text>
+      </Pressable>
+      {careerOpen && <StatColumns counts={profile.careerCounts} stats={profile.careerStats} hideZero />}
 
       <Pressable style={styles.sectionHeader} onPress={() => setSeasonsOpen((v) => !v)}>
         <Text style={styles.label}>Seasons</Text>

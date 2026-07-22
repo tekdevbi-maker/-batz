@@ -36,7 +36,7 @@ $iconSize = 1024
 $canvas = New-Canvas $iconSize ([System.Drawing.Color]::FromArgb($avgR, $avgG, $avgB))
 $g = $canvas.g
 $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$scale = [Math]::Min($iconSize / $w, $iconSize / $h) * 0.98
+$scale = [Math]::Min($iconSize / $w, $iconSize / $h) * 0.8
 $dw = [int]($w * $scale)
 $dh = [int]($h * $scale)
 $dx = [int](($iconSize - $dw) / 2)
@@ -108,7 +108,7 @@ $th = $trimmed.Height
 # 1024x1024 transparent canvas, scaled to fit within the ~66% "safe zone"
 # every launcher mask guarantees stays visible regardless of shape. ----
 $canvasSize = 1024
-$safeZone = 0.62
+$safeZone = 0.48
 $scale = [Math]::Min(($canvasSize * $safeZone) / $tw, ($canvasSize * $safeZone) / $th)
 $dw = [int]($tw * $scale)
 $dh = [int]($th * $scale)

@@ -54,25 +54,6 @@ export default function TeamHomeScreen() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        <View style={styles.buttonRow}>
-          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/games`)}>
-            <Text style={styles.buttonText}>Game Log</Text>
-          </Pressable>
-          {isCoach && (
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
-            >
-              <Text style={styles.buttonText}>Import a Game</Text>
-            </Pressable>
-          )}
-          {!isCoach && (
-            <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/customer-care`)}>
-              <Text style={styles.buttonText}>Customer Care</Text>
-            </Pressable>
-          )}
-        </View>
-
         <Text style={styles.label}>Coaches ({coaches.length}/4)</Text>
         {coaches.map((c) => (
           <Text key={c.userId} style={styles.statLine}>
@@ -87,6 +68,20 @@ export default function TeamHomeScreen() {
             </Text>
           </>
         )}
+
+        <View style={styles.buttonRow}>
+          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/team/${teamId}/games`)}>
+            <Text style={styles.buttonText}>Game Log</Text>
+          </Pressable>
+          {isCoach && (
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
+            >
+              <Text style={styles.buttonText}>Import a Game</Text>
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
       <TeamTabBar teamId={teamId} active="home" />
     </View>

@@ -21,7 +21,7 @@ export default function StatColumns({
 }) {
   const countRows = [
     { label: "AB", value: counts.ab, text: String(counts.ab) },
-    { label: "H", value: counts.h, text: String(counts.h) },
+    { label: "Hits", value: counts.h, text: String(counts.h) },
     { label: "2B", value: counts.doubles, text: String(counts.doubles) },
     { label: "3B", value: counts.triples, text: String(counts.triples) },
     { label: "HR", value: counts.hr, text: String(counts.hr) },
@@ -39,16 +39,18 @@ export default function StatColumns({
     <View style={styles.row}>
       <View style={styles.col}>
         {countRows.map((row) => (
-          <Text key={row.label} style={styles.line}>
-            {row.label}: {row.text}
-          </Text>
+          <View key={row.label} style={styles.line}>
+            <Text style={styles.label}>{row.label}</Text>
+            <Text style={styles.value}>: {row.text}</Text>
+          </View>
         ))}
       </View>
       <View style={styles.col}>
         {rateRows.map((row) => (
-          <Text key={row.label} style={styles.line}>
-            {row.label}: {row.text}
-          </Text>
+          <View key={row.label} style={styles.line}>
+            <Text style={styles.label}>{row.label}</Text>
+            <Text style={styles.value}>: {row.text}</Text>
+          </View>
         ))}
       </View>
     </View>
@@ -58,5 +60,7 @@ export default function StatColumns({
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 28, marginTop: 4 },
   col: { gap: 2 },
-  line: { fontSize: 14, color: colors.textSecondary },
+  line: { flexDirection: "row" },
+  label: { width: 44, fontSize: 14, color: colors.textSecondary, textAlign: "right" },
+  value: { fontSize: 14, color: colors.textSecondary },
 });

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useRequireAuth } from "../../../lib/AuthContext";
-import { supabase } from "../../../lib/supabase";
+import { useRouter } from "expo-router";
+import { useRequireAuth } from "../lib/AuthContext";
+import { supabase } from "../lib/supabase";
 import {
   CUSTOMER_CARE_CATEGORIES,
   submitCustomerCareRequest,
   type CustomerCareCategory,
-} from "../../../lib/customerCareRepository";
-import { colors } from "../../../lib/theme";
+} from "../lib/customerCareRepository";
+import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -18,7 +18,6 @@ function errorMessage(err: unknown): string {
 
 export default function CustomerCareScreen() {
   const { session } = useRequireAuth();
-  const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
 
   const [category, setCategory] = useState<CustomerCareCategory>("coach_unreachable");
@@ -34,7 +33,7 @@ export default function CustomerCareScreen() {
     try {
       await submitCustomerCareRequest(supabase, {
         requesterUserId: session.user.id,
-        teamId: teamId ?? null,
+        teamId: null,
         category,
         description,
       });

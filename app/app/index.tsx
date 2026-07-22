@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, Image } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -25,7 +25,7 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>@Batz</Text>
+      <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
       <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
 
       <View style={styles.buttonRow}>
@@ -34,6 +34,9 @@ export default function Home() {
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={() => router.push("/activity")}>
           <Text style={styles.buttonText}>Activity Feed</Text>
+        </Pressable>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push("/customer-care")}>
+          <Text style={styles.buttonText}>Customer Care</Text>
         </Pressable>
       </View>
 
@@ -98,7 +101,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, gap: 12 },
-  title: { fontSize: 26, fontWeight: "700", color: colors.textPrimary },
+  logo: { width: 220, height: 98 },
   hint: { color: colors.textSecondary },
   label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
   buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
@@ -110,7 +113,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
   },
-  buttonRow: { flexDirection: "row", gap: 8 },
+  buttonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   footerLinks: { marginTop: 16, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });

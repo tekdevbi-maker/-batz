@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, Image } from "react-native";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 
@@ -20,7 +20,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <Gate>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: colors.surface },
@@ -29,7 +29,18 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: colors.background },
           }}
         >
-          <Stack.Screen name="index" options={{ title: "@Batz" }} />
+          <Stack.Screen
+            name="index"
+            options={{
+              headerTitle: () => (
+                <Image
+                  source={require("../assets/wordmark-transparent.png")}
+                  style={{ width: 81, height: 36 }}
+                  resizeMode="contain"
+                />
+              ),
+            }}
+          />
           <Stack.Screen name="login" options={{ title: "Log In" }} />
           <Stack.Screen name="coach-register" options={{ title: "Register as Coach" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
@@ -41,6 +52,7 @@ export default function RootLayout() {
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="activity" options={{ title: "Activity Feed" }} />
+          <Stack.Screen name="customer-care" options={{ title: "Customer Care" }} />
           <Stack.Screen name="coach-join/[teamId]" options={{ title: "Join as Coach" }} />
           <Stack.Screen name="forgot-password" options={{ title: "Forgot Password" }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />

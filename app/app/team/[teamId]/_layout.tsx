@@ -11,9 +11,9 @@ import { colors } from "../../../lib/theme";
 // URL but the screen never visually updates; a full reload at the same
 // URL renders correctly, so the routes themselves are fine). All four
 // share this same Stack, which is also what gives the whole team-scoped
-// section its single back-to-app-Home arrow -- Game Log, a Box Score, and
-// Customer Care push on top of it and get their own header whose back
-// arrow only goes back one level, never straight to the app Home.
+// section its single back-to-app-Home arrow -- Game Log and a Box Score
+// push on top of it and get their own header whose back arrow only goes
+// back one level, never straight to the app Home.
 //
 // AdBanner is a non-functional placeholder reserving the top of every
 // team-scoped screen for a future real ad SDK -- no ad network account
@@ -46,7 +46,6 @@ export default function TeamLayout() {
         <Stack.Screen name="league-leaderboard" options={{ title: "League Leaderboard" }} />
         <Stack.Screen name="games/index" options={{ title: "Game Log" }} />
         <Stack.Screen name="games/[gameId]" options={{ title: "Box Score" }} />
-        <Stack.Screen name="customer-care" options={{ title: "Customer Care" }} />
       </Stack>
     </View>
   );
