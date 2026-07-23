@@ -3,12 +3,18 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { getDivisionLeaderboard, type DivisionLeaderboardEntry } from "../../../lib/statsRepository";
+import {
+  getDivisionLeaderboard,
+  type DivisionLeaderboardEntry,
+  type DivisionLeaderboardHeader,
+} from "../../../lib/statsRepository";
 import { hitsStars, doublesStars, triplesStars, homeRunsStars } from "../../../lib/starTiers";
 import { computeStandardCompetitionRanks } from "../../../lib/ranking";
+import { STAT_CATEGORY_DESCRIPTIONS } from "../../../lib/statCategoryDescriptions";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 import CategoryTabs from "../../../components/CategoryTabs";
+import StarGrid from "../../../components/StarGrid";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -31,7 +37,7 @@ const CATEGORIES = [
   { key: "obp", label: "OBP", value: (r: DivisionLeaderboardEntry) => r.stats.obp, format: fmt },
   { key: "slg", label: "SLG", value: (r: DivisionLeaderboardEntry) => r.stats.slg, format: fmt },
   { key: "ops", label: "OPS", value: (r: DivisionLeaderboardEntry) => r.stats.ops, format: fmt },
-  { key: "bb", label: "Walks", value: (r: DivisionLeaderboardEntry) => r.counts.bb, format: (n: number) => String(n) },
+  { key: "bb", label: "BB", value: (r: DivisionLeaderboardEntry) => r.counts.bb, format: (n: number) => String(n) },
 ] as const;
 
 // spec Section 8: League/Division leaderboard is capped at Top 25 (unlike
@@ -40,14 +46,13 @@ const CATEGORIES = [
 const TOP_N = 25;
 
 // Stars reflect the *selected* category only: Hits/2B/3B/HR each have their
-// own tiers; RBI/AVG/OBP/SLG/OPS/Walks have no star rating, so they show none.
-function starsFor(categoryKey: (typeof CATEGORIES)[number]["key"], r: DivisionLeaderboardEntry): string {
-  let tier = 0;
-  if (categoryKey === "hits") tier = hitsStars(r.counts.h);
-  else if (categoryKey === "doubles") tier = doublesStars(r.counts.doubles);
-  else if (categoryKey === "triples") tier = triplesStars(r.counts.triples);
-  else if (categoryKey === "hr") tier = homeRunsStars(r.counts.hr);
-  return tier > 0 ? "⭐".repeat(tier) : "";
+// own tiers; RBI/AVG/OBP/SLG/OPS/BB have no star rating, so they show none.
+function starsFor(categoryKey: (typeof CATEGORIES)[number]["key"], r: DivisionLeaderboardEntry): number {
+  if (categoryKey === "hits") return hitsStars(r.counts.h);
+  if (categoryKey === "doubles") return doublesStars(r.counts.doubles);
+  if (categoryKey === "triples") return triplesStars(r.counts.triples);
+  if (categoryKey === "hr") return homeRunsStars(r.counts.hr);
+  return 0;
 }
 
 export default function LeagueLeaderboardScreen() {
@@ -56,12 +61,18 @@ export default function LeagueLeaderboardScreen() {
   const router = useRouter();
 
   const [entries, setEntries] = useState<DivisionLeaderboardEntry[]>([]);
+  const [header, setHeader] = useState<DivisionLeaderboardHeader | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [categoryKey, setCategoryKey] = useState<(typeof CATEGORIES)[number]["key"]>("hits");
 
   useEffect(() => {
     if (!teamId || !session) return;
-    getDivisionLeaderboard(supabase, teamId).then(setEntries).catch((err) => setError(errorMessage(err)));
+    getDivisionLeaderboard(supabase, teamId)
+      .then((result) => {
+        setEntries(result.entries);
+        setHeader(result.header);
+      })
+      .catch((err) => setError(errorMessage(err)));
   }, [teamId, session]);
 
   const category = CATEGORIES.find((c) => c.key === categoryKey)!;
@@ -76,11 +87,16 @@ export default function LeagueLeaderboardScreen() {
   return (
     <View style={styles.root}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        <Text style={styles.title}>League Leaderboard</Text>
-        <Text style={styles.hint}>Top {TOP_N} in your division, current season.</Text>
+        {header && (
+          <Text style={styles.title}>
+            {header.leagueName} | {header.divisionName} | {header.season} {header.year}
+          </Text>
+        )}
+        <Text style={styles.hint}>Top {TOP_N}</Text>
         {error && <Text style={styles.error}>{error}</Text>}
 
         <CategoryTabs categories={CATEGORIES} selectedKey={categoryKey} onSelect={setCategoryKey} />
+        <Text style={styles.categoryDescription}>{STAT_CATEGORY_DESCRIPTIONS[categoryKey]}</Text>
 
         {sorted.map((r, i) => (
           <Pressable
@@ -91,10 +107,13 @@ export default function LeagueLeaderboardScreen() {
           >
             <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
-            <Text style={styles.name}>
-              {r.playerId ? r.displayName : ""} {starsFor(categoryKey, r)}
+            <Text style={styles.teamName} numberOfLines={1}>
+              {r.teamName}
             </Text>
-            <Text style={styles.teamName}>{r.teamName}</Text>
+            <StarGrid count={starsFor(categoryKey, r)} />
+            <Text style={styles.name} numberOfLines={1}>
+              {r.playerId ? r.displayName : ""}
+            </Text>
             <Text style={styles.value}>{category.format(category.value(r))}</Text>
           </Pressable>
         ))}
@@ -108,9 +127,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
+  title: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
   hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
   error: { color: colors.error, fontSize: 14 },
+  categoryDescription: { fontSize: 12, color: colors.textMuted, marginBottom: 10 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -121,7 +141,7 @@ const styles = StyleSheet.create({
   },
   rank: { width: 24, color: colors.textSecondary, fontSize: 14 },
   uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14 },
-  name: { flex: 1.2, fontSize: 15, color: colors.textPrimary },
-  teamName: { flex: 1, fontSize: 13, color: colors.textSecondary },
+  name: { flex: 2, fontSize: 15, color: colors.textPrimary },
+  teamName: { flex: 0.8, fontSize: 13, color: colors.textSecondary },
   value: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
 });

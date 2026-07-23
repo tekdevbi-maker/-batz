@@ -1,9 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getPlayerProfile, currentSeasonLine, type PlayerProfile } from "../../../lib/playerRepository";
+import { createPlayerTransfer } from "../../../lib/claimRepository";
 import { calculateStarTiers } from "../../../lib/starTiers";
 import {
   describeMilestone,
@@ -60,6 +62,10 @@ export default function PlayerProfileScreen() {
   const [recentActivity, setRecentActivity] = useState<ActivityFeedPost[]>([]);
   const [careerOpen, setCareerOpen] = useState(false);
   const [seasonsOpen, setSeasonsOpen] = useState(false);
+  const [isCoachOnTeam, setIsCoachOnTeam] = useState(false);
+  const [transferLink, setTransferLink] = useState<string | null>(null);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!playerId || !session) return;
@@ -100,6 +106,44 @@ export default function PlayerProfileScreen() {
   // Re-fetch on focus so settings changes (tag/visibility/demographics)
   // show immediately when navigating back from the settings screen.
   useFocusEffect(load);
+
+  // "Transfer to Parent" is only offered to a coach viewing a player on
+  // their own team -- e.g. one they claimed themselves to get the player
+  // on the roster before the real parent had an account.
+  useEffect(() => {
+    if (!profile || !session) {
+      setIsCoachOnTeam(false);
+      return;
+    }
+    const current = currentSeasonLine(profile);
+    if (!current) {
+      setIsCoachOnTeam(false);
+      return;
+    }
+    supabase
+      .from("coach_assignment")
+      .select("id")
+      .eq("team_id", current.teamId)
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(({ data }) => setIsCoachOnTeam(!!data));
+  }, [profile, session]);
+
+  async function handleGenerateTransfer() {
+    if (!profile) return;
+    const current = currentSeasonLine(profile);
+    if (!current) return;
+    setTransferBusy(true);
+    setTransferError(null);
+    try {
+      const token = await createPlayerTransfer(supabase, current.rosterEntryId);
+      setTransferLink(Linking.createURL(`/transfer-player/${token}`));
+    } catch (err) {
+      setTransferError(errorMessage(err));
+    } finally {
+      setTransferBusy(false);
+    }
+  }
 
   if (!session || !playerId) return null;
 
@@ -145,6 +189,7 @@ export default function PlayerProfileScreen() {
         { label: "3B", value: String(current.counts.triples), stars: stars(tiers!.triples) },
         { label: "HR", value: String(current.counts.hr), stars: stars(tiers!.homeRuns) },
         { label: "RBI", value: String(current.counts.rbi), stars: "" },
+        { label: "BB", value: String(current.counts.bb), stars: "" },
         { label: "AVG", value: fmt(current.stats.avg), stars: "" },
         { label: "OBP", value: fmt(current.stats.obp), stars: "" },
         { label: "SLG", value: fmt(current.stats.slg), stars: "" },
@@ -162,7 +207,25 @@ export default function PlayerProfileScreen() {
           <Pressable style={styles.secondaryButton} onPress={() => router.push(`/player/${playerId}/settings`)}>
             <Text style={styles.secondaryButtonText}>Settings</Text>
           </Pressable>
+          {isCoachOnTeam && (
+            <Pressable style={styles.secondaryButton} disabled={transferBusy} onPress={handleGenerateTransfer}>
+              {transferBusy ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.secondaryButtonText}>Transfer to Parent</Text>
+              )}
+            </Pressable>
+          )}
         </View>
+      )}
+      {isCoachOnTeam && transferError && <Text style={styles.error}>{transferError}</Text>}
+      {isCoachOnTeam && transferLink && (
+        <>
+          <Text style={styles.label}>Share this with the player's parent:</Text>
+          <Text selectable style={styles.code}>
+            {transferLink}
+          </Text>
+        </>
       )}
 
       {!profile.isOwner && (
@@ -215,7 +278,7 @@ export default function PlayerProfileScreen() {
           <Text style={styles.label}>Recent Activity</Text>
           {recentActivity.map((post) => (
             <Text key={post.id} style={styles.statLine}>
-              Reached {describeMilestone(post)} ({formatDateDisplay(post.gameDate)})
+              Reached {describeMilestone(post)} on {formatDateDisplay(post.gameDate)} · 👍 {post.likeCount}
             </Text>
           ))}
         </>
@@ -236,12 +299,10 @@ export default function PlayerProfileScreen() {
         profile.seasons.map((s) => (
           <Pressable key={s.rosterEntryId} style={styles.seasonRow} onPress={() => router.push(`/team/${s.teamId}`)}>
             <Text style={styles.seasonTitle}>
-              {s.teamName} #{s.uniformNumber} -- {s.season} {s.year}
+              {s.teamName} | {s.divisionName} | #{s.uniformNumber} | {s.season} {s.year}
               {s.seasonStatus === "ended" ? " (ended)" : ""}
             </Text>
-            <Text style={styles.hint}>
-              {s.leagueName}, {s.divisionName}
-            </Text>
+            <Text style={styles.hint}>{s.leagueName}</Text>
             <StatColumns counts={s.counts} stats={s.stats} hideZero />
           </Pressable>
         ))}
@@ -271,6 +332,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   secondaryButtonText: { color: colors.textPrimary },
+  code: {
+    fontFamily: "monospace",
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    padding: 10,
+    borderRadius: 6,
+    fontSize: 13,
+  },
   seasonRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,

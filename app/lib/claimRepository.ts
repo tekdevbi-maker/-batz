@@ -115,3 +115,75 @@ export async function registerPlayer(
   const row = data as { player_id: string; roster_entry_id: string; claimed_existing: boolean };
   return { playerId: row.player_id, rosterEntryId: row.roster_entry_id, claimedExisting: row.claimed_existing };
 }
+
+export class NotACoachError extends Error {}
+
+// Coach-only: generates a one-time link a coach can hand to a player's
+// real parent to take over ownership of a player the coach claimed
+// themselves (e.g. to get the player on the roster before the parent has
+// signed up). Delegates to create_player_transfer() so the coach-on-team
+// check happens server-side against the true (RLS-bypassing) claim state.
+export async function createPlayerTransfer(supabase: SupabaseClient, rosterEntryId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_player_transfer", { p_roster_entry_id: rosterEntryId });
+  if (error) {
+    if (error.message?.includes("not_a_coach_on_this_team")) {
+      throw new NotACoachError("Only a coach on this team can generate a transfer link.");
+    }
+    throw error;
+  }
+  return data as string;
+}
+
+export interface PlayerTransferInfo {
+  teamId: string;
+  teamName: string;
+  uniformNumber: number;
+  playerDisplayName: string;
+  alreadyUsed: boolean;
+}
+
+export class InvalidTransferTokenError extends Error {}
+
+export async function getPlayerTransferInfo(supabase: SupabaseClient, token: string): Promise<PlayerTransferInfo> {
+  const { data, error } = await supabase.rpc("get_player_transfer_info", { p_token: token }).select().single();
+  if (error) {
+    if (error.message?.includes("invalid_transfer_token")) {
+      throw new InvalidTransferTokenError("This transfer link is invalid.");
+    }
+    throw error;
+  }
+  const row = data as {
+    team_id: string;
+    team_name: string;
+    uniform_number: number;
+    player_display_name: string;
+    already_used: boolean;
+  };
+  return {
+    teamId: row.team_id,
+    teamName: row.team_name,
+    uniformNumber: row.uniform_number,
+    playerDisplayName: row.player_display_name,
+    alreadyUsed: row.already_used,
+  };
+}
+
+export class TransferAlreadyUsedError extends Error {}
+
+export async function claimPlayerTransfer(
+  supabase: SupabaseClient,
+  token: string
+): Promise<{ playerId: string; rosterEntryId: string }> {
+  const { data, error } = await supabase.rpc("claim_player_transfer", { p_token: token }).select().single();
+  if (error) {
+    if (error.message?.includes("transfer_already_used")) {
+      throw new TransferAlreadyUsedError("This transfer link has already been used.");
+    }
+    if (error.message?.includes("invalid_transfer_token")) {
+      throw new InvalidTransferTokenError("This transfer link is invalid.");
+    }
+    throw error;
+  }
+  const row = data as { player_id: string; roster_entry_id: string };
+  return { playerId: row.player_id, rosterEntryId: row.roster_entry_id };
+}

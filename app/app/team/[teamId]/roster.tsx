@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
+import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 
@@ -19,11 +20,13 @@ export default function RosterScreen() {
   const router = useRouter();
 
   const [roster, setRoster] = useState<RosterSeasonStats[]>([]);
+  const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!teamId || !session) return;
     getTeamRosterWithSeasonStats(supabase, teamId).then(setRoster).catch((err) => setError(errorMessage(err)));
+    getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err)));
   }, [teamId, session]);
 
   if (!session || !teamId) return null;
@@ -31,7 +34,14 @@ export default function RosterScreen() {
   return (
     <View style={styles.root}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Roster</Text>
+        {context && (
+          <>
+            <Text style={styles.title}>{context.teamName}</Text>
+            <Text style={styles.hint}>
+              {context.leagueName} | {context.divisionName} | {context.season} {context.year}
+            </Text>
+          </>
+        )}
         {error && <Text style={styles.error}>{error}</Text>}
         {roster.length === 0 && !error && <Text style={styles.hint}>No roster yet.</Text>}
 

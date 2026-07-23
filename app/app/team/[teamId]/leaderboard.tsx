@@ -6,9 +6,11 @@ import { supabase } from "../../../lib/supabase";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
 import { hitsStars, doublesStars, triplesStars, homeRunsStars } from "../../../lib/starTiers";
 import { computeStandardCompetitionRanks } from "../../../lib/ranking";
+import { STAT_CATEGORY_DESCRIPTIONS } from "../../../lib/statCategoryDescriptions";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 import CategoryTabs from "../../../components/CategoryTabs";
+import StarGrid from "../../../components/StarGrid";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -33,18 +35,17 @@ const CATEGORIES = [
   { key: "obp", label: "OBP", value: (r: RosterSeasonStats) => r.stats.obp, format: fmt },
   { key: "slg", label: "SLG", value: (r: RosterSeasonStats) => r.stats.slg, format: fmt },
   { key: "ops", label: "OPS", value: (r: RosterSeasonStats) => r.stats.ops, format: fmt },
-  { key: "bb", label: "Walks", value: (r: RosterSeasonStats) => r.counts.bb, format: (n: number) => String(n) },
+  { key: "bb", label: "BB", value: (r: RosterSeasonStats) => r.counts.bb, format: (n: number) => String(n) },
 ] as const;
 
 // Stars reflect the *selected* category only: Hits/2B/3B/HR each have their
-// own tiers; RBI/AVG/OBP/SLG/OPS/Walks have no star rating, so they show none.
-function starsFor(categoryKey: (typeof CATEGORIES)[number]["key"], r: RosterSeasonStats): string {
-  let tier = 0;
-  if (categoryKey === "hits") tier = hitsStars(r.counts.h);
-  else if (categoryKey === "doubles") tier = doublesStars(r.counts.doubles);
-  else if (categoryKey === "triples") tier = triplesStars(r.counts.triples);
-  else if (categoryKey === "hr") tier = homeRunsStars(r.counts.hr);
-  return tier > 0 ? "⭐".repeat(tier) : "";
+// own tiers; RBI/AVG/OBP/SLG/OPS/BB have no star rating, so they show none.
+function starsFor(categoryKey: (typeof CATEGORIES)[number]["key"], r: RosterSeasonStats): number {
+  if (categoryKey === "hits") return hitsStars(r.counts.h);
+  if (categoryKey === "doubles") return doublesStars(r.counts.doubles);
+  if (categoryKey === "triples") return triplesStars(r.counts.triples);
+  if (categoryKey === "hr") return homeRunsStars(r.counts.hr);
+  return 0;
 }
 
 export default function TeamLeaderboardScreen() {
@@ -74,6 +75,7 @@ export default function TeamLeaderboardScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <CategoryTabs categories={CATEGORIES} selectedKey={categoryKey} onSelect={setCategoryKey} />
+        <Text style={styles.categoryDescription}>{STAT_CATEGORY_DESCRIPTIONS[categoryKey]}</Text>
 
         {sorted.map((r, i) => (
           <Pressable
@@ -84,9 +86,10 @@ export default function TeamLeaderboardScreen() {
           >
             <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
-            <Text style={styles.name}>
-              {r.playerId ? r.displayName : ""} {starsFor(categoryKey, r)}
-            </Text>
+            <View style={styles.nameCol}>
+              <Text style={styles.name}>{r.playerId ? r.displayName : ""}</Text>
+              <StarGrid count={starsFor(categoryKey, r)} />
+            </View>
             <Text style={styles.value}>{category.format(category.value(r))}</Text>
           </Pressable>
         ))}
@@ -102,6 +105,7 @@ const styles = StyleSheet.create({
   container: { padding: 20, gap: 4 },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
   error: { color: colors.error, fontSize: 14 },
+  categoryDescription: { fontSize: 12, color: colors.textMuted, marginBottom: 10 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -112,6 +116,7 @@ const styles = StyleSheet.create({
   },
   rank: { width: 24, color: colors.textSecondary, fontSize: 14 },
   uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14 },
-  name: { flex: 1, fontSize: 15, color: colors.textPrimary },
+  nameCol: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  name: { fontSize: 15, color: colors.textPrimary, flexShrink: 1 },
   value: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
 });

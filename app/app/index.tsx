@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView, Image } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
@@ -18,12 +18,18 @@ export default function Home() {
   const [memberTeams, setMemberTeams] = useState<CoachedTeam[]>([]);
   const [myPlayers, setMyPlayers] = useState<MyPlayer[]>([]);
 
-  useEffect(() => {
-    if (!session) return;
-    listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {});
-    listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
-    listMyPlayers(supabase, session.user.id).then(setMyPlayers).catch(() => {});
-  }, [session]);
+  // useFocusEffect, not a plain useEffect keyed on session -- session
+  // doesn't change when navigating back to an already-mounted Home screen
+  // (e.g. after a coach claims a player and returns here), so a plain
+  // effect would leave these lists stale until a full app reload.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {});
+      listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
+      listMyPlayers(supabase, session.user.id).then(setMyPlayers).catch(() => {});
+    }, [session])
+  );
 
   if (!session) return null;
 
@@ -66,14 +72,17 @@ export default function Home() {
 
       {myPlayers.length > 0 && (
         <>
-          <Text style={styles.label}>Your Players</Text>
-          {myPlayers.map((p) => (
-            <Pressable key={p.playerId} style={styles.secondaryButton} onPress={() => router.push(`/player/${p.playerId}`)}>
-              <Text style={styles.buttonText}>
-                {p.displayName} {p.visibilityScope === "private" ? "(private)" : ""}
-              </Text>
-            </Pressable>
-          ))}
+          <Text style={styles.label}>Players</Text>
+          <View style={styles.tileGrid}>
+            {myPlayers.map((p) => (
+              <Pressable key={p.playerId} style={styles.playerTile} onPress={() => router.push(`/player/${p.playerId}`)}>
+                <Text style={styles.playerTileName} numberOfLines={2}>
+                  {p.displayName}
+                </Text>
+                {p.visibilityScope === "private" && <Text style={styles.playerTilePrivate}>(private)</Text>}
+              </Pressable>
+            ))}
+          </View>
         </>
       )}
 
@@ -132,6 +141,20 @@ const styles = StyleSheet.create({
   teamName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
   teamMeta: { fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 3 },
   teamRole: { fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 8 },
+  playerTile: {
+    width: "31.5%",
+    aspectRatio: 0.9,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    marginBottom: 12,
+  },
+  playerTileName: { fontSize: 14, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
+  playerTilePrivate: { fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 4 },
   spacer: { flex: 1 },
   footerLinks: { textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },

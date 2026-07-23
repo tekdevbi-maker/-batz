@@ -71,22 +71,37 @@ export default function TeamHomeScreen() {
 
         <View style={styles.tileGrid}>
           <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/games`)}>
-            <Text style={styles.tileText}>Game Log</Text>
+            <View style={styles.tileInner}>
+              <Text style={styles.tileText}>Game Log</Text>
+            </View>
           </Pressable>
           {isCoach && (
             <Pressable
               style={styles.tile}
               onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
             >
-              <Text style={styles.tileText}>Import a Game</Text>
+              <View style={styles.tileInner}>
+                <Text style={styles.tileText}>Import a Game</Text>
+              </View>
             </Pressable>
           )}
           <Pressable style={styles.tile} onPress={() => router.push("/search")}>
-            <Text style={styles.tileText}>Find a Player</Text>
+            <View style={styles.tileInner}>
+              <Text style={styles.tileText}>Find a Player</Text>
+            </View>
           </Pressable>
           <Pressable style={styles.tile} onPress={() => router.push("/activity")}>
-            <Text style={styles.tileText}>Activity Feed</Text>
+            <View style={styles.tileInner}>
+              <Text style={styles.tileText}>Activity Feed</Text>
+            </View>
           </Pressable>
+          {isCoach && (
+            <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/claim-player`)}>
+              <View style={styles.tileInner}>
+                <Text style={styles.tileText}>Claim a Player</Text>
+              </View>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
       <TeamTabBar teamId={teamId} active="home" />
@@ -102,7 +117,7 @@ const styles = StyleSheet.create({
   hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
   error: { color: colors.error, fontSize: 14 },
   label: { fontSize: 15, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
-  tileGrid: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  tileGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginTop: 8, rowGap: 8 },
   tile: {
     width: "23%",
     aspectRatio: 1,
@@ -110,11 +125,23 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 12,
     backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
     padding: 4,
   },
-  tileText: { color: colors.textPrimary, fontWeight: "600", fontSize: 12, textAlign: "center" },
+  // A plain Text centered directly by the Pressable's own alignItems/
+  // justifyContent rendered bottom-heavy on Android for wrapped labels
+  // (confirmed by temporarily highlighting the Text's own box -- it sat
+  // flush against the tile's bottom edge instead of centered). An
+  // explicit flex:1 wrapper that centers its own content is unambiguous
+  // and fixes it.
+  tileInner: { flex: 1, width: "100%", alignItems: "center", justifyContent: "center" },
+  tileText: {
+    color: colors.textPrimary,
+    fontWeight: "600",
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "center",
+    includeFontPadding: false,
+  },
   statLine: { fontSize: 13, color: colors.textSecondary },
   code: {
     fontFamily: "monospace",

@@ -26,6 +26,7 @@ export default function StatColumns({
     { label: "3B", value: counts.triples, text: String(counts.triples) },
     { label: "HR", value: counts.hr, text: String(counts.hr) },
     { label: "RBI", value: counts.rbi, text: String(counts.rbi) },
+    { label: "BB", value: counts.bb, text: String(counts.bb) },
   ].filter((row) => !hideZero || row.value > 0);
 
   const rateRows = [

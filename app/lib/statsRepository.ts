@@ -114,6 +114,18 @@ export interface DivisionLeaderboardEntry {
   stats: CalculatedStats;
 }
 
+export interface DivisionLeaderboardHeader {
+  leagueName: string;
+  divisionName: string;
+  season: string;
+  year: number;
+}
+
+export interface DivisionLeaderboardResult {
+  header: DivisionLeaderboardHeader;
+  entries: DivisionLeaderboardEntry[];
+}
+
 // League/Division-level leaderboard (spec Section 8): every player across
 // every team in the SAME division AND the same season/year as the given
 // team -- not other divisions (different age groups within the league)
@@ -125,7 +137,7 @@ export interface DivisionLeaderboardEntry {
 export async function getDivisionLeaderboard(
   supabase: SupabaseClient,
   teamId: string
-): Promise<DivisionLeaderboardEntry[]> {
+): Promise<DivisionLeaderboardResult> {
   const { data: thisTeam, error: teamError } = await supabase
     .from("team")
     .select("division_id, season, year")
@@ -140,10 +152,19 @@ export async function getDivisionLeaderboard(
     .eq("season", thisTeam.season)
     .eq("year", thisTeam.year);
   if (teamsError) throw teamsError;
-  if (!teams || teams.length === 0) return [];
+  if (!teams || teams.length === 0) {
+    return { header: { leagueName: "", divisionName: "", season: "", year: 0 }, entries: [] };
+  }
 
   const teamIds = teams.map((t: any) => t.id);
   const teamById = new Map(teams.map((t: any) => [t.id, t]));
+  const thisTeamFull = teamById.get(teamId);
+  const header: DivisionLeaderboardHeader = {
+    leagueName: thisTeamFull?.division?.league?.name ?? "",
+    divisionName: thisTeamFull?.division?.name ?? "",
+    season: thisTeamFull?.season ?? "",
+    year: thisTeamFull?.year ?? 0,
+  };
 
   const { data: rosterRows, error: rosterError } = await supabase
     .from("roster_entry")
@@ -171,7 +192,7 @@ export async function getDivisionLeaderboard(
     }
   }
 
-  return (rosterRows ?? []).map((re: any) => {
+  const entries = (rosterRows ?? []).map((re: any) => {
     const team = teamById.get(re.team_id);
     const division = team?.division;
     const league = division?.league;
@@ -193,6 +214,8 @@ export async function getDivisionLeaderboard(
       stats: calculateStats(counts),
     };
   });
+
+  return { header, entries };
 }
 
 export interface GameSummary {
