@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../../lib/AuthContext";
 import { supabase } from "../../../../lib/supabase";
 import { listGamesForTeam, type GameSummary } from "../../../../lib/statsRepository";
+import { formatDateDisplay } from "../../../../lib/dateFormat";
 import { colors } from "../../../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -28,7 +29,6 @@ export default function GameLogScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Game Log</Text>
       {error && <Text style={styles.error}>{error}</Text>}
       {games.length === 0 && !error && <Text style={styles.hint}>No games imported yet.</Text>}
       {games.map((game) => (
@@ -39,7 +39,7 @@ export default function GameLogScreen() {
         >
           <Text style={styles.gameRowText}>
             Game #{game.gameNumber}
-            {game.opponent ? ` vs ${game.opponent}` : ""} -- {game.gameDate}
+            {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
             {game.timeOfDay ? ` (${game.timeOfDay})` : ""}
           </Text>
         </Pressable>
@@ -51,7 +51,6 @@ export default function GameLogScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
   hint: { color: colors.textSecondary, fontSize: 14 },
   error: { color: colors.error, fontSize: 14 },
   gameRow: {

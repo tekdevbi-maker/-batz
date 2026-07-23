@@ -1,9 +1,8 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator, Image } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
-import BackButton from "../components/BackButton";
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
@@ -27,23 +26,10 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: colors.surface },
             headerTintColor: colors.textPrimary,
             headerTitleStyle: { color: colors.textPrimary },
-            headerBackButtonDisplayMode: "minimal",
-            headerLeft: (props) => <BackButton canGoBack={props.canGoBack} />,
             contentStyle: { backgroundColor: colors.background },
           }}
         >
-          <Stack.Screen
-            name="index"
-            options={{
-              headerTitle: () => (
-                <Image
-                  source={require("../assets/wordmark-transparent.png")}
-                  style={{ width: 81, height: 36 }}
-                  resizeMode="contain"
-                />
-              ),
-            }}
-          />
+          <Stack.Screen name="index" options={{ title: "@Batz" }} />
           <Stack.Screen name="login" options={{ title: "Log In" }} />
           <Stack.Screen name="coach-register" options={{ title: "Register as Coach" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />

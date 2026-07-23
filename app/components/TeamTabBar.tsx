@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { colors } from "../lib/theme";
 
 // A hand-built bottom tab bar, not expo-router's <Tabs> primitive.
@@ -12,22 +13,36 @@ import { colors } from "../lib/theme";
 // only navigation that's been reliable everywhere else in this app.
 export type TeamTab = "home" | "roster" | "leaderboard" | "league-leaderboard";
 
-const TABS: Array<{ key: TeamTab; label: string; path: (teamId: string) => string }> = [
-  { key: "home", label: "Home", path: (teamId) => `/team/${teamId}` },
-  { key: "roster", label: "Roster", path: (teamId) => `/team/${teamId}/roster` },
-  { key: "leaderboard", label: "Team Leaders", path: (teamId) => `/team/${teamId}/leaderboard` },
-  { key: "league-leaderboard", label: "League Leaders", path: (teamId) => `/team/${teamId}/league-leaderboard` },
+const TABS: Array<{
+  key: TeamTab;
+  label: string;
+  path: (teamId: string) => string;
+  iconOutline: keyof typeof Ionicons.glyphMap;
+  iconFilled: keyof typeof Ionicons.glyphMap;
+}> = [
+  { key: "home", label: "Home", path: (teamId) => `/team/${teamId}`, iconOutline: "home-outline", iconFilled: "home" },
+  { key: "roster", label: "Roster", path: (teamId) => `/team/${teamId}/roster`, iconOutline: "people-outline", iconFilled: "people" },
+  { key: "leaderboard", label: "Team Leaders", path: (teamId) => `/team/${teamId}/leaderboard`, iconOutline: "trophy-outline", iconFilled: "trophy" },
+  { key: "league-leaderboard", label: "League Leaders", path: (teamId) => `/team/${teamId}/league-leaderboard`, iconOutline: "globe-outline", iconFilled: "globe" },
 ];
 
 export default function TeamTabBar({ teamId, active }: { teamId: string; active: TeamTab }) {
   const router = useRouter();
   return (
     <View style={styles.bar}>
-      {TABS.map((tab) => (
-        <Pressable key={tab.key} style={styles.tab} onPress={() => router.replace(tab.path(teamId))}>
-          <Text style={[styles.label, tab.key === active && styles.labelActive]}>{tab.label}</Text>
-        </Pressable>
-      ))}
+      {TABS.map((tab) => {
+        const isActive = tab.key === active;
+        return (
+          <Pressable key={tab.key} style={styles.tab} onPress={() => router.replace(tab.path(teamId))}>
+            <Ionicons
+              name={isActive ? tab.iconFilled : tab.iconOutline}
+              size={22}
+              color={isActive ? colors.accent : colors.textSecondary}
+            />
+            <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -43,10 +58,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 18,
+    gap: 4,
+    paddingVertical: 12,
     paddingHorizontal: 4,
     minHeight: 64,
   },
-  label: { fontSize: 14, color: colors.textSecondary, textAlign: "center" },
+  label: { fontSize: 12, color: colors.textSecondary, textAlign: "center" },
   labelActive: { color: colors.accent, fontWeight: "600" },
 });

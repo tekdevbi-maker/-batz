@@ -2,7 +2,6 @@ import { Stack } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../../lib/theme";
-import BackButton from "../../../components/BackButton";
 
 // Home/Roster/Team Leaderboards/League Leaderboards are plain Stack
 // screens, each rendering a shared TeamTabBar (components/TeamTabBar.tsx)
@@ -38,8 +37,6 @@ export default function TeamLayout() {
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.textPrimary,
           headerTitleStyle: { color: colors.textPrimary },
-          headerBackButtonDisplayMode: "minimal",
-          headerLeft: (props) => <BackButton canGoBack={props.canGoBack} />,
           contentStyle: { backgroundColor: colors.background },
         }}
       >
