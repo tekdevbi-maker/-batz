@@ -103,7 +103,16 @@
       "./plugins/withCsvIntentFilterFix.js",
       "./plugins/withCsvContentUriCopy.js",
       "@react-native-community/datetimepicker",
-      "expo-splash-screen"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "./plugins/withSplashScreenNavBarFix.js"
     ],
     "extra": {
       "router": {},

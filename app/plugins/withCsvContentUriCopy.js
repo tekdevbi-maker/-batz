@@ -62,11 +62,12 @@ const ON_NEW_INTENT = `  override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
   }`;
 
-const OLD_ON_CREATE = `    setTheme(R.style.AppTheme);
-    super.onCreate(null)`;
-const NEW_ON_CREATE = `    setTheme(R.style.AppTheme);
-    rewriteIncomingContentUri(intent)
-    super.onCreate(null)`;
+// Matched by regex rather than an exact string -- other config plugins
+// (expo-dev-client, expo-splash-screen) also rewrite onCreate's body, and an
+// exact-string match broke the first time one of them changed unrelated
+// surrounding code. Anchoring on the `super.onCreate(...)` call itself is
+// resilient to that drift; it's unique within this file (the only override).
+const SUPER_ON_CREATE = /(\r?\n)([ \t]*)super\.onCreate\([^)]*\)/;
 
 module.exports = function withCsvContentUriCopy(config) {
   return withMainActivity(config, (config) => {
@@ -99,12 +100,18 @@ module.exports = function withCsvContentUriCopy(config) {
       comment: "//",
     }).contents;
 
-    if (contents.includes(OLD_ON_CREATE)) {
-      contents = contents.replace(OLD_ON_CREATE, NEW_ON_CREATE);
-    } else if (!contents.includes("rewriteIncomingContentUri(intent)\n    super.onCreate")) {
-      throw new Error(
-        "withCsvContentUriCopy: expected onCreate body not found in MainActivity.kt -- " +
-          "the Expo template likely changed; update this plugin's OLD_ON_CREATE string to match."
+    if (!contents.includes("rewriteIncomingContentUri(intent)\n") || !/rewriteIncomingContentUri\(intent\)\s*\r?\n\s*super\.onCreate/.test(contents)) {
+      const match = contents.match(SUPER_ON_CREATE);
+      if (!match) {
+        throw new Error(
+          "withCsvContentUriCopy: no super.onCreate(...) call found in MainActivity.kt -- " +
+            "the Expo template likely changed; update this plugin's matching to fit."
+        );
+      }
+      const [fullMatch, newline, indent] = match;
+      contents = contents.replace(
+        fullMatch,
+        `${newline}${indent}rewriteIncomingContentUri(intent)${newline}${indent}${fullMatch.slice(newline.length + indent.length)}`
       );
     }
 
