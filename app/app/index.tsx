@@ -43,7 +43,6 @@ export default function Home() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
 
       {teamCards.length > 0 && (
         <>
@@ -86,6 +85,7 @@ export default function Home() {
 
       <View style={styles.spacer} />
 
+      <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
       <Pressable style={styles.secondaryButton} onPress={() => signOut()}>
         <Text style={styles.buttonText}>Sign Out</Text>
       </Pressable>
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, gap: 12, flexGrow: 1 },
   logo: { width: 220, height: 98, alignSelf: "center" },
-  hint: { color: colors.textSecondary },
+  hint: { color: colors.textSecondary, textAlign: "center" },
   label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
   buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
   secondaryButton: {
