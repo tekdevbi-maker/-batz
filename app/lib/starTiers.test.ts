@@ -2,7 +2,8 @@ import { calculateStarTiers, doublesStars, hitsStars, homeRunsStars, triplesStar
 
 describe("hitsStars", () => {
   test("every table row from spec Section 9", () => {
-    expect(hitsStars(0)).toBe(1);
+    expect(hitsStars(0)).toBe(0);
+    expect(hitsStars(1)).toBe(1);
     expect(hitsStars(2)).toBe(1);
     expect(hitsStars(3)).toBe(2);
     expect(hitsStars(7)).toBe(2);
@@ -63,9 +64,9 @@ describe("calculateStarTiers", () => {
     });
   });
 
-  test("a brand-new player with zero hits still gets the guaranteed 1-star hits badge", () => {
+  test("a brand-new player with zero hits gets no stars in any category", () => {
     expect(calculateStarTiers({ h: 0, doubles: 0, triples: 0, hr: 0 })).toEqual({
-      hits: 1,
+      hits: 0,
       doubles: 0,
       triples: 0,
       homeRuns: 0,

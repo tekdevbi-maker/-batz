@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getDivisionLeaderboard, type DivisionLeaderboardEntry } from "../../../lib/statsRepository";
-import { calculateStarTiers } from "../../../lib/starTiers";
+import { hitsStars, doublesStars, triplesStars, homeRunsStars } from "../../../lib/starTiers";
 import { computeStandardCompetitionRanks } from "../../../lib/ranking";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
@@ -39,10 +39,15 @@ const CATEGORIES = [
 // for "everyone" to be a useful ranked view).
 const TOP_N = 25;
 
-function starsFor(r: DivisionLeaderboardEntry): string {
-  const tiers = calculateStarTiers(r.counts);
-  const best = Math.max(tiers.hits, tiers.doubles, tiers.triples, tiers.homeRuns);
-  return best > 0 ? "⭐".repeat(best) : "";
+// Stars reflect the *selected* category only: Hits/2B/3B/HR each have their
+// own tiers; RBI/AVG/OBP/SLG/OPS/Walks have no star rating, so they show none.
+function starsFor(categoryKey: (typeof CATEGORIES)[number]["key"], r: DivisionLeaderboardEntry): string {
+  let tier = 0;
+  if (categoryKey === "hits") tier = hitsStars(r.counts.h);
+  else if (categoryKey === "doubles") tier = doublesStars(r.counts.doubles);
+  else if (categoryKey === "triples") tier = triplesStars(r.counts.triples);
+  else if (categoryKey === "hr") tier = homeRunsStars(r.counts.hr);
+  return tier > 0 ? "⭐".repeat(tier) : "";
 }
 
 export default function LeagueLeaderboardScreen() {
@@ -87,7 +92,7 @@ export default function LeagueLeaderboardScreen() {
             <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
             <Text style={styles.name}>
-              {r.playerId ? r.displayName : ""} {starsFor(r)}
+              {r.playerId ? r.displayName : ""} {starsFor(categoryKey, r)}
             </Text>
             <Text style={styles.teamName}>{r.teamName}</Text>
             <Text style={styles.value}>{category.format(category.value(r))}</Text>

@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
-import { calculateStarTiers } from "../../../lib/starTiers";
+import { hitsStars, doublesStars, triplesStars, homeRunsStars } from "../../../lib/starTiers";
 import { computeStandardCompetitionRanks } from "../../../lib/ranking";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
@@ -36,10 +36,15 @@ const CATEGORIES = [
   { key: "bb", label: "Walks", value: (r: RosterSeasonStats) => r.counts.bb, format: (n: number) => String(n) },
 ] as const;
 
-function starsFor(r: RosterSeasonStats): string {
-  const tiers = calculateStarTiers(r.counts);
-  const best = Math.max(tiers.hits, tiers.doubles, tiers.triples, tiers.homeRuns);
-  return best > 0 ? "⭐".repeat(best) : "";
+// Stars reflect the *selected* category only: Hits/2B/3B/HR each have their
+// own tiers; RBI/AVG/OBP/SLG/OPS/Walks have no star rating, so they show none.
+function starsFor(categoryKey: (typeof CATEGORIES)[number]["key"], r: RosterSeasonStats): string {
+  let tier = 0;
+  if (categoryKey === "hits") tier = hitsStars(r.counts.h);
+  else if (categoryKey === "doubles") tier = doublesStars(r.counts.doubles);
+  else if (categoryKey === "triples") tier = triplesStars(r.counts.triples);
+  else if (categoryKey === "hr") tier = homeRunsStars(r.counts.hr);
+  return tier > 0 ? "⭐".repeat(tier) : "";
 }
 
 export default function TeamLeaderboardScreen() {
@@ -80,7 +85,7 @@ export default function TeamLeaderboardScreen() {
             <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
             <Text style={styles.name}>
-              {r.playerId ? r.displayName : ""} {starsFor(r)}
+              {r.playerId ? r.displayName : ""} {starsFor(categoryKey, r)}
             </Text>
             <Text style={styles.value}>{category.format(category.value(r))}</Text>
           </Pressable>

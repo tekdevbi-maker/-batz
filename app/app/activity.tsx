@@ -10,6 +10,7 @@ import {
   unlikePost,
   type ActivityFeedPost,
 } from "../lib/socialRepository";
+import { formatDateDisplay } from "../lib/dateFormat";
 // Block/Report is disabled for now -- kept here, commented out, in case it's
 // wanted again later.
 // import BlockReportButtons from "../components/BlockReportButtons";
@@ -78,7 +79,7 @@ export default function ActivityFeedScreen() {
             <Text style={styles.playerName}>{post.playerDisplayName}</Text>
           </Pressable>
           <Text style={styles.postText}>
-            reached {describeMilestone(post)} -- {post.teamName}, {post.gameDate}
+            reached {describeMilestone(post)} ({formatDateDisplay(post.gameDate)})
           </Text>
           <Pressable onPress={() => toggleLike(post)}>
             <Text style={post.likedByMe ? styles.likedLink : styles.link}>

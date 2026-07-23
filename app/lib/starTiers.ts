@@ -5,14 +5,15 @@ import type { BattingCounts } from "./stats";
 // computed on read the same way AVG/OBP/SLG/OPS are. RBI has no star
 // category (a batter can drive in a run without a hit -- sac fly, FC).
 
-// Hits is the only category with a guaranteed default (1 star just for
-// joining); the others show 0 (no star at all) until the first occurrence.
+// Like the other categories, no star until the first hit -- 0 hits shows no
+// star at all, 1-2 hits earns the first star.
 export function hitsStars(hits: number): number {
   if (hits >= 20) return 5;
   if (hits >= 13) return 4;
   if (hits >= 8) return 3;
   if (hits >= 3) return 2;
-  return 1;
+  if (hits >= 1) return 1;
+  return 0;
 }
 
 export function doublesStars(doubles: number): number {
