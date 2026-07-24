@@ -75,16 +75,6 @@ export default function TeamHomeScreen() {
               <Text style={styles.tileText}>Game Log</Text>
             </View>
           </Pressable>
-          {isCoach && (
-            <Pressable
-              style={styles.tile}
-              onPress={() => router.push({ pathname: "/import-game", params: { teamId } })}
-            >
-              <View style={styles.tileInner}>
-                <Text style={styles.tileText}>Import a Game</Text>
-              </View>
-            </Pressable>
-          )}
           <Pressable style={styles.tile} onPress={() => router.push("/search")}>
             <View style={styles.tileInner}>
               <Text style={styles.tileText}>Find a Player</Text>
@@ -99,6 +89,13 @@ export default function TeamHomeScreen() {
             <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/claim-player`)}>
               <View style={styles.tileInner}>
                 <Text style={styles.tileText}>Claim a Player</Text>
+              </View>
+            </Pressable>
+          )}
+          {isCoach && (
+            <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/settings`)}>
+              <View style={styles.tileInner}>
+                <Text style={styles.tileText}>Team Settings</Text>
               </View>
             </Pressable>
           )}

@@ -13,6 +13,8 @@ import * as Linking from "expo-linking";
 import { useAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
+import Dropdown from "../components/Dropdown";
+import CategoryTabs from "../components/CategoryTabs";
 import {
   SANCTIONING_BODIES,
   assignPrimaryCoach,
@@ -32,23 +34,31 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-function currentTwoDigitYear(): number {
+const DIVISIONS = ["Tee Ball", "Minors", "Majors", "Juniors", "Seniors"] as const;
+const DIVISION_TABS = DIVISIONS.map((d) => ({ key: d, label: d }));
+
+const SEASONS = ["Spring", "Summer", "Fall", "Winter"] as const;
+const SEASON_TABS = SEASONS.map((s) => ({ key: s, label: s }));
+
+function currentYear(): number {
   return new Date().getFullYear();
 }
+const YEAR_OPTIONS = Array.from({ length: 9 }, (_, i) => currentYear() - 2 + i);
 
 export default function CoachRegisterScreen() {
   const router = useRouter();
-  const { session, signUp } = useAuth();
+  const { signUp } = useAuth();
 
-  // Phase 1: account creation.
+  // Personal info + credentials -- account isn't created until Complete
+  // Registration is pressed (previously this screen created the account
+  // the moment "Continue" was tapped, before the coach had even entered
+  // their team's info -- a coach who abandoned the second half still ended
+  // up with a live, teamless account).
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [creatingAccount, setCreatingAccount] = useState(false);
-  const [accountError, setAccountError] = useState<string | null>(null);
 
-  // Phase 2: league/division/team.
   const [leagues, setLeagues] = useState<League[]>([]);
   const [sanctioningBody, setSanctioningBody] = useState<SanctioningBody>(SANCTIONING_BODIES[0]);
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
@@ -56,12 +66,10 @@ export default function CoachRegisterScreen() {
   const [enteringNewLeague, setEnteringNewLeague] = useState(false);
 
   const [divisions, setDivisions] = useState<Division[]>([]);
-  const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
-  const [newDivisionName, setNewDivisionName] = useState("");
-  const [enteringNewDivision, setEnteringNewDivision] = useState(false);
+  const [selectedDivisionTab, setSelectedDivisionTab] = useState<(typeof DIVISIONS)[number] | null>(null);
 
-  const [season, setSeason] = useState<"Spring" | "Fall">("Spring");
-  const [year, setYear] = useState(String(currentTwoDigitYear()));
+  const [season, setSeason] = useState<(typeof SEASONS)[number]>("Spring");
+  const [year, setYear] = useState<number>(currentYear());
   const [teamName, setTeamName] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -69,10 +77,12 @@ export default function CoachRegisterScreen() {
   const [createdTeamId, setCreatedTeamId] = useState<string | null>(null);
   const [pendingLeagueName, setPendingLeagueName] = useState<string | null>(null);
 
+  // Leagues/divisions are readable anonymously (RLS: "anon can read
+  // leagues"/"anon can read divisions"), which is what makes it possible to
+  // fill out the whole form before an account exists at all.
   useEffect(() => {
-    if (!session) return;
     listLeagues(supabase).then(setLeagues).catch(() => {});
-  }, [session]);
+  }, []);
 
   useEffect(() => {
     if (!selectedLeague) {
@@ -82,28 +92,23 @@ export default function CoachRegisterScreen() {
     listDivisions(supabase, selectedLeague.id).then(setDivisions).catch(() => {});
   }, [selectedLeague]);
 
-  async function handleCreateAccount() {
-    setCreatingAccount(true);
-    setAccountError(null);
-    try {
-      await signUp(email, password, { firstName, lastName });
-    } catch (err) {
-      setAccountError(errorMessage(err));
-    } finally {
-      setCreatingAccount(false);
-    }
-  }
-
   const leagueChosen = enteringNewLeague ? newLeagueName.trim().length > 0 : !!selectedLeague;
-  const divisionChosen = enteringNewDivision ? newDivisionName.trim().length > 0 : !!selectedDivision;
   const canSubmit =
-    leagueChosen && divisionChosen && season && year.length > 0 && teamName.trim().length > 0 && !submitting;
+    !!firstName &&
+    !!lastName &&
+    !!email &&
+    !!password &&
+    leagueChosen &&
+    !!selectedDivisionTab &&
+    !!teamName.trim() &&
+    !submitting;
 
   async function handleCompleteRegistration() {
-    if (!session) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const userId = await signUp(email, password, { firstName, lastName });
+
       let leagueId: string;
       let leagueIsPending = false;
       if (enteringNewLeague) {
@@ -118,23 +123,27 @@ export default function CoachRegisterScreen() {
         leagueIsPending = selectedLeague!.verificationStatus === "pending";
       }
 
-      let divisionId: string;
-      if (enteringNewDivision) {
-        const created = await createDivision(supabase, { leagueId, name: newDivisionName.trim() });
-        divisionId = created.id;
-      } else {
-        divisionId = selectedDivision!.id;
-      }
+      // Reuse an existing division on this league with the same name
+      // (e.g. another team already created "Majors" under this league)
+      // instead of creating a duplicate row -- division names aren't
+      // globally unique, only unique per league (see the schema's
+      // `unique (league_id, name)` constraint).
+      const existingDivision = divisions.find(
+        (d) => d.name.toLowerCase() === selectedDivisionTab!.toLowerCase()
+      );
+      const divisionId = existingDivision
+        ? existingDivision.id
+        : (await createDivision(supabase, { leagueId, name: selectedDivisionTab! })).id;
 
       const team = await createTeam(supabase, {
         divisionId,
         name: teamName.trim(),
         season,
-        year: Number.parseInt(year, 10),
+        year,
       });
       await assignPrimaryCoach(supabase, {
         teamId: team.id,
-        userId: session.user.id,
+        userId,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       });
@@ -175,97 +184,52 @@ export default function CoachRegisterScreen() {
     );
   }
 
-  if (!session) {
-    return (
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Register as Coach</Text>
-        <Text style={styles.label}>First Name</Text>
-        <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
-        <Text style={styles.label}>Last Name</Text>
-        <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-        />
-        <Text style={styles.label}>Password</Text>
-        <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
-
-        {accountError && <Text style={styles.error}>{accountError}</Text>}
-
-        <Pressable
-          style={[
-            styles.button,
-            (!firstName || !lastName || !email || !password || creatingAccount) && styles.buttonDisabled,
-          ]}
-          disabled={!firstName || !lastName || !email || !password || creatingAccount}
-          onPress={handleCreateAccount}
-        >
-          {creatingAccount ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.buttonText}>Continue</Text>
-          )}
-        </Pressable>
-        <Text style={styles.legalText}>
-          By continuing, you agree to our{" "}
-          <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link> and{" "}
-          <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
-        </Text>
-      </ScrollView>
-    );
-  }
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Set Up Your Team</Text>
+      <Text style={styles.title}>Register as Coach</Text>
 
-      <Text style={styles.label}>Sanctioning Body</Text>
-      <View style={styles.chipRow}>
-        {SANCTIONING_BODIES.map((body) => (
-          <Pressable
-            key={body}
-            style={[styles.chip, sanctioningBody === body && styles.chipSelected]}
-            onPress={() => setSanctioningBody(body)}
-          >
-            <Text style={styles.chipText}>{body}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <Text style={styles.label}>First Name</Text>
+      <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
+      <Text style={styles.label}>Last Name</Text>
+      <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
+      <Text style={styles.label}>Email</Text>
+      <TextInput
+        style={styles.input}
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+      />
+      <Text style={styles.label}>Password</Text>
+      <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
 
-      <Text style={styles.label}>League Name</Text>
-      <View style={styles.chipRow}>
-        {leagues.map((league) => (
-          <Pressable
-            key={league.id}
-            style={[styles.chip, selectedLeague?.id === league.id && !enteringNewLeague && styles.chipSelected]}
-            onPress={() => {
-              setSelectedLeague(league);
-              setEnteringNewLeague(false);
-              setSelectedDivision(null);
-            }}
-          >
-            <Text style={styles.chipText}>
-              {league.name}
-              {league.verificationStatus === "pending" ? " (pending)" : ""}
-            </Text>
-          </Pressable>
-        ))}
-        <Pressable
-          style={[styles.chip, enteringNewLeague && styles.chipSelected]}
-          onPress={() => {
+      <Dropdown
+        label="Sanctioning Body"
+        options={SANCTIONING_BODIES}
+        selected={sanctioningBody}
+        onSelect={setSanctioningBody}
+      />
+
+      <Dropdown
+        label="League Name"
+        options={[...leagues.map((l) => l.id), "__other__"] as string[]}
+        optionLabels={Object.fromEntries([
+          ...leagues.map((l) => [l.id, l.name + (l.verificationStatus === "pending" ? " (pending)" : "")]),
+          ["__other__", "Other (new league)..."],
+        ])}
+        selected={enteringNewLeague ? "__other__" : selectedLeague?.id ?? null}
+        onSelect={(id) => {
+          if (id === "__other__") {
             setEnteringNewLeague(true);
             setSelectedLeague(null);
-            setSelectedDivision(null);
-          }}
-        >
-          <Text style={styles.chipText}>Other...</Text>
-        </Pressable>
-      </View>
+          } else {
+            setEnteringNewLeague(false);
+            setSelectedLeague(leagues.find((l) => l.id === id) ?? null);
+          }
+          setSelectedDivisionTab(null);
+        }}
+      />
       {enteringNewLeague && (
         <>
           <TextInput
@@ -279,52 +243,12 @@ export default function CoachRegisterScreen() {
       )}
 
       <Text style={styles.label}>Division</Text>
-      <View style={styles.chipRow}>
-        {divisions.map((division) => (
-          <Pressable
-            key={division.id}
-            style={[
-              styles.chip,
-              selectedDivision?.id === division.id && !enteringNewDivision && styles.chipSelected,
-            ]}
-            onPress={() => {
-              setSelectedDivision(division);
-              setEnteringNewDivision(false);
-            }}
-          >
-            <Text style={styles.chipText}>{division.name}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          style={[styles.chip, enteringNewDivision && styles.chipSelected]}
-          onPress={() => {
-            setEnteringNewDivision(true);
-            setSelectedDivision(null);
-          }}
-        >
-          <Text style={styles.chipText}>Other...</Text>
-        </Pressable>
-      </View>
-      {enteringNewDivision && (
-        <TextInput
-          style={styles.input}
-          value={newDivisionName}
-          onChangeText={setNewDivisionName}
-          placeholder="e.g. 12U"
-        />
-      )}
+      <CategoryTabs categories={DIVISION_TABS} selectedKey={selectedDivisionTab} onSelect={setSelectedDivisionTab} />
 
       <Text style={styles.label}>Season</Text>
-      <View style={styles.chipRow}>
-        {(["Spring", "Fall"] as const).map((s) => (
-          <Pressable key={s} style={[styles.chip, season === s && styles.chipSelected]} onPress={() => setSeason(s)}>
-            <Text style={styles.chipText}>{s}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <CategoryTabs categories={SEASON_TABS} selectedKey={season} onSelect={setSeason} />
 
-      <Text style={styles.label}>Year</Text>
-      <TextInput style={styles.input} value={year} onChangeText={setYear} keyboardType="number-pad" />
+      <Dropdown label="Year" options={YEAR_OPTIONS} selected={year} onSelect={setYear} />
 
       <Text style={styles.label}>Team Name</Text>
       <TextInput style={styles.input} value={teamName} onChangeText={setTeamName} placeholder="Team name" />
@@ -338,6 +262,11 @@ export default function CoachRegisterScreen() {
       >
         {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Complete Registration</Text>}
       </Pressable>
+      <Text style={styles.legalText}>
+        By continuing, you agree to our{" "}
+        <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link> and{" "}
+        <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
+      </Text>
     </ScrollView>
   );
 }
@@ -368,17 +297,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: colors.surface,
-  },
-  chipText: { color: colors.textPrimary },
-  chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 18 },

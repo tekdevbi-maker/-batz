@@ -47,6 +47,7 @@ export default function TeamLayout() {
         <Stack.Screen name="games/index" options={{ title: "Game Log" }} />
         <Stack.Screen name="games/[gameId]" options={{ title: "Box Score" }} />
         <Stack.Screen name="claim-player" options={{ title: "Claim a Player" }} />
+        <Stack.Screen name="settings" options={{ title: "Team Settings" }} />
       </Stack>
     </View>
   );

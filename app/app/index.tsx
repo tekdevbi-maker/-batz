@@ -50,6 +50,12 @@ export default function Home() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
 
+      {isAdmin && (
+        <Pressable style={styles.secondaryButton} onPress={() => router.push("/admin")}>
+          <Text style={styles.buttonText}>League/Division Admin</Text>
+        </Pressable>
+      )}
+
       {teamCards.length > 0 && (
         <>
           <Text style={styles.label}>Teams</Text>
@@ -84,12 +90,6 @@ export default function Home() {
             ))}
           </View>
         </>
-      )}
-
-      {isAdmin && (
-        <Pressable style={styles.secondaryButton} onPress={() => router.push("/admin")}>
-          <Text style={styles.buttonText}>League/Division Admin</Text>
-        </Pressable>
       )}
 
       <View style={styles.spacer} />

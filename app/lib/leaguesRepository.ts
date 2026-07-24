@@ -130,7 +130,7 @@ export async function deleteDivision(supabase: SupabaseClient, divisionId: strin
 export interface CreateTeamInput {
   divisionId: string;
   name: string;
-  season: "Spring" | "Fall";
+  season: "Spring" | "Summer" | "Fall" | "Winter";
   year: number;
   logoUrl?: string | null;
 }

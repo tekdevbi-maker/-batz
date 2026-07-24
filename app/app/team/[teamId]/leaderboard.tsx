@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
+import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
 import { hitsStars, doublesStars, triplesStars, homeRunsStars } from "../../../lib/starTiers";
 import { computeStandardCompetitionRanks } from "../../../lib/ranking";
 import { STAT_CATEGORY_DESCRIPTIONS } from "../../../lib/statCategoryDescriptions";
@@ -54,12 +55,14 @@ export default function TeamLeaderboardScreen() {
   const router = useRouter();
 
   const [roster, setRoster] = useState<RosterSeasonStats[]>([]);
+  const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [categoryKey, setCategoryKey] = useState<(typeof CATEGORIES)[number]["key"]>("hits");
 
   useEffect(() => {
     if (!teamId || !session) return;
     getTeamRosterWithSeasonStats(supabase, teamId).then(setRoster).catch((err) => setError(errorMessage(err)));
+    getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err)));
   }, [teamId, session]);
 
   const category = CATEGORIES.find((c) => c.key === categoryKey)!;
@@ -71,7 +74,14 @@ export default function TeamLeaderboardScreen() {
   return (
     <View style={styles.root}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Team Leaderboard</Text>
+        {context && (
+          <>
+            <Text style={styles.title}>{context.teamName}</Text>
+            <Text style={styles.hint}>
+              {context.leagueName} | {context.divisionName} | {context.season} {context.year}
+            </Text>
+          </>
+        )}
         {error && <Text style={styles.error}>{error}</Text>}
 
         <CategoryTabs categories={CATEGORIES} selectedKey={categoryKey} onSelect={setCategoryKey} />
@@ -86,10 +96,10 @@ export default function TeamLeaderboardScreen() {
           >
             <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>
-            <View style={styles.nameCol}>
-              <Text style={styles.name}>{r.playerId ? r.displayName : ""}</Text>
-              <StarGrid count={starsFor(categoryKey, r)} />
-            </View>
+            <StarGrid count={starsFor(categoryKey, r)} />
+            <Text style={styles.name} numberOfLines={1}>
+              {r.playerId ? r.displayName : ""}
+            </Text>
             <Text style={styles.value}>{category.format(category.value(r))}</Text>
           </Pressable>
         ))}
@@ -103,7 +113,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  title: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
   error: { color: colors.error, fontSize: 14 },
   categoryDescription: { fontSize: 12, color: colors.textMuted, marginBottom: 10 },
   row: {
@@ -116,7 +127,6 @@ const styles = StyleSheet.create({
   },
   rank: { width: 24, color: colors.textSecondary, fontSize: 14 },
   uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14 },
-  nameCol: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  name: { fontSize: 15, color: colors.textPrimary, flexShrink: 1 },
+  name: { flex: 2, fontSize: 15, color: colors.textPrimary },
   value: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
 });

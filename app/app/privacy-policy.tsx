@@ -3,9 +3,10 @@ import { colors } from "../lib/theme";
 
 // Sprint 10 (spec Section 10/13): required by both App Store and Play
 // Store before submission, "given the app handles data connected to
-// minors." Reflects only what this app actually collects as of Sprint
-// 9 -- no photo upload, push notifications, or phone/location data have
-// been built yet, so this deliberately doesn't claim to collect them.
+// minors." Reflects only what this app actually collects -- push
+// notifications and phone/location data haven't been built, so this
+// deliberately doesn't claim to collect them. Team logo upload was added
+// later; the "Information we collect" section below covers it.
 // Replace EFFECTIVE_DATE and CONTACT_EMAIL, and have this reviewed by a
 // lawyer before real users onboard -- this is a solid first draft, not
 // legal advice.
@@ -39,9 +40,11 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "Coach information: first and last name, entered when registering as a coach.\n\n" +
       "Player information: first and last name (optional -- a player can be identified only by their PlayerTag, " +
       "see below), uniform number, and hitting statistics imported from a GameChanger CSV export the coach uploads.\n\n" +
+      "Team logo: a coach may optionally upload an image to display as their team's logo. This is the only " +
+      "photo-type data @Batz collects, and it's a team logo, not a photo of any person.\n\n" +
       "User-generated content: text you submit through the Block/Report feature or a Customer Care request.\n\n" +
-      "We do not collect phone numbers, home addresses, photos, precise location, payment information, or any " +
-      "government-issued ID. We do not use advertising or analytics tracking SDKs.",
+      "We do not collect phone numbers, home addresses, photos of people, precise location, payment information, " +
+      "or any government-issued ID. We do not use advertising or analytics tracking SDKs.",
   },
   {
     heading: "PlayerTag and stat visibility",

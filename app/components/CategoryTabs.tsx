@@ -11,7 +11,7 @@ export default function CategoryTabs<T extends string>({
   onSelect,
 }: {
   categories: readonly { key: T; label: string }[];
-  selectedKey: T;
+  selectedKey: T | null;
   onSelect: (key: T) => void;
 }) {
   return (

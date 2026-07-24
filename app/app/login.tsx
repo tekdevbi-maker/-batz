@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from "react-native";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 
+// Wordmark's own pixel aspect ratio (974x433) -- used to size its height
+// from the screen width so it scales cleanly on any device.
+const LOGO_ASPECT_RATIO = 974 / 433;
+
 export default function LoginScreen() {
   const { session, signIn } = useAuth();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const logoWidth = width - 48; // matches container's 24px horizontal padding
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,6 +59,11 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      <Image
+        source={require("../assets/wordmark-transparent.png")}
+        style={[styles.logo, { width: logoWidth, height: logoWidth / LOGO_ASPECT_RATIO }]}
+        resizeMode="contain"
+      />
       <Text style={styles.title}>Log In</Text>
       <TextInput
         style={styles.input}
@@ -95,6 +106,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
+  logo: { alignSelf: "center", marginBottom: 8 },
   title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
   input: {
     borderWidth: 1,
