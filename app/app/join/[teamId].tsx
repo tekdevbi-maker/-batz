@@ -1,26 +1,10 @@
 import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import type { Session } from "@supabase/supabase-js";
 import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabase";
-import {
-  getTeamJoinContext,
-  registerPlayer,
-  joinTeamAsFollower,
-  RosterSpotAlreadyClaimedError,
-  TeamAtCapacityError,
-  type TeamJoinContext,
-} from "../../lib/claimRepository";
-import Dropdown from "../../components/Dropdown";
+import { getTeamJoinContext, joinTeamAsFollower, TeamAtCapacityError, type TeamJoinContext } from "../../lib/claimRepository";
 import { colors } from "../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -29,6 +13,10 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
+// The team join link only ever adds a Follower (view-only: Roster, Player
+// Profiles, Team Leaders, League Leaders, no player claim). Claiming a
+// player is a separate, coach-initiated action (Team Members ->
+// Claim/Transfer), not something a new member does at sign-up time.
 export default function JoinTeamScreen() {
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
@@ -45,24 +33,17 @@ export default function JoinTeamScreen() {
   const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [contextError, setContextError] = useState<string | null>(null);
 
-  // Phase 1: account creation (just email/password -- the parent's own
-  // name isn't collected anywhere in spec Section 4, only the Player's).
+  // Account creation.
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
 
-  // Phase 2: pick a path -- claim a player (Parent) or just follow
-  // (Follower, view-only, no player claim).
-  const [mode, setMode] = useState<"choose" | "claim" | "follow">("choose");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [unclaimedNumbers, setUnclaimedNumbers] = useState<number[] | null>(null);
-  const [uniformNumber, setUniformNumber] = useState<number | null>(null);
-  const [playerTag, setPlayerTag] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ claimedExisting: boolean } | { followed: true } | null>(null);
+  const [followed, setFollowed] = useState(false);
 
   useEffect(() => {
     if (!teamId) return;
@@ -70,23 +51,6 @@ export default function JoinTeamScreen() {
       .then(setContext)
       .catch((err) => setContextError(errorMessage(err)));
   }, [teamId]);
-
-  useEffect(() => {
-    if (!teamId || mode !== "claim") return;
-    supabase
-      .from("roster_entry")
-      .select("uniform_number")
-      .eq("team_id", teamId)
-      .is("player_id", null)
-      .order("uniform_number")
-      .then(({ data, error }) => {
-        if (error) {
-          setSubmitError(errorMessage(error));
-          return;
-        }
-        setUnclaimedNumbers((data ?? []).map((r: { uniform_number: number }) => r.uniform_number));
-      });
-  }, [teamId, mode]);
 
   async function handleCreateAccount() {
     setCreatingAccount(true);
@@ -104,42 +68,13 @@ export default function JoinTeamScreen() {
     }
   }
 
-  async function handleRegisterPlayer() {
-    if (!session || !teamId || !context || uniformNumber == null) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const res = await registerPlayer(
-        supabase,
-        {
-          teamId,
-          parentUserId: session.user.id,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          uniformNumber,
-          playerTag: playerTag.trim() || undefined,
-        },
-        context
-      );
-      setResult({ claimedExisting: res.claimedExisting });
-    } catch (err) {
-      setSubmitError(
-        err instanceof RosterSpotAlreadyClaimedError || err instanceof TeamAtCapacityError
-          ? err.message
-          : errorMessage(err)
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function handleFollow() {
     if (!session || !teamId) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await joinTeamAsFollower(supabase, teamId);
-      setResult({ followed: true });
+      await joinTeamAsFollower(supabase, teamId, firstName.trim(), lastName.trim());
+      setFollowed(true);
     } catch (err) {
       setSubmitError(err instanceof TeamAtCapacityError ? err.message : errorMessage(err));
     } finally {
@@ -171,23 +106,14 @@ export default function JoinTeamScreen() {
     );
   }
 
-  if (result) {
-    const followedOnly = "followed" in result;
+  if (followed) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>You're all set</Text>
         <Text style={styles.hint}>
-          {followedOnly
-            ? "You're following this team -- you can see the Roster, Player Profiles, Team Leaders, and League Leaders any time."
-            : result.claimedExisting
-              ? "Linked to your player's existing game stats."
-              : "Your player is registered -- their stats will show up as the coach imports games."}
+          You're following this team -- you can see the Roster, Player Profiles, Team Leaders, and League
+          Leaders any time.
         </Text>
-        {!followedOnly && (
-          <Text style={styles.hint}>
-            Make sure to check out Player Settings to fill out the rest of your Player's Info.
-          </Text>
-        )}
         <Pressable style={styles.button} onPress={() => router.replace("/")}>
           <Text style={styles.buttonText}>Go to @Batz</Text>
         </Pressable>
@@ -197,23 +123,27 @@ export default function JoinTeamScreen() {
 
   const coachName =
     context.coachFirstName || context.coachLastName
-      ? `${context.coachFirstName ?? ""} ${context.coachLastName ?? ""}`.trim()
+      ? `Coach ${`${context.coachFirstName ?? ""} ${context.coachLastName ?? ""}`.trim()}`
       : "your coach";
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Join {context.teamName}</Text>
-      <Text style={styles.hint}>
-        Invited by {coachName} -- {context.leagueName}, {context.divisionName}, {context.season}{" "}
-        {context.year}
+      <Text style={styles.title}>
+        Join the {context.leagueInitials} | {context.divisionName} | {context.teamName}
       </Text>
       <Text style={styles.hint}>
-        Family and friends can follow a player's hitting performance all season, completely free -- it only
-        takes a quick GameChanger export from the coach.
+        You have been invited by {coachName} to follow the {context.teamName} during their{" "}
+        {context.season} {context.year}! This is open to all family and friends to follow the team's
+        hitting performance all season long for FREE! Just fill out the information below and follow each
+        player's progression all season long.
       </Text>
 
       {!session ? (
         <>
+          <Text style={styles.label}>First Name</Text>
+          <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
+          <Text style={styles.label}>Last Name</Text>
+          <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
           <Text style={styles.label}>Email</Text>
           <TextInput
             style={styles.input}
@@ -227,8 +157,12 @@ export default function JoinTeamScreen() {
           <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
           {accountError && <Text style={styles.error}>{accountError}</Text>}
           <Pressable
-            style={[styles.button, (!email || !password || creatingAccount) && styles.buttonDisabled]}
-            disabled={!email || !password || creatingAccount}
+            style={[
+              styles.button,
+              (!firstName.trim() || !lastName.trim() || !email || !password || creatingAccount) &&
+                styles.buttonDisabled,
+            ]}
+            disabled={!firstName.trim() || !lastName.trim() || !email || !password || creatingAccount}
             onPress={handleCreateAccount}
           >
             {creatingAccount ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue</Text>}
@@ -239,73 +173,15 @@ export default function JoinTeamScreen() {
             <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
           </Text>
         </>
-      ) : mode === "choose" ? (
-        <>
-          <Pressable style={styles.button} onPress={() => setMode("claim")}>
-            <Text style={styles.buttonText}>Claim a Player</Text>
-          </Pressable>
-          <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => setMode("follow")}>
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Just Follow the Team</Text>
-          </Pressable>
-        </>
-      ) : mode === "follow" ? (
-        <>
-          <Text style={styles.hint}>
-            You'll be able to see the Roster, Player Profiles, Team Leaders, and League Leaders -- without
-            claiming a player. You can always claim a player later.
-          </Text>
-          {submitError && <Text style={styles.error}>{submitError}</Text>}
-          <Pressable style={[styles.button, submitting && styles.buttonDisabled]} disabled={submitting} onPress={handleFollow}>
-            {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Follow This Team</Text>}
-          </Pressable>
-          <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => setMode("choose")}>
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Back</Text>
-          </Pressable>
-        </>
       ) : (
         <>
-          <Text style={styles.label}>Player's First Name (optional)</Text>
-          <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
-          <Text style={styles.label}>Player's Last Name (optional)</Text>
-          <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
-
-          {unclaimedNumbers == null ? (
-            <ActivityIndicator style={styles.label} />
-          ) : unclaimedNumbers.length === 0 ? (
-            <>
-              <Text style={styles.label}>Uniform Number</Text>
-              <Text style={styles.hint}>
-                Every roster spot on this team is already claimed -- there's nothing left to claim here.
-              </Text>
-            </>
-          ) : (
-            <Dropdown
-              label="Uniform Number"
-              options={unclaimedNumbers}
-              optionLabels={Object.fromEntries(unclaimedNumbers.map((n) => [n, `#${n}`]))}
-              selected={uniformNumber}
-              onSelect={setUniformNumber}
-            />
-          )}
-
-          <Text style={styles.label}>PlayerTag (optional)</Text>
-          <TextInput
-            style={styles.input}
-            value={playerTag}
-            onChangeText={setPlayerTag}
-            placeholder="Defaults to an auto-generated tag"
-            autoCapitalize="none"
-          />
           {submitError && <Text style={styles.error}>{submitError}</Text>}
           <Pressable
-            style={[styles.button, (uniformNumber == null || submitting) && styles.buttonDisabled]}
-            disabled={uniformNumber == null || submitting}
-            onPress={handleRegisterPlayer}
+            style={[styles.button, submitting && styles.buttonDisabled]}
+            disabled={submitting}
+            onPress={handleFollow}
           >
-            {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Register Player</Text>}
-          </Pressable>
-          <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => setMode("choose")}>
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Back</Text>
+            {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Follow This Team</Text>}
           </Pressable>
         </>
       )}
@@ -332,8 +208,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
-  secondaryButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  secondaryButtonText: { color: colors.textPrimary },
   legalText: { marginTop: 12, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });

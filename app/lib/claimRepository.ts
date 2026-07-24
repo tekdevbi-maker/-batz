@@ -124,8 +124,17 @@ export class TeamAtCapacityError extends Error {}
 // Follower join: adds the caller to the team's member list without
 // claiming a player (spec: view-only Roster/Player Profile/leaderboard
 // access, follow/unfollow is their only control).
-export async function joinTeamAsFollower(supabase: SupabaseClient, teamId: string): Promise<void> {
-  const { error } = await supabase.rpc("join_team_as_follower", { p_team_id: teamId });
+export async function joinTeamAsFollower(
+  supabase: SupabaseClient,
+  teamId: string,
+  firstName: string,
+  lastName: string
+): Promise<void> {
+  const { error } = await supabase.rpc("join_team_as_follower", {
+    p_team_id: teamId,
+    p_first_name: firstName,
+    p_last_name: lastName,
+  });
   if (error) {
     if (error.message?.includes("team_at_capacity")) {
       throw new TeamAtCapacityError("This team's 100-member limit has been reached.");

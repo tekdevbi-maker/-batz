@@ -46,6 +46,7 @@ export default function TeamMembersScreen() {
     getTeamMembers(supabase, teamId)
       .then((rows) => {
         setMembers(rows);
+        setError(null);
         setLoaded(true);
       })
       .catch((err) => {
@@ -63,7 +64,8 @@ export default function TeamMembersScreen() {
     setBusyUserId(member.userId);
     setError(null);
     try {
-      await promoteToAssistantCoach(supabase, teamId, member.userId, "", "");
+      const [firstName, ...rest] = member.displayName.includes("@") ? [""] : member.displayName.split(" ");
+      await promoteToAssistantCoach(supabase, teamId, member.userId, firstName, rest.join(" "));
       load();
     } catch (err) {
       setError(err instanceof AssistantCoachCapacityError ? err.message : errorMessage(err));
@@ -109,7 +111,8 @@ export default function TeamMembersScreen() {
       {members.map((member) => (
         <View key={member.userId} style={styles.row}>
           <View style={styles.rowInfo}>
-            <Text style={styles.email}>{member.email}</Text>
+            <Text style={styles.email}>{member.displayName}</Text>
+            <Text style={styles.emailSecondary}>{member.email}</Text>
             <Text style={styles.roleLabel}>
               {ROLE_LABELS[member.role]}
               {member.claimedPlayerNames ? ` · Parent of ${member.claimedPlayerNames}` : ""}
@@ -166,6 +169,7 @@ const styles = StyleSheet.create({
   },
   rowInfo: { flex: 1, gap: 2 },
   email: { color: colors.textPrimary, fontSize: 15, fontWeight: "600" },
+  emailSecondary: { color: colors.textSecondary, fontSize: 13 },
   roleLabel: { color: colors.textSecondary, fontSize: 13 },
   actionButton: {
     borderWidth: 1,

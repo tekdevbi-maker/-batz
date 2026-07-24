@@ -65,6 +65,7 @@ export type TeamMemberRole = "head_coach" | "assistant_coach" | "parent" | "foll
 export interface TeamMember {
   userId: string;
   email: string;
+  displayName: string;
   role: TeamMemberRole;
   claimedPlayerNames: string | null;
 }
@@ -79,6 +80,7 @@ export async function getTeamMembers(supabase: SupabaseClient, teamId: string): 
   return (data ?? []).map((row: any) => ({
     userId: row.user_id,
     email: row.email,
+    displayName: row.display_name,
     role: row.role,
     claimedPlayerNames: row.claimed_player_names,
   }));
