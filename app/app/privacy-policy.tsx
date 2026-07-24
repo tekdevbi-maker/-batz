@@ -56,7 +56,9 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "Hitting statistics (current and past season) are visible to any signed-in @Batz user by design -- this " +
       "is intentional and central to the app's purpose of making performance auditable rather than hidden " +
       "behind a single coach's view. A parent/guardian can additionally set a player's profile to Private, " +
-      "which restricts it to coaches and parents within that player's League/Division for the current season. " +
+      "which restricts their Player Profile to that player's own team roster (up to 100 members: coaches, " +
+      "parents, and followers who joined via that team's link). A Private player's row still appears on " +
+      "leaderboards, but their name is not a link there, and they're excluded from search results entirely. " +
       "Statistics are never accessible outside the app (no public web page) and require signing in to view.",
   },
   {

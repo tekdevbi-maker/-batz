@@ -49,6 +49,64 @@ export async function updateTeamName(supabase: SupabaseClient, teamId: string, n
   if (error) throw error;
 }
 
+export type PlayerDisplayMode = "uniform_only" | "initials" | "all";
+
+export async function updateTeamDisplayMode(
+  supabase: SupabaseClient,
+  teamId: string,
+  mode: PlayerDisplayMode
+): Promise<void> {
+  const { error } = await supabase.from("team").update({ player_display_mode: mode }).eq("id", teamId);
+  if (error) throw error;
+}
+
+export type TeamMemberRole = "head_coach" | "assistant_coach" | "parent" | "follower";
+
+export interface TeamMember {
+  userId: string;
+  email: string;
+  role: TeamMemberRole;
+  claimedPlayerNames: string | null;
+}
+
+// Coach-only (RLS-equivalent check happens inside the get_team_members
+// SECURITY DEFINER function, since PostgREST can't join auth.users
+// directly). Backs the Team Members screen: promote-to-assistant-coach
+// and the transfer-target picker both read from this list.
+export async function getTeamMembers(supabase: SupabaseClient, teamId: string): Promise<TeamMember[]> {
+  const { data, error } = await supabase.rpc("get_team_members", { p_team_id: teamId });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    userId: row.user_id,
+    email: row.email,
+    role: row.role,
+    claimedPlayerNames: row.claimed_player_names,
+  }));
+}
+
+export class AssistantCoachCapacityError extends Error {}
+
+export async function promoteToAssistantCoach(
+  supabase: SupabaseClient,
+  teamId: string,
+  targetUserId: string,
+  firstName: string,
+  lastName: string
+): Promise<void> {
+  const { error } = await supabase.rpc("promote_to_assistant_coach", {
+    p_team_id: teamId,
+    p_target_user_id: targetUserId,
+    p_first_name: firstName,
+    p_last_name: lastName,
+  });
+  if (error) {
+    if (error.message?.includes("assistant_coach_capacity_reached")) {
+      throw new AssistantCoachCapacityError("This team already has 3 assistant coaches.");
+    }
+    throw error;
+  }
+}
+
 // Uploads to the "team-logos" Storage bucket at "{teamId}/logo.<ext>"
 // (upsert: true, so re-uploading replaces the same object rather than
 // accumulating orphans) and points team.logo_url at the public URL. RLS on

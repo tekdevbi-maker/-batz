@@ -50,6 +50,7 @@ export interface PlayerProfile extends PlayerDemographics {
   visibilityScope: "public" | "private";
   revealFullName: boolean;
   isOwner: boolean;
+  parentAttestedAt: string | null;
   seasons: PlayerSeasonLine[];
   careerCounts: BattingCounts;
   careerStats: CalculatedStats;
@@ -83,7 +84,7 @@ export async function getPlayerProfile(
   const { data: player, error: playerError } = await supabase
     .from("player")
     .select(
-      "id, parent_user_id, first_name, last_name, reveal_full_name, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws"
+      "id, parent_user_id, first_name, last_name, reveal_full_name, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws, parent_attested_at"
     )
     .eq("id", playerId)
     .maybeSingle();
@@ -150,6 +151,7 @@ export async function getPlayerProfile(
     visibilityScope: player.visibility_scope,
     revealFullName: player.reveal_full_name,
     isOwner: player.parent_user_id === viewerUserId,
+    parentAttestedAt: player.parent_attested_at,
     seasons,
     careerCounts,
     careerStats: calculateStats(careerCounts),

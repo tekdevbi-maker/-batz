@@ -42,8 +42,6 @@ export default function RootLayout() {
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="activity" options={{ title: "Activity Feed" }} />
           <Stack.Screen name="customer-care" options={{ title: "Customer Care" }} />
-          <Stack.Screen name="coach-join/[teamId]" options={{ title: "Join as Coach" }} />
-          <Stack.Screen name="transfer-player/[token]" options={{ title: "Transfer Player" }} />
           <Stack.Screen name="forgot-password" options={{ title: "Forgot Password" }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />
           <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />

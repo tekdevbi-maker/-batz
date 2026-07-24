@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
@@ -60,14 +59,6 @@ export default function TeamHomeScreen() {
             {c.firstName} {c.lastName} -- {c.role}
           </Text>
         ))}
-        {isCoach && coaches.length < 4 && (
-          <>
-            <Text style={styles.label}>Share this with an assistant coach:</Text>
-            <Text selectable style={styles.code}>
-              {Linking.createURL(`/coach-join/${teamId}`)}
-            </Text>
-          </>
-        )}
 
         <View style={styles.tileGrid}>
           <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/games`)}>
@@ -96,6 +87,13 @@ export default function TeamHomeScreen() {
             <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/settings`)}>
               <View style={styles.tileInner}>
                 <Text style={styles.tileText}>Team Settings</Text>
+              </View>
+            </Pressable>
+          )}
+          {isCoach && (
+            <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/members`)}>
+              <View style={styles.tileInner}>
+                <Text style={styles.tileText}>Team Members</Text>
               </View>
             </Pressable>
           )}

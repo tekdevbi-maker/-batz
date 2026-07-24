@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import {
   getTeamJoinContext,
   registerPlayer,
-  createPlayerTransfer,
   RosterSpotAlreadyClaimedError,
   type TeamJoinContext,
 } from "../../../lib/claimRepository";
+import Dropdown from "../../../components/Dropdown";
 import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -29,15 +28,12 @@ export default function ClaimPlayerScreen() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [uniformNumber, setUniformNumber] = useState("");
+  const [unclaimedNumbers, setUnclaimedNumbers] = useState<number[] | null>(null);
+  const [uniformNumber, setUniformNumber] = useState<number | null>(null);
   const [playerTag, setPlayerTag] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<{ rosterEntryId: string } | null>(null);
-
-  const [transferLink, setTransferLink] = useState<string | null>(null);
-  const [transferBusy, setTransferBusy] = useState(false);
-  const [transferError, setTransferError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!teamId) return;
@@ -46,8 +42,29 @@ export default function ClaimPlayerScreen() {
       .catch((err) => setContextError(errorMessage(err)));
   }, [teamId]);
 
+  // Uniform Number is a closed selection of the team's actual unclaimed
+  // roster spots -- a coach can no longer type an arbitrary number that
+  // doesn't correspond to a real (imported) roster entry, which used to
+  // silently create a brand-new one.
+  useEffect(() => {
+    if (!teamId) return;
+    supabase
+      .from("roster_entry")
+      .select("uniform_number")
+      .eq("team_id", teamId)
+      .is("player_id", null)
+      .order("uniform_number")
+      .then(({ data, error }) => {
+        if (error) {
+          setContextError(errorMessage(error));
+          return;
+        }
+        setUnclaimedNumbers((data ?? []).map((r: { uniform_number: number }) => r.uniform_number));
+      });
+  }, [teamId]);
+
   async function handleSubmit() {
-    if (!session || !teamId || !context) return;
+    if (!session || !teamId || !context || uniformNumber == null) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -58,7 +75,7 @@ export default function ClaimPlayerScreen() {
           parentUserId: session.user.id,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          uniformNumber: Number.parseInt(uniformNumber, 10),
+          uniformNumber,
           playerTag: playerTag.trim() || undefined,
         },
         context
@@ -68,20 +85,6 @@ export default function ClaimPlayerScreen() {
       setSubmitError(err instanceof RosterSpotAlreadyClaimedError ? err.message : errorMessage(err));
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function handleGenerateTransferLink() {
-    if (!result) return;
-    setTransferBusy(true);
-    setTransferError(null);
-    try {
-      const token = await createPlayerTransfer(supabase, result.rosterEntryId);
-      setTransferLink(Linking.createURL(`/transfer-player/${token}`));
-    } catch (err) {
-      setTransferError(errorMessage(err));
-    } finally {
-      setTransferBusy(false);
     }
   }
 
@@ -109,33 +112,12 @@ export default function ClaimPlayerScreen() {
         <Text style={styles.title}>Player added</Text>
         <Text style={styles.hint}>
           The player is now on the roster and linked to your account. Once their actual parent has an
-          account (or is ready to sign up), send them a transfer link to take over.
+          account, use Team Members to transfer ownership -- from that player's Profile, tap "Transfer to
+          Parent".
         </Text>
 
-        {!transferLink ? (
-          <Pressable
-            style={[styles.button, transferBusy && styles.buttonDisabled]}
-            disabled={transferBusy}
-            onPress={handleGenerateTransferLink}
-          >
-            {transferBusy ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>Generate Transfer Link</Text>
-            )}
-          </Pressable>
-        ) : (
-          <>
-            <Text style={styles.label}>Share this with the player's parent:</Text>
-            <Text selectable style={styles.code}>
-              {transferLink}
-            </Text>
-          </>
-        )}
-        {transferError && <Text style={styles.error}>{transferError}</Text>}
-
-        <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => router.replace(`/team/${teamId}`)}>
-          <Text style={[styles.buttonText, styles.secondaryButtonText]}>Done</Text>
+        <Pressable style={styles.button} onPress={() => router.replace(`/team/${teamId}`)}>
+          <Text style={styles.buttonText}>Done</Text>
         </Pressable>
       </ScrollView>
     );
@@ -146,15 +128,33 @@ export default function ClaimPlayerScreen() {
       <Text style={styles.title}>Claim a Player</Text>
       <Text style={styles.hint}>
         Add a player to {context.teamName} under your own account. You can hand ownership off to their
-        real parent afterward with a transfer link.
+        real parent afterward from the player's Profile.
       </Text>
 
       <Text style={styles.label}>Player's First Name (optional)</Text>
       <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
       <Text style={styles.label}>Player's Last Name (optional)</Text>
       <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
-      <Text style={styles.label}>Uniform Number</Text>
-      <TextInput style={styles.input} value={uniformNumber} onChangeText={setUniformNumber} keyboardType="number-pad" />
+
+      {unclaimedNumbers == null ? (
+        <ActivityIndicator style={styles.label} />
+      ) : unclaimedNumbers.length === 0 ? (
+        <>
+          <Text style={styles.label}>Uniform Number</Text>
+          <Text style={styles.hint}>
+            Every roster spot on this team is already claimed -- there's nothing left to claim here.
+          </Text>
+        </>
+      ) : (
+        <Dropdown
+          label="Uniform Number"
+          options={unclaimedNumbers}
+          optionLabels={Object.fromEntries(unclaimedNumbers.map((n) => [n, `#${n}`]))}
+          selected={uniformNumber}
+          onSelect={setUniformNumber}
+        />
+      )}
+
       <Text style={styles.label}>PlayerTag (optional)</Text>
       <TextInput
         style={styles.input}
@@ -165,8 +165,8 @@ export default function ClaimPlayerScreen() {
       />
       {submitError && <Text style={styles.error}>{submitError}</Text>}
       <Pressable
-        style={[styles.button, (!uniformNumber || submitting) && styles.buttonDisabled]}
-        disabled={!uniformNumber || submitting}
+        style={[styles.button, (uniformNumber == null || submitting) && styles.buttonDisabled]}
+        disabled={uniformNumber == null || submitting}
         onPress={handleSubmit}
       >
         {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Claim Player</Text>}

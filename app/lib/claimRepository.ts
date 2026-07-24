@@ -11,6 +11,7 @@ export interface TeamJoinContext {
   leagueInitials: string;
   coachFirstName: string | null;
   coachLastName: string | null;
+  playerDisplayMode: "uniform_only" | "initials" | "all";
 }
 
 // Pre-fill info for the parent join screen (spec Section 4 step 3:
@@ -22,7 +23,7 @@ export async function getTeamJoinContext(
 ): Promise<TeamJoinContext> {
   const { data: team, error: teamError } = await supabase
     .from("team")
-    .select("name, season, year, division:division_id(name, league:league_id(name, initials))")
+    .select("name, season, year, player_display_mode, division:division_id(name, league:league_id(name, initials))")
     .eq("id", teamId)
     .single();
   if (teamError) throw teamError;
@@ -47,6 +48,7 @@ export async function getTeamJoinContext(
     leagueInitials: league?.initials ?? "",
     coachFirstName: coach?.first_name ?? null,
     coachLastName: coach?.last_name ?? null,
+    playerDisplayMode: team.player_display_mode,
   };
 }
 
@@ -117,73 +119,45 @@ export async function registerPlayer(
 }
 
 export class NotACoachError extends Error {}
+export class TeamAtCapacityError extends Error {}
 
-// Coach-only: generates a one-time link a coach can hand to a player's
-// real parent to take over ownership of a player the coach claimed
-// themselves (e.g. to get the player on the roster before the parent has
-// signed up). Delegates to create_player_transfer() so the coach-on-team
-// check happens server-side against the true (RLS-bypassing) claim state.
-export async function createPlayerTransfer(supabase: SupabaseClient, rosterEntryId: string): Promise<string> {
-  const { data, error } = await supabase.rpc("create_player_transfer", { p_roster_entry_id: rosterEntryId });
+// Follower join: adds the caller to the team's member list without
+// claiming a player (spec: view-only Roster/Player Profile/leaderboard
+// access, follow/unfollow is their only control).
+export async function joinTeamAsFollower(supabase: SupabaseClient, teamId: string): Promise<void> {
+  const { error } = await supabase.rpc("join_team_as_follower", { p_team_id: teamId });
+  if (error) {
+    if (error.message?.includes("team_at_capacity")) {
+      throw new TeamAtCapacityError("This team's 100-member limit has been reached.");
+    }
+    throw error;
+  }
+}
+
+// Coach-only: direct reassignment to an existing team member -- no
+// link/token, replaces the old create_player_transfer/claim_player_transfer
+// flow. The target must already appear on the team's member list.
+export async function transferPlayerToMember(
+  supabase: SupabaseClient,
+  rosterEntryId: string,
+  targetUserId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("transfer_player_to_member", {
+    p_roster_entry_id: rosterEntryId,
+    p_target_user_id: targetUserId,
+  });
   if (error) {
     if (error.message?.includes("not_a_coach_on_this_team")) {
-      throw new NotACoachError("Only a coach on this team can generate a transfer link.");
+      throw new NotACoachError("Only a coach on this team can transfer a player.");
     }
     throw error;
   }
-  return data as string;
 }
 
-export interface PlayerTransferInfo {
-  teamId: string;
-  teamName: string;
-  uniformNumber: number;
-  playerDisplayName: string;
-  alreadyUsed: boolean;
-}
-
-export class InvalidTransferTokenError extends Error {}
-
-export async function getPlayerTransferInfo(supabase: SupabaseClient, token: string): Promise<PlayerTransferInfo> {
-  const { data, error } = await supabase.rpc("get_player_transfer_info", { p_token: token }).select().single();
-  if (error) {
-    if (error.message?.includes("invalid_transfer_token")) {
-      throw new InvalidTransferTokenError("This transfer link is invalid.");
-    }
-    throw error;
-  }
-  const row = data as {
-    team_id: string;
-    team_name: string;
-    uniform_number: number;
-    player_display_name: string;
-    already_used: boolean;
-  };
-  return {
-    teamId: row.team_id,
-    teamName: row.team_name,
-    uniformNumber: row.uniform_number,
-    playerDisplayName: row.player_display_name,
-    alreadyUsed: row.already_used,
-  };
-}
-
-export class TransferAlreadyUsedError extends Error {}
-
-export async function claimPlayerTransfer(
-  supabase: SupabaseClient,
-  token: string
-): Promise<{ playerId: string; rosterEntryId: string }> {
-  const { data, error } = await supabase.rpc("claim_player_transfer", { p_token: token }).select().single();
-  if (error) {
-    if (error.message?.includes("transfer_already_used")) {
-      throw new TransferAlreadyUsedError("This transfer link has already been used.");
-    }
-    if (error.message?.includes("invalid_transfer_token")) {
-      throw new InvalidTransferTokenError("This transfer link is invalid.");
-    }
-    throw error;
-  }
-  const row = data as { player_id: string; roster_entry_id: string };
-  return { playerId: row.player_id, rosterEntryId: row.roster_entry_id };
+// "I am the parent for this player": logs the attestation and unlocks
+// full parent-level Settings access for the coach on this specific
+// player, without reassigning parent_user_id.
+export async function attestPlayerParent(supabase: SupabaseClient, playerId: string): Promise<void> {
+  const { error } = await supabase.rpc("attest_player_parent", { p_player_id: playerId });
+  if (error) throw error;
 }

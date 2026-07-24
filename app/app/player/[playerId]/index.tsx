@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Modal } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getPlayerProfile, currentSeasonLine, type PlayerProfile } from "../../../lib/playerRepository";
-import { createPlayerTransfer } from "../../../lib/claimRepository";
+import { attestPlayerParent } from "../../../lib/claimRepository";
 import { calculateStarTiers } from "../../../lib/starTiers";
 import {
   describeMilestone,
@@ -63,9 +62,9 @@ export default function PlayerProfileScreen() {
   const [careerOpen, setCareerOpen] = useState(false);
   const [seasonsOpen, setSeasonsOpen] = useState(false);
   const [isCoachOnTeam, setIsCoachOnTeam] = useState(false);
-  const [transferLink, setTransferLink] = useState<string | null>(null);
-  const [transferBusy, setTransferBusy] = useState(false);
-  const [transferError, setTransferError] = useState<string | null>(null);
+  const [attestModalOpen, setAttestModalOpen] = useState(false);
+  const [attestBusy, setAttestBusy] = useState(false);
+  const [attestError, setAttestError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!playerId || !session) return;
@@ -129,19 +128,25 @@ export default function PlayerProfileScreen() {
       .then(({ data }) => setIsCoachOnTeam(!!data));
   }, [profile, session]);
 
-  async function handleGenerateTransfer() {
+  function handleGoToTransfer() {
     if (!profile) return;
     const current = currentSeasonLine(profile);
     if (!current) return;
-    setTransferBusy(true);
-    setTransferError(null);
+    router.push(`/team/${current.teamId}/members?transferRosterEntryId=${current.rosterEntryId}`);
+  }
+
+  async function handleAttest() {
+    if (!profile) return;
+    setAttestBusy(true);
+    setAttestError(null);
     try {
-      const token = await createPlayerTransfer(supabase, current.rosterEntryId);
-      setTransferLink(Linking.createURL(`/transfer-player/${token}`));
+      await attestPlayerParent(supabase, profile.playerId);
+      setAttestModalOpen(false);
+      load();
     } catch (err) {
-      setTransferError(errorMessage(err));
+      setAttestError(errorMessage(err));
     } finally {
-      setTransferBusy(false);
+      setAttestBusy(false);
     }
   }
 
@@ -175,6 +180,8 @@ export default function PlayerProfileScreen() {
     );
   }
 
+  const isCoachOwner = profile.isOwner && isCoachOnTeam;
+  const isAttested = !!profile.parentAttestedAt;
   const current = currentSeasonLine(profile);
   // Star tiers reset each season (spec Section 9), so they're computed
   // from the player's current in-season line, not the career aggregate --
@@ -204,29 +211,46 @@ export default function PlayerProfileScreen() {
           <Text style={profile.visibilityScope === "private" ? styles.privateBadge : styles.publicBadge}>
             {profile.visibilityScope}
           </Text>
-          <Pressable style={styles.secondaryButton} onPress={() => router.push(`/player/${playerId}/settings`)}>
-            <Text style={styles.secondaryButtonText}>Settings</Text>
-          </Pressable>
-          {isCoachOnTeam && (
-            <Pressable style={styles.secondaryButton} disabled={transferBusy} onPress={handleGenerateTransfer}>
-              {transferBusy ? (
-                <ActivityIndicator size="small" color={colors.accent} />
-              ) : (
-                <Text style={styles.secondaryButtonText}>Transfer to Parent</Text>
-              )}
+          {(!isCoachOwner || isAttested) && (
+            <Pressable style={styles.secondaryButton} onPress={() => router.push(`/player/${playerId}/settings`)}>
+              <Text style={styles.secondaryButtonText}>Settings</Text>
+            </Pressable>
+          )}
+          {isCoachOwner && (
+            <Pressable style={styles.secondaryButton} onPress={handleGoToTransfer}>
+              <Text style={styles.secondaryButtonText}>Transfer to Parent</Text>
+            </Pressable>
+          )}
+          {isCoachOwner && !isAttested && (
+            <Pressable style={styles.secondaryButton} onPress={() => setAttestModalOpen(true)}>
+              <Text style={styles.secondaryButtonText}>I am the parent for this player</Text>
             </Pressable>
           )}
         </View>
       )}
-      {isCoachOnTeam && transferError && <Text style={styles.error}>{transferError}</Text>}
-      {isCoachOnTeam && transferLink && (
-        <>
-          <Text style={styles.label}>Share this with the player's parent:</Text>
-          <Text selectable style={styles.code}>
-            {transferLink}
-          </Text>
-        </>
-      )}
+
+      <Modal visible={attestModalOpen} transparent animationType="fade" onRequestClose={() => setAttestModalOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalText}>
+              You are claiming to be the Parent/Legal Guardian of {profile.displayName}. Is this correct?
+            </Text>
+            {attestError && <Text style={styles.error}>{attestError}</Text>}
+            <View style={styles.modalButtonRow}>
+              <Pressable
+                style={[styles.secondaryButton, styles.modalCancel]}
+                disabled={attestBusy}
+                onPress={() => setAttestModalOpen(false)}
+              >
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.modalAgree} disabled={attestBusy} onPress={handleAttest}>
+                {attestBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalAgreeText}>Agree</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {!profile.isOwner && (
         <View style={styles.ownerRow}>
@@ -332,6 +356,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   secondaryButtonText: { color: colors.textPrimary },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 20, gap: 12, width: "100%", maxWidth: 400 },
+  modalText: { color: colors.textPrimary, fontSize: 16 },
+  modalButtonRow: { flexDirection: "row", gap: 12, justifyContent: "flex-end" },
+  modalCancel: { paddingVertical: 10 },
+  modalAgree: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
+  modalAgreeText: { color: "white", fontWeight: "600" },
   code: {
     fontFamily: "monospace",
     backgroundColor: colors.surface,

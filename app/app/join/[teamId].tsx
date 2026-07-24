@@ -15,9 +15,12 @@ import { supabase } from "../../lib/supabase";
 import {
   getTeamJoinContext,
   registerPlayer,
+  joinTeamAsFollower,
   RosterSpotAlreadyClaimedError,
+  TeamAtCapacityError,
   type TeamJoinContext,
 } from "../../lib/claimRepository";
+import Dropdown from "../../components/Dropdown";
 import { colors } from "../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -49,14 +52,17 @@ export default function JoinTeamScreen() {
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
 
-  // Phase 2: Player registration.
+  // Phase 2: pick a path -- claim a player (Parent) or just follow
+  // (Follower, view-only, no player claim).
+  const [mode, setMode] = useState<"choose" | "claim" | "follow">("choose");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [uniformNumber, setUniformNumber] = useState("");
+  const [unclaimedNumbers, setUnclaimedNumbers] = useState<number[] | null>(null);
+  const [uniformNumber, setUniformNumber] = useState<number | null>(null);
   const [playerTag, setPlayerTag] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ claimedExisting: boolean } | null>(null);
+  const [result, setResult] = useState<{ claimedExisting: boolean } | { followed: true } | null>(null);
 
   useEffect(() => {
     if (!teamId) return;
@@ -64,6 +70,23 @@ export default function JoinTeamScreen() {
       .then(setContext)
       .catch((err) => setContextError(errorMessage(err)));
   }, [teamId]);
+
+  useEffect(() => {
+    if (!teamId || mode !== "claim") return;
+    supabase
+      .from("roster_entry")
+      .select("uniform_number")
+      .eq("team_id", teamId)
+      .is("player_id", null)
+      .order("uniform_number")
+      .then(({ data, error }) => {
+        if (error) {
+          setSubmitError(errorMessage(error));
+          return;
+        }
+        setUnclaimedNumbers((data ?? []).map((r: { uniform_number: number }) => r.uniform_number));
+      });
+  }, [teamId, mode]);
 
   async function handleCreateAccount() {
     setCreatingAccount(true);
@@ -82,7 +105,7 @@ export default function JoinTeamScreen() {
   }
 
   async function handleRegisterPlayer() {
-    if (!session || !teamId || !context) return;
+    if (!session || !teamId || !context || uniformNumber == null) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -93,7 +116,7 @@ export default function JoinTeamScreen() {
           parentUserId: session.user.id,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          uniformNumber: Number.parseInt(uniformNumber, 10),
+          uniformNumber,
           playerTag: playerTag.trim() || undefined,
         },
         context
@@ -101,8 +124,24 @@ export default function JoinTeamScreen() {
       setResult({ claimedExisting: res.claimedExisting });
     } catch (err) {
       setSubmitError(
-        err instanceof RosterSpotAlreadyClaimedError ? err.message : errorMessage(err)
+        err instanceof RosterSpotAlreadyClaimedError || err instanceof TeamAtCapacityError
+          ? err.message
+          : errorMessage(err)
       );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleFollow() {
+    if (!session || !teamId) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await joinTeamAsFollower(supabase, teamId);
+      setResult({ followed: true });
+    } catch (err) {
+      setSubmitError(err instanceof TeamAtCapacityError ? err.message : errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -133,17 +172,22 @@ export default function JoinTeamScreen() {
   }
 
   if (result) {
+    const followedOnly = "followed" in result;
     return (
       <View style={styles.container}>
         <Text style={styles.title}>You're all set</Text>
         <Text style={styles.hint}>
-          {result.claimedExisting
-            ? "Linked to your player's existing game stats."
-            : "Your player is registered -- their stats will show up as the coach imports games."}
+          {followedOnly
+            ? "You're following this team -- you can see the Roster, Player Profiles, Team Leaders, and League Leaders any time."
+            : result.claimedExisting
+              ? "Linked to your player's existing game stats."
+              : "Your player is registered -- their stats will show up as the coach imports games."}
         </Text>
-        <Text style={styles.hint}>
-          Make sure to check out Player Settings to fill out the rest of your Player's Info.
-        </Text>
+        {!followedOnly && (
+          <Text style={styles.hint}>
+            Make sure to check out Player Settings to fill out the rest of your Player's Info.
+          </Text>
+        )}
         <Pressable style={styles.button} onPress={() => router.replace("/")}>
           <Text style={styles.buttonText}>Go to @Batz</Text>
         </Pressable>
@@ -162,6 +206,10 @@ export default function JoinTeamScreen() {
       <Text style={styles.hint}>
         Invited by {coachName} -- {context.leagueName}, {context.divisionName}, {context.season}{" "}
         {context.year}
+      </Text>
+      <Text style={styles.hint}>
+        Family and friends can follow a player's hitting performance all season, completely free -- it only
+        takes a quick GameChanger export from the coach.
       </Text>
 
       {!session ? (
@@ -191,19 +239,55 @@ export default function JoinTeamScreen() {
             <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>.
           </Text>
         </>
+      ) : mode === "choose" ? (
+        <>
+          <Pressable style={styles.button} onPress={() => setMode("claim")}>
+            <Text style={styles.buttonText}>Claim a Player</Text>
+          </Pressable>
+          <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => setMode("follow")}>
+            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Just Follow the Team</Text>
+          </Pressable>
+        </>
+      ) : mode === "follow" ? (
+        <>
+          <Text style={styles.hint}>
+            You'll be able to see the Roster, Player Profiles, Team Leaders, and League Leaders -- without
+            claiming a player. You can always claim a player later.
+          </Text>
+          {submitError && <Text style={styles.error}>{submitError}</Text>}
+          <Pressable style={[styles.button, submitting && styles.buttonDisabled]} disabled={submitting} onPress={handleFollow}>
+            {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Follow This Team</Text>}
+          </Pressable>
+          <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => setMode("choose")}>
+            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Back</Text>
+          </Pressable>
+        </>
       ) : (
         <>
           <Text style={styles.label}>Player's First Name (optional)</Text>
           <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
           <Text style={styles.label}>Player's Last Name (optional)</Text>
           <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
-          <Text style={styles.label}>Uniform Number</Text>
-          <TextInput
-            style={styles.input}
-            value={uniformNumber}
-            onChangeText={setUniformNumber}
-            keyboardType="number-pad"
-          />
+
+          {unclaimedNumbers == null ? (
+            <ActivityIndicator style={styles.label} />
+          ) : unclaimedNumbers.length === 0 ? (
+            <>
+              <Text style={styles.label}>Uniform Number</Text>
+              <Text style={styles.hint}>
+                Every roster spot on this team is already claimed -- there's nothing left to claim here.
+              </Text>
+            </>
+          ) : (
+            <Dropdown
+              label="Uniform Number"
+              options={unclaimedNumbers}
+              optionLabels={Object.fromEntries(unclaimedNumbers.map((n) => [n, `#${n}`]))}
+              selected={uniformNumber}
+              onSelect={setUniformNumber}
+            />
+          )}
+
           <Text style={styles.label}>PlayerTag (optional)</Text>
           <TextInput
             style={styles.input}
@@ -214,11 +298,14 @@ export default function JoinTeamScreen() {
           />
           {submitError && <Text style={styles.error}>{submitError}</Text>}
           <Pressable
-            style={[styles.button, (!uniformNumber || submitting) && styles.buttonDisabled]}
-            disabled={!uniformNumber || submitting}
+            style={[styles.button, (uniformNumber == null || submitting) && styles.buttonDisabled]}
+            disabled={uniformNumber == null || submitting}
             onPress={handleRegisterPlayer}
           >
             {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Register Player</Text>}
+          </Pressable>
+          <Pressable style={[styles.button, styles.secondaryButton]} onPress={() => setMode("choose")}>
+            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Back</Text>
           </Pressable>
         </>
       )}
@@ -245,6 +332,8 @@ const styles = StyleSheet.create({
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  secondaryButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  secondaryButtonText: { color: colors.textPrimary },
   legalText: { marginTop: 12, textAlign: "center", fontSize: 13, color: colors.textSecondary },
   legalLink: { color: colors.accent },
 });

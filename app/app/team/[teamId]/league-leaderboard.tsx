@@ -102,8 +102,8 @@ export default function LeagueLeaderboardScreen() {
           <Pressable
             key={r.rosterEntryId}
             style={styles.row}
-            disabled={!r.playerId}
-            onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
+            disabled={!r.playerId || r.visibilityScope === "private"}
+            onPress={() => r.playerId && r.visibilityScope !== "private" && router.push(`/player/${r.playerId}`)}
           >
             <Text style={styles.rank}>{ranks[i]}.</Text>
             <Text style={styles.uniformNumber}>#{r.uniformNumber}</Text>

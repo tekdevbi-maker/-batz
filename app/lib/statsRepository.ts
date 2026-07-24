@@ -19,15 +19,30 @@ function toCounts(row: any): BattingCounts {
   };
 }
 
+function initialsFor(player: { first_name: string | null; last_name: string | null }, uniformNumber: number): string {
+  const initials = [player.first_name?.[0], player.last_name?.[0]].filter(Boolean).join("").toUpperCase();
+  return initials || `#${uniformNumber}`;
+}
+
 // Display identity per spec Section 7: real name only when the parent has
 // explicitly revealed it, otherwise the PlayerTag. An unclaimed spot (or a
 // Private player whose row RLS filtered out for this viewer) gets the same
 // default-format tag a claim would start with, computed from team context.
+// A coach's per-team display-mode setting (Team Settings) overrides this
+// entirely for uniform-only/initials modes -- name/PlayerTag reveal rules
+// don't apply in those modes since the coach is choosing a stricter format
+// for the whole team, not the parent's own per-player choice.
 function displayNameFor(
   player: { player_tag: string; first_name: string | null; last_name: string | null; reveal_full_name: boolean } | null | undefined,
   uniformNumber: number,
-  context: Pick<TeamJoinContext, "divisionName" | "teamName" | "season" | "year" | "leagueInitials">
+  context: Pick<TeamJoinContext, "divisionName" | "teamName" | "season" | "year" | "leagueInitials" | "playerDisplayMode">
 ): string {
+  if (context.playerDisplayMode === "uniform_only") {
+    return `#${uniformNumber}`;
+  }
+  if (context.playerDisplayMode === "initials") {
+    return player ? initialsFor(player, uniformNumber) : `#${uniformNumber}`;
+  }
   if (player) {
     return playerDisplayName({
       playerTag: player.player_tag,
@@ -51,6 +66,7 @@ export interface RosterSeasonStats {
   playerId: string | null;
   uniformNumber: number;
   displayName: string;
+  visibilityScope: "public" | "private" | null;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -65,7 +81,9 @@ export async function getTeamRosterWithSeasonStats(
 
   const { data: rosterRows, error: rosterError } = await supabase
     .from("roster_entry")
-    .select("id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name)")
+    .select(
+      "id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name, visibility_scope)"
+    )
     .eq("team_id", teamId)
     .order("uniform_number");
   if (rosterError) throw rosterError;
@@ -98,6 +116,7 @@ export async function getTeamRosterWithSeasonStats(
       playerId: re.player ? re.player_id : null,
       uniformNumber: re.uniform_number,
       displayName: displayNameFor(re.player, re.uniform_number, context),
+      visibilityScope: re.player?.visibility_scope ?? null,
       counts,
       stats: calculateStats(counts),
     };
@@ -110,6 +129,7 @@ export interface DivisionLeaderboardEntry {
   teamName: string;
   uniformNumber: number;
   displayName: string;
+  visibilityScope: "public" | "private" | null;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -147,7 +167,7 @@ export async function getDivisionLeaderboard(
 
   const { data: teams, error: teamsError } = await supabase
     .from("team")
-    .select("id, name, season, year, division:division_id(name, league:league_id(name, initials))")
+    .select("id, name, season, year, player_display_mode, division:division_id(name, league:league_id(name, initials))")
     .eq("division_id", thisTeam.division_id)
     .eq("season", thisTeam.season)
     .eq("year", thisTeam.year);
@@ -169,7 +189,7 @@ export async function getDivisionLeaderboard(
   const { data: rosterRows, error: rosterError } = await supabase
     .from("roster_entry")
     .select(
-      "id, team_id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name)"
+      "id, team_id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name, visibility_scope)"
     )
     .in("team_id", teamIds);
   if (rosterError) throw rosterError;
@@ -202,6 +222,7 @@ export async function getDivisionLeaderboard(
       season: team?.season ?? "",
       year: team?.year ?? 0,
       leagueInitials: league?.initials ?? "",
+      playerDisplayMode: team?.player_display_mode ?? "all",
     };
     const counts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
     return {
@@ -210,6 +231,7 @@ export async function getDivisionLeaderboard(
       teamName: team?.name ?? "",
       uniformNumber: re.uniform_number,
       displayName: displayNameFor(re.player, re.uniform_number, context),
+      visibilityScope: re.player?.visibility_scope ?? null,
       counts,
       stats: calculateStats(counts),
     };

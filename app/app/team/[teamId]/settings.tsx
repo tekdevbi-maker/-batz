@@ -2,10 +2,18 @@ import { useCallback, useState } from "react";
 import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { updateTeamName, uploadTeamLogo } from "../../../lib/teamsRepository";
+import { updateTeamName, uploadTeamLogo, updateTeamDisplayMode, type PlayerDisplayMode } from "../../../lib/teamsRepository";
+import CategoryTabs from "../../../components/CategoryTabs";
 import { colors } from "../../../lib/theme";
+
+const DISPLAY_MODE_OPTIONS: { key: PlayerDisplayMode; label: string }[] = [
+  { key: "uniform_only", label: "Uniform Number" },
+  { key: "initials", label: "Initials" },
+  { key: "all", label: "All" },
+];
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -19,6 +27,8 @@ export default function TeamSettingsScreen() {
 
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<PlayerDisplayMode>("all");
+  const [savingDisplayMode, setSavingDisplayMode] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +41,7 @@ export default function TeamSettingsScreen() {
       if (!teamId) return;
       supabase
         .from("team")
-        .select("name, logo_url")
+        .select("name, logo_url, player_display_mode")
         .eq("id", teamId)
         .single()
         .then(({ data, error: err }) => {
@@ -40,11 +50,26 @@ export default function TeamSettingsScreen() {
           } else {
             setName(data.name);
             setLogoUrl(data.logo_url);
+            setDisplayMode(data.player_display_mode);
           }
           setLoaded(true);
         });
     }, [teamId])
   );
+
+  async function handleChangeDisplayMode(mode: PlayerDisplayMode) {
+    if (!teamId) return;
+    setDisplayMode(mode);
+    setSavingDisplayMode(true);
+    setError(null);
+    try {
+      await updateTeamDisplayMode(supabase, teamId, mode);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingDisplayMode(false);
+    }
+  }
 
   async function handleSaveName() {
     if (!teamId || !name.trim()) return;
@@ -137,6 +162,23 @@ export default function TeamSettingsScreen() {
       >
         {savingName ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Save Name</Text>}
       </Pressable>
+
+      <Text style={styles.label}>Player Display Format</Text>
+      <Text style={styles.hint}>
+        Controls how players are identified app-wide for this team -- on the Roster, Leaderboards, and Game
+        Log.
+      </Text>
+      <CategoryTabs categories={DISPLAY_MODE_OPTIONS} selectedKey={displayMode} onSelect={handleChangeDisplayMode} />
+      {savingDisplayMode && <ActivityIndicator size="small" />}
+
+      <Text style={styles.label}>Team Join Link</Text>
+      <Text style={styles.hint}>
+        The only way to join this team, in any role -- Head Coach, up to 3 Assistant Coaches, Parents, and
+        Followers (view-only). Capped at 100 members total.
+      </Text>
+      <Text selectable style={styles.code}>
+        {Linking.createURL(`/join/${teamId}`)}
+      </Text>
     </ScrollView>
   );
 }
@@ -144,8 +186,17 @@ export default function TeamSettingsScreen() {
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
   label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
   error: { color: colors.error, fontSize: 14 },
   success: { color: colors.success, fontSize: 14 },
+  code: {
+    fontFamily: "monospace",
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    padding: 10,
+    borderRadius: 6,
+    fontSize: 13,
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
