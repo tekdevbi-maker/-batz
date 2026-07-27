@@ -10,6 +10,7 @@ import {
   createVerifiedLeague,
   deleteDivision,
   deleteLeague,
+  listAllUserEmails,
   listDivisions,
   listLeagues,
   verifyLeague,
@@ -155,6 +156,22 @@ export default function AdminScreen() {
   const [impersonateEmail, setImpersonateEmail] = useState("");
   const [impersonateBusy, setImpersonateBusy] = useState(false);
   const [impersonateError, setImpersonateError] = useState<string | null>(null);
+  const [allEmails, setAllEmails] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin) listAllUserEmails(supabase).then(setAllEmails).catch(() => {});
+  }, [isAdmin]);
+
+  const emailSuggestions =
+    showSuggestions && impersonateEmail.trim().length > 0
+      ? allEmails.filter((e) => e.toLowerCase().includes(impersonateEmail.trim().toLowerCase())).slice(0, 8)
+      : [];
+
+  function selectSuggestion(email: string) {
+    setImpersonateEmail(email);
+    setShowSuggestions(false);
+  }
 
   async function handleImpersonate() {
     if (!impersonateEmail.trim()) return;
@@ -219,12 +236,25 @@ export default function AdminScreen() {
       <TextInput
         style={styles.input}
         value={impersonateEmail}
-        onChangeText={setImpersonateEmail}
+        onChangeText={(t) => {
+          setImpersonateEmail(t);
+          setShowSuggestions(true);
+        }}
+        onFocus={() => setShowSuggestions(true)}
         placeholder="user@example.com"
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
       />
+      {emailSuggestions.length > 0 && (
+        <View style={styles.suggestionBox}>
+          {emailSuggestions.map((email) => (
+            <Pressable key={email} style={styles.suggestionRow} onPress={() => selectSuggestion(email)}>
+              <Text style={styles.suggestionText}>{email}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {impersonateError && <Text style={styles.error}>{impersonateError}</Text>}
       <Pressable
         style={[styles.button, (!impersonateEmail.trim() || impersonateBusy) && styles.buttonDisabled]}
@@ -300,6 +330,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
+  suggestionBox: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    marginTop: -4,
+    overflow: "hidden",
+  },
+  suggestionRow: { paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: colors.border },
+  suggestionText: { color: colors.textPrimary, fontSize: 15 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,

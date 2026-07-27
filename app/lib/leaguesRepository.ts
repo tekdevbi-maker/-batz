@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateUniqueInitials } from "./leagueInitials";
 
+// Admin-only, backs the autosuggest on the Impersonate-a-User field.
+export async function listAllUserEmails(supabase: SupabaseClient): Promise<string[]> {
+  const { data, error } = await supabase.rpc("list_all_users_for_impersonation");
+  if (error) throw error;
+  return (data ?? []).map((row: { email: string }) => row.email);
+}
+
 export const SANCTIONING_BODIES = [
   "Little League",
   "Babe Ruth League",
