@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getPlayerProfile, currentSeasonLine, type PlayerProfile } from "../../../lib/playerRepository";
-import { attestPlayerParent } from "../../../lib/claimRepository";
+import { attestPlayerParent, claimPlayerAsParent, AlreadyClaimedByParentError, TeamAtCapacityError } from "../../../lib/claimRepository";
 import { calculateStarTiers } from "../../../lib/starTiers";
 import {
   describeMilestone,
@@ -65,6 +65,8 @@ export default function PlayerProfileScreen() {
   const [attestModalOpen, setAttestModalOpen] = useState(false);
   const [attestBusy, setAttestBusy] = useState(false);
   const [attestError, setAttestError] = useState<string | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!playerId || !session) return;
@@ -99,6 +101,26 @@ export default function PlayerProfileScreen() {
       setError(errorMessage(err));
     } finally {
       setFollowBusy(false);
+    }
+  }
+
+  async function handleClaim() {
+    if (!profile) return;
+    const current = currentSeasonLine(profile);
+    if (!current) return;
+    setClaimBusy(true);
+    setClaimError(null);
+    try {
+      await claimPlayerAsParent(supabase, current.rosterEntryId);
+      load();
+    } catch (err) {
+      setClaimError(
+        err instanceof AlreadyClaimedByParentError || err instanceof TeamAtCapacityError
+          ? err.message
+          : errorMessage(err)
+      );
+    } finally {
+      setClaimBusy(false);
     }
   }
 
@@ -223,7 +245,7 @@ export default function PlayerProfileScreen() {
           )}
           {isCoachOwner && !isAttested && (
             <Pressable style={styles.secondaryButton} onPress={() => setAttestModalOpen(true)}>
-              <Text style={styles.secondaryButtonText}>I am the parent for this player</Text>
+              <Text style={styles.secondaryButtonText}>I'm the Parent</Text>
             </Pressable>
           )}
         </View>
@@ -260,8 +282,18 @@ export default function PlayerProfileScreen() {
           <Text style={styles.hint}>
             {followerCount} follower{followerCount === 1 ? "" : "s"}
           </Text>
+          {profile.isOwnedByCoach && (
+            <Pressable style={styles.secondaryButton} disabled={claimBusy} onPress={handleClaim}>
+              {claimBusy ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.secondaryButtonText}>Claim This Player</Text>
+              )}
+            </Pressable>
+          )}
         </View>
       )}
+      {claimError && <Text style={styles.error}>{claimError}</Text>}
 
       <View style={styles.demographicsBlock}>
         <Text style={styles.title}>

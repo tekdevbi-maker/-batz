@@ -24,24 +24,35 @@ import {
 
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-if (!serviceRoleKey || !supabaseUrl) {
-  console.error("Set SUPABASE_SERVICE_ROLE_KEY and EXPO_PUBLIC_SUPABASE_URL first.");
+const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+if (!serviceRoleKey || !supabaseUrl || !anonKey) {
+  console.error("Set SUPABASE_SERVICE_ROLE_KEY, EXPO_PUBLIC_SUPABASE_URL, and EXPO_PUBLIC_SUPABASE_ANON_KEY first.");
   process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function main() {
-  // A throwaway coach account -- importGame() now auto-claims every
-  // imported line under the importing coach, so player.parent_user_id
-  // needs a real auth.users row to satisfy the FK.
+  // auto_claim_roster_entry() (the Head-Coach auto-claim RPC) is
+  // SECURITY DEFINER but still reads auth.uid() -- that's null under the
+  // service_role key, so importGame() itself has to run as a real,
+  // signed-in coach, not the admin client used for everything else here.
+  const coachEmail = `verify-coach-${Date.now()}@example.com`;
+  const coachPassword = crypto.randomUUID();
   const { data: coachUser, error: coachError } = await supabase.auth.admin.createUser({
-    email: `verify-coach-${Date.now()}@example.com`,
-    password: crypto.randomUUID(),
+    email: coachEmail,
+    password: coachPassword,
     email_confirm: true,
   });
   if (coachError) throw coachError;
   const coachUserId = coachUser.user.id;
+
+  const coachClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const { error: signInError } = await coachClient.auth.signInWithPassword({
+    email: coachEmail,
+    password: coachPassword,
+  });
+  if (signInError) throw signInError;
 
   const { data: league, error: leagueError } = await supabase
     .from("league")
@@ -65,17 +76,20 @@ async function main() {
       .single();
     if (teamError) throw teamError;
 
+    const { error: coachAssignError } = await supabase
+      .from("coach_assignment")
+      .insert({ team_id: team.id, user_id: coachUserId, role: "primary", first_name: "Verify", last_name: "Coach" });
+    if (coachAssignError) throw coachAssignError;
+
     const csvText = fs.readFileSync(path.join(__dirname, "..", "lib", "__fixtures__", "game1.csv"), "utf-8");
     const lines = parseGameChangerBattingCsv(csvText);
     const fileHash = hashFileContents(csvText);
 
-    const { gameId } = await importGame(supabase, {
+    const { gameId } = await importGame(coachClient, {
       teamId: team.id,
-      coachUserId,
       gameDate: "2026-04-01",
       gameNumber: 1,
       opponent: "__verify_opponent__",
-      timeOfDay: "Afternoon",
       fileHash,
       lines,
     });
@@ -128,13 +142,11 @@ async function main() {
     // Renumber Merkal and re-import as "game 2" to confirm name-based
     // re-matching updates uniform_number instead of duplicating the entry.
     const renumbered = lines.map((l) => (l.lastName === "Merkal" ? { ...l, jerseyNumber: "99" } : l));
-    await importGame(supabase, {
+    await importGame(coachClient, {
       teamId: team.id,
-      coachUserId,
       gameDate: "2026-04-08",
       gameNumber: 2,
       opponent: "__verify_opponent__",
-      timeOfDay: "Morning",
       fileHash: hashFileContents(csvText + "-renumbered"),
       lines: renumbered,
     });

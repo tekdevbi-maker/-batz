@@ -245,7 +245,6 @@ export interface GameSummary {
   gameNumber: number;
   gameDate: string;
   opponent: string | null;
-  timeOfDay: string | null;
 }
 
 export interface BoxScoreLine {
@@ -260,7 +259,7 @@ export interface BoxScoreLine {
 export async function listGamesForTeam(supabase: SupabaseClient, teamId: string): Promise<GameSummary[]> {
   const { data, error } = await supabase
     .from("game")
-    .select("id, game_number, game_date, opponent, time_of_day")
+    .select("id, game_number, game_date, opponent")
     .eq("team_id", teamId)
     .order("game_number", { ascending: false });
   if (error) throw error;
@@ -269,7 +268,6 @@ export async function listGamesForTeam(supabase: SupabaseClient, teamId: string)
     gameNumber: g.game_number,
     gameDate: g.game_date,
     opponent: g.opponent,
-    timeOfDay: g.time_of_day,
   }));
 }
 
@@ -279,7 +277,7 @@ export async function getGameBoxScore(
 ): Promise<{ game: GameSummary; teamId: string; lines: BoxScoreLine[] }> {
   const { data: game, error: gameError } = await supabase
     .from("game")
-    .select("id, team_id, game_number, game_date, opponent, time_of_day")
+    .select("id, team_id, game_number, game_date, opponent")
     .eq("id", gameId)
     .single();
   if (gameError) throw gameError;
@@ -313,7 +311,6 @@ export async function getGameBoxScore(
       gameNumber: game.game_number,
       gameDate: game.game_date,
       opponent: game.opponent,
-      timeOfDay: game.time_of_day,
     },
     teamId: game.team_id,
     lines,

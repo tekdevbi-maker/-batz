@@ -40,7 +40,6 @@ export default function GameLogScreen() {
           <Text style={styles.gameRowText}>
             Game #{game.gameNumber}
             {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
-            {game.timeOfDay ? ` (${game.timeOfDay})` : ""}
           </Text>
         </Pressable>
       ))}

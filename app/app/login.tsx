@@ -89,6 +89,9 @@ export default function LoginScreen() {
       >
         {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Log In</Text>}
       </Pressable>
+      <Link href="/sign-up" style={styles.link}>
+        <Text>New to @Batz? Sign up here!</Text>
+      </Link>
       <Link href="/coach-register" style={styles.link}>
         <Text>New coach? Register your team</Text>
       </Link>

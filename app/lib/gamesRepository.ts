@@ -120,45 +120,61 @@ function namesMatch(stored: string | null, imported: string): boolean {
   return (stored ?? "").trim().toLowerCase() === imported.trim().toLowerCase();
 }
 
-// Auto-claim (spec: every imported player line is automatically claimed by
-// the importing coach -- name/uniform number come straight from the file,
-// no manual entry). Only ever touches a roster_entry with no player_id
-// yet; an already-claimed spot's real owner is never overwritten. New
-// players default to Private via the player table's column default.
-async function claimUnderCoach(
+// Auto-claim (spec: every imported player line is automatically claimed --
+// name/uniform number come straight from the file, no manual entry). Lands
+// on the team's Head Coach specifically, never whoever happens to be
+// running the import (could be an assistant coach) -- done via a
+// SECURITY DEFINER RPC since a plain client-side insert can't do that at
+// all ("parents can create their own player" requires parent_user_id =
+// auth.uid()). Only ever touches a roster_entry with no player_id yet; an
+// already-claimed spot's real owner is never overwritten. New players
+// default to Private via the player table's column default.
+// Two distinct roster spots can land on an identical default PlayerTag --
+// most commonly the same jersey number reused by a different real player
+// after the original left the team, since the tag is derived from
+// uniform number + team context, not from anything guaranteed unique
+// long-term. Rather than crash on the DB's unique constraint, disambiguate
+// by swapping in "0_1", "0_2", ... for the UniformNumber segment of the
+// tag until a free one is found.
+async function findFreePlayerTag(
+  supabase: SupabaseClient,
+  uniformNumber: number,
+  tagContext: Omit<Parameters<typeof generateDefaultPlayerTag>[0], "uniformNumber">
+): Promise<string> {
+  let candidate = generateDefaultPlayerTag({ ...tagContext, uniformNumber });
+  let n = 0;
+  // Safety cap -- should never realistically be hit, but guarantees this
+  // loop terminates instead of hammering the DB indefinitely.
+  while (n < 50) {
+    const { data, error } = await supabase
+      .from("player")
+      .select("id")
+      .eq("player_tag", candidate)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return candidate;
+    n += 1;
+    candidate = generateDefaultPlayerTag({ ...tagContext, uniformNumber: `0_${n}` });
+  }
+  throw new Error(`Could not find a free PlayerTag after ${n} attempts for uniform number ${uniformNumber}`);
+}
+
+async function claimUnderHeadCoach(
   supabase: SupabaseClient,
   rosterEntryId: string,
   uniformNumber: number,
   firstName: string,
   lastName: string,
-  coachUserId: string,
   tagContext: Omit<Parameters<typeof generateDefaultPlayerTag>[0], "uniformNumber">
 ): Promise<void> {
-  const playerTag = generateDefaultPlayerTag({ ...tagContext, uniformNumber });
-  const { data: player, error: playerError } = await supabase
-    .from("player")
-    .insert({
-      parent_user_id: coachUserId,
-      first_name: firstName || null,
-      last_name: lastName || null,
-      player_tag: playerTag,
-    })
-    .select("id")
-    .single();
-  if (playerError) throw playerError;
-
-  // Deliberately no team_membership insert here: the coach's team access
-  // already comes from coach_assignment, and team_membership specifically
-  // signals "claimed a player" or "joined as follower" for Home's role
-  // badge -- auto-claiming every rostered kid on import would mislabel the
-  // coach as "Parent" of all of them rather than just the technical owner
-  // pending transfer.
-  const { error: linkError } = await supabase
-    .from("roster_entry")
-    .update({ player_id: player.id })
-    .eq("id", rosterEntryId)
-    .is("player_id", null);
-  if (linkError) throw linkError;
+  const playerTag = await findFreePlayerTag(supabase, uniformNumber, tagContext);
+  const { error } = await supabase.rpc("auto_claim_roster_entry", {
+    p_roster_entry_id: rosterEntryId,
+    p_first_name: firstName,
+    p_last_name: lastName,
+    p_player_tag: playerTag,
+  });
+  if (error) throw error;
 }
 
 // Matches each imported line to a RosterEntry by name, not jersey number
@@ -167,12 +183,11 @@ async function claimUnderCoach(
 // matched entry's uniform_number is updated to the latest import. Creates
 // a roster_entry when no match exists. Every unclaimed spot touched here
 // (new or previously-imported-but-never-claimed) gets auto-claimed under
-// the importing coach.
+// the team's Head Coach.
 export async function matchOrCreateRosterEntries(
   supabase: SupabaseClient,
   teamId: string,
-  lines: ImportedBattingLine[],
-  coachUserId: string
+  lines: ImportedBattingLine[]
 ): Promise<string[]> {
   const { data: existing, error } = await supabase
     .from("roster_entry")
@@ -209,9 +224,18 @@ export async function matchOrCreateRosterEntries(
           .update({ uniform_number: importedNumber })
           .eq("id", match.id);
         if (updateError) throw updateError;
+        match.uniform_number = importedNumber;
       }
       if (!match.player_id) {
-        await claimUnderCoach(supabase, match.id, importedNumber, line.firstName, line.lastName, coachUserId, tagContext);
+        await claimUnderHeadCoach(supabase, match.id, importedNumber, line.firstName, line.lastName, tagContext);
+        // A GameChanger export can genuinely list the same player twice
+        // (e.g. a mid-game position change re-printing their row) -- mark
+        // this entry claimed in the in-memory list too, not just the DB,
+        // so a second occurrence later in this same file matches here
+        // instead of creating ANOTHER roster_entry and re-running
+        // claimUnderHeadCoach, which generated an identical PlayerTag and
+        // crashed on the unique constraint.
+        match.player_id = "pending";
       }
       continue;
     }
@@ -228,7 +252,16 @@ export async function matchOrCreateRosterEntries(
       .single();
     if (insertError) throw insertError;
     rosterEntryIds.push(created.id);
-    await claimUnderCoach(supabase, created.id, importedNumber, line.firstName, line.lastName, coachUserId, tagContext);
+    await claimUnderHeadCoach(supabase, created.id, importedNumber, line.firstName, line.lastName, tagContext);
+    // Same reasoning as above: this new entry must be visible to the
+    // matching logic for the rest of this loop, not just future imports.
+    rosterEntries.push({
+      id: created.id,
+      uniform_number: importedNumber,
+      first_name: line.firstName,
+      last_name: line.lastName,
+      player_id: "pending",
+    });
   }
 
   return rosterEntryIds;
@@ -236,11 +269,9 @@ export async function matchOrCreateRosterEntries(
 
 export interface ImportGameInput {
   teamId: string;
-  coachUserId: string;
   gameDate: string; // YYYY-MM-DD
   gameNumber: number;
   opponent: string | null;
-  timeOfDay: "Morning" | "Afternoon" | "Night";
   fileHash: string;
   lines: ImportedBattingLine[];
 }
@@ -249,7 +280,7 @@ export async function importGame(
   supabase: SupabaseClient,
   input: ImportGameInput
 ): Promise<{ gameId: string }> {
-  const rosterEntryIds = await matchOrCreateRosterEntries(supabase, input.teamId, input.lines, input.coachUserId);
+  const rosterEntryIds = await matchOrCreateRosterEntries(supabase, input.teamId, input.lines);
 
   const { data: game, error: gameError } = await supabase
     .from("game")
@@ -258,7 +289,6 @@ export async function importGame(
       game_date: input.gameDate,
       game_number: input.gameNumber,
       opponent: input.opponent,
-      time_of_day: input.timeOfDay,
       file_hash: input.fileHash,
     })
     .select("id")

@@ -58,6 +58,7 @@ export default function CoachRegisterScreen() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [leagues, setLeagues] = useState<League[]>([]);
   const [sanctioningBody, setSanctioningBody] = useState<SanctioningBody>(SANCTIONING_BODIES[0]);
@@ -98,6 +99,7 @@ export default function CoachRegisterScreen() {
     !!lastName &&
     !!email &&
     !!password &&
+    password === confirmPassword &&
     leagueChosen &&
     !!selectedDivisionTab &&
     !!teamName.trim() &&
@@ -203,6 +205,11 @@ export default function CoachRegisterScreen() {
       />
       <Text style={styles.label}>Password</Text>
       <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
+      <Text style={styles.label}>Confirm Password</Text>
+      <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+      {!!confirmPassword && password !== confirmPassword && (
+        <Text style={styles.error}>Passwords don't match.</Text>
+      )}
 
       <Dropdown
         label="Sanctioning Body"

@@ -50,6 +50,7 @@ export interface PlayerProfile extends PlayerDemographics {
   visibilityScope: "public" | "private";
   revealFullName: boolean;
   isOwner: boolean;
+  isOwnedByCoach: boolean;
   parentAttestedAt: string | null;
   seasons: PlayerSeasonLine[];
   careerCounts: BattingCounts;
@@ -136,6 +137,22 @@ export async function getPlayerProfile(
 
   const careerCounts = aggregateBattingCounts(seasons.map((s) => s.counts));
 
+  // Is the current owner a coach on the player's current team, rather
+  // than a real parent? Drives whether the Player Profile offers "Claim
+  // This Player" to a non-owner -- self-claim is only ever allowed while
+  // ownership is still the coach-auto-claimed default.
+  const currentTeamId = (seasons.find((s) => s.seasonStatus === "in_season") ?? seasons[0])?.teamId;
+  let isOwnedByCoach = false;
+  if (currentTeamId) {
+    const { data: coachRow } = await supabase
+      .from("coach_assignment")
+      .select("id")
+      .eq("team_id", currentTeamId)
+      .eq("user_id", player.parent_user_id)
+      .maybeSingle();
+    isOwnedByCoach = !!coachRow;
+  }
+
   const identity: PlayerIdentity = {
     playerTag: player.player_tag,
     firstName: player.first_name,
@@ -151,6 +168,7 @@ export async function getPlayerProfile(
     visibilityScope: player.visibility_scope,
     revealFullName: player.reveal_full_name,
     isOwner: player.parent_user_id === viewerUserId,
+    isOwnedByCoach,
     parentAttestedAt: player.parent_attested_at,
     seasons,
     careerCounts,
@@ -177,14 +195,30 @@ export interface MyPlayer {
   visibilityScope: "public" | "private";
 }
 
-export async function listMyPlayers(supabase: SupabaseClient, userId: string): Promise<MyPlayer[]> {
-  const { data, error } = await supabase
-    .from("player")
-    .select("id, player_tag, first_name, last_name, reveal_full_name, visibility_scope")
-    .eq("parent_user_id", userId)
-    .order("created_at");
-  if (error) throw error;
-  return (data ?? []).map((p: any) => ({
+export interface MyPlayersResult {
+  // Kids the user actually claimed themselves (real parent, or a coach who
+  // attested to their own kid via "I'm the Parent").
+  myPlayers: MyPlayer[];
+  // Roster spots a coach holds only as fallback owner (is_coach_fallback,
+  // see auto_claim_roster_entry / reassign_players_to_foster_parent) --
+  // never claimed by a real parent. Shown separately, and only while at
+  // least one of their teams is still in_season; once every team a
+  // fallback player is on has been marked season-complete, they're
+  // archived out of both lists entirely (the stats themselves aren't
+  // touched -- only Home's lists are filtered, same as Previous Teams
+  // doesn't delete anything).
+  myTeamPlayers: MyPlayer[];
+}
+
+function toMyPlayer(p: {
+  id: string;
+  player_tag: string;
+  first_name: string | null;
+  last_name: string | null;
+  reveal_full_name: boolean;
+  visibility_scope: "public" | "private";
+}): MyPlayer {
+  return {
     playerId: p.id,
     playerTag: p.player_tag,
     displayName: playerDisplayName({
@@ -194,7 +228,37 @@ export async function listMyPlayers(supabase: SupabaseClient, userId: string): P
       revealFullName: p.reveal_full_name,
     }),
     visibilityScope: p.visibility_scope,
-  }));
+  };
+}
+
+export async function listMyPlayers(supabase: SupabaseClient, userId: string): Promise<MyPlayersResult> {
+  const { data, error } = await supabase
+    .from("player")
+    .select("id, player_tag, first_name, last_name, reveal_full_name, visibility_scope, is_coach_fallback")
+    .eq("parent_user_id", userId)
+    .order("created_at");
+  if (error) throw error;
+
+  const players = data ?? [];
+  const fallbackPlayers = players.filter((p: any) => p.is_coach_fallback);
+  const fallbackIds = fallbackPlayers.map((p: any) => p.id);
+
+  const activeFallbackIds = new Set<string>();
+  if (fallbackIds.length > 0) {
+    const { data: rosterRows, error: rosterError } = await supabase
+      .from("roster_entry")
+      .select("player_id, team:team_id(season_status)")
+      .in("player_id", fallbackIds);
+    if (rosterError) throw rosterError;
+    for (const row of (rosterRows ?? []) as any[]) {
+      if (row.team?.season_status === "in_season") activeFallbackIds.add(row.player_id);
+    }
+  }
+
+  return {
+    myPlayers: players.filter((p: any) => !p.is_coach_fallback).map(toMyPlayer),
+    myTeamPlayers: fallbackPlayers.filter((p: any) => activeFallbackIds.has(p.id)).map(toMyPlayer),
+  };
 }
 
 export interface PlayerSearchResult {

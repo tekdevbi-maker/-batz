@@ -25,6 +25,7 @@ export default function Home() {
   const [previousCoachedTeams, setPreviousCoachedTeams] = useState<CoachedTeam[]>([]);
   const [previousMemberTeams, setPreviousMemberTeams] = useState<CoachedTeam[]>([]);
   const [myPlayers, setMyPlayers] = useState<MyPlayer[]>([]);
+  const [myTeamPlayers, setMyTeamPlayers] = useState<MyPlayer[]>([]);
 
   // useFocusEffect, not a plain useEffect keyed on session -- session
   // doesn't change when navigating back to an already-mounted Home screen
@@ -37,7 +38,12 @@ export default function Home() {
       listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
       listMyPreviousCoachedTeams(supabase, session.user.id).then(setPreviousCoachedTeams).catch(() => {});
       listMyPreviousMemberTeams(supabase, session.user.id).then(setPreviousMemberTeams).catch(() => {});
-      listMyPlayers(supabase, session.user.id).then(setMyPlayers).catch(() => {});
+      listMyPlayers(supabase, session.user.id)
+        .then(({ myPlayers, myTeamPlayers }) => {
+          setMyPlayers(myPlayers);
+          setMyTeamPlayers(myTeamPlayers);
+        })
+        .catch(() => {});
     }, [session])
   );
 
@@ -131,9 +137,26 @@ export default function Home() {
 
       {myPlayers.length > 0 && (
         <>
-          <Text style={styles.label}>Players</Text>
+          <Text style={styles.label}>My Players</Text>
           <View style={styles.tileGrid}>
             {myPlayers.map((p) => (
+              <Pressable key={p.playerId} style={styles.playerTile} onPress={() => router.push(`/player/${p.playerId}`)}>
+                <Text style={styles.playerTileName} numberOfLines={2}>
+                  {p.displayName}
+                </Text>
+                {p.visibilityScope === "private" && <Text style={styles.playerTilePrivate}>(private)</Text>}
+              </Pressable>
+            ))}
+          </View>
+        </>
+      )}
+
+      {myTeamPlayers.length > 0 && (
+        <>
+          <Text style={styles.label}>My Team Players</Text>
+          <Text style={styles.hint}>Unclaimed roster spots you're holding for a parent to claim.</Text>
+          <View style={styles.tileGrid}>
+            {myTeamPlayers.map((p) => (
               <Pressable key={p.playerId} style={styles.playerTile} onPress={() => router.push(`/player/${p.playerId}`)}>
                 <Text style={styles.playerTileName} numberOfLines={2}>
                   {p.displayName}

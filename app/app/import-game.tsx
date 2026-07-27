@@ -8,7 +8,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Modal,
   Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,7 +16,7 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { parseGameChangerBattingCsv, type ImportedBattingLine } from "../lib/gameChangerImport";
-import { hashFileContents } from "../lib/fileHash";
+import { hashParsedImport } from "../lib/fileHash";
 import { MLB_TEAMS } from "../lib/mlbTeams";
 import { formatDateDisplay, parseLocalIsoDate, toLocalIsoDate, todayIso } from "../lib/dateFormat";
 import { colors } from "../lib/theme";
@@ -31,9 +30,6 @@ import {
   listRecentGames,
   type ExistingGameSummary,
 } from "../lib/gamesRepository";
-
-type TimeOfDay = "Morning" | "Afternoon" | "Night";
-const TIME_OPTIONS: TimeOfDay[] = ["Morning", "Afternoon", "Night"];
 
 // Supabase/PostgREST errors are plain objects with a `.message`, not
 // `instanceof Error` -- String(err) on those gives "[object Object]".
@@ -52,17 +48,15 @@ export default function ImportGameScreen() {
   const [showIosDatePicker, setShowIosDatePicker] = useState(false);
   const [gameNumber, setGameNumber] = useState("1");
   const [opponent, setOpponent] = useState("");
-  const [customOpponent, setCustomOpponent] = useState(false);
-  const [showOpponentPicker, setShowOpponentPicker] = useState(false);
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("Afternoon");
+  const [showOpponentSuggestions, setShowOpponentSuggestions] = useState(false);
 
   const [lastGame, setLastGame] = useState<ExistingGameSummary | null>(null);
   const [divisionOpponents, setDivisionOpponents] = useState<Array<{ id: string; name: string }>>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [fileName, setFileName] = useState<string | null>(null);
-  const [fileText, setFileText] = useState<string | null>(null);
   const [parsedLines, setParsedLines] = useState<ImportedBattingLine[] | null>(null);
+  const [fileHash, setFileHash] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [duplicateFileWarning, setDuplicateFileWarning] = useState<ExistingGameSummary | null>(null);
   const [sameDateGames, setSameDateGames] = useState<ExistingGameSummary[]>([]);
@@ -148,6 +142,7 @@ export default function ImportGameScreen() {
     setParseError(null);
     setDuplicateFileWarning(null);
     setParsedLines(null);
+    setFileHash(null);
     setSubmitSuccess(false);
     setSubmitError(null);
 
@@ -171,20 +166,23 @@ export default function ImportGameScreen() {
         await LegacyFileSystem.copyAsync({ from: uri, to: localUri });
         text = await LegacyFileSystem.readAsStringAsync(localUri);
       }
-      setFileText(text);
 
-      // Layer 1 duplicate check (spec Section 3a): byte-for-byte, before parsing.
-      const fileHash = hashFileContents(text);
+      const lines = parseGameChangerBattingCsv(text);
+
+      // Duplicate check: hash the filename plus every parsed non-blank
+      // cell, so a re-export with only incidental formatting differences
+      // still gets caught, unlike a raw byte-for-byte hash.
+      const hash = hashParsedImport(name, lines);
       if (teamId) {
-        const duplicate = await findDuplicateFileImport(supabase, teamId, fileHash);
+        const duplicate = await findDuplicateFileImport(supabase, teamId, hash);
         if (duplicate) {
           setDuplicateFileWarning(duplicate);
           return;
         }
       }
 
-      const lines = parseGameChangerBattingCsv(text);
       setParsedLines(lines);
+      setFileHash(hash);
     } catch (err) {
       setParseError(errorMessage(err));
     }
@@ -202,27 +200,35 @@ export default function ImportGameScreen() {
 
   const canSubmit =
     !!teamId &&
-    !!fileText &&
     !!parsedLines &&
+    !!fileHash &&
     !duplicateFileWarning &&
     !submitting &&
     gameDate.length === 10 &&
     gameNumber.length > 0 &&
-    (customOpponent ? opponent.trim().length > 0 : opponent.length > 0);
+    opponent.trim().length > 0;
+
+  const opponentSuggestions = (() => {
+    const query = opponent.trim().toLowerCase();
+    if (!query) return [];
+    const names = [
+      ...divisionOpponents.map((team) => team.name),
+      ...MLB_TEAMS.filter((team) => !divisionOpponents.some((d) => d.name === team)),
+    ];
+    return names.filter((name) => name.toLowerCase().includes(query) && name !== opponent).slice(0, 8);
+  })();
 
   async function handleSubmit() {
-    if (!teamId || !fileText || !parsedLines || !session) return;
+    if (!teamId || !parsedLines || !fileHash || !session) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       await importGame(supabase, {
         teamId,
-        coachUserId: session.user.id,
         gameDate,
         gameNumber: Number.parseInt(gameNumber, 10),
         opponent: opponent.trim() || null,
-        timeOfDay,
-        fileHash: hashFileContents(fileText),
+        fileHash,
         lines: parsedLines,
       });
       setSubmitSuccess(true);
@@ -296,67 +302,34 @@ export default function ImportGameScreen() {
       )}
 
       <Text style={styles.label}>Opponent</Text>
-      <View style={styles.chipRow}>
-        {divisionOpponents.map((team) => (
-          <Pressable
-            key={team.id}
-            style={[styles.chip, opponent === team.name && !customOpponent && styles.chipSelected]}
-            onPress={() => {
-              setOpponent(team.name);
-              setCustomOpponent(false);
-            }}
-          >
-            <Text style={styles.chipText}>{team.name}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          style={[styles.chip, customOpponent && styles.chipSelected]}
-          onPress={() => setShowOpponentPicker(true)}
-        >
-          <Text style={styles.chipText}>{customOpponent && opponent ? opponent : "Other (MLB team)..."}</Text>
-        </Pressable>
-      </View>
-
-      <Modal
-        visible={showOpponentPicker}
-        animationType="slide"
-        onRequestClose={() => setShowOpponentPicker(false)}
-      >
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Select Opponent</Text>
-          <ScrollView>
-            {MLB_TEAMS.map((team) => (
-              <Pressable
-                key={team}
-                style={styles.modalRow}
-                onPress={() => {
-                  setOpponent(team);
-                  setCustomOpponent(true);
-                  setShowOpponentPicker(false);
-                }}
-              >
-                <Text style={styles.modalRowText}>{team}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <Pressable style={styles.secondaryButton} onPress={() => setShowOpponentPicker(false)}>
-            <Text style={styles.secondaryButtonText}>Cancel</Text>
-          </Pressable>
+      <TextInput
+        style={styles.input}
+        value={opponent}
+        onChangeText={(text) => {
+          setOpponent(text);
+          setShowOpponentSuggestions(true);
+        }}
+        onFocus={() => setShowOpponentSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowOpponentSuggestions(false), 150)}
+        placeholder="Enter opponent name"
+        placeholderTextColor={colors.textSecondary}
+      />
+      {showOpponentSuggestions && opponentSuggestions.length > 0 && (
+        <View style={styles.suggestionList}>
+          {opponentSuggestions.map((name) => (
+            <Pressable
+              key={name}
+              style={styles.suggestionRow}
+              onPress={() => {
+                setOpponent(name);
+                setShowOpponentSuggestions(false);
+              }}
+            >
+              <Text style={styles.suggestionText}>{name}</Text>
+            </Pressable>
+          ))}
         </View>
-      </Modal>
-
-      <Text style={styles.label}>Time of Day</Text>
-      <View style={styles.chipRow}>
-        {TIME_OPTIONS.map((option) => (
-          <Pressable
-            key={option}
-            style={[styles.chip, timeOfDay === option && styles.chipSelected]}
-            onPress={() => setTimeOfDay(option)}
-          >
-            <Text style={styles.chipText}>{option}</Text>
-          </Pressable>
-        ))}
-      </View>
+      )}
 
       <Text style={styles.label}>GameChanger CSV</Text>
       {/*
@@ -464,10 +437,20 @@ const styles = StyleSheet.create({
   },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   chipText: { color: colors.textPrimary },
-  modalContainer: { flex: 1, padding: 20, paddingTop: 48, backgroundColor: colors.background },
-  modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: 12, color: colors.textPrimary },
-  modalRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  modalRowText: { fontSize: 18, color: colors.textPrimary },
+  suggestionList: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    marginTop: -4,
+  },
+  suggestionRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestionText: { color: colors.textPrimary, fontSize: 15 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.border,

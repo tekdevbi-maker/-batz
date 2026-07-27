@@ -9,7 +9,7 @@ function sanitize(value: string): string {
 }
 
 export interface PlayerTagInput {
-  uniformNumber: number;
+  uniformNumber: number | string;
   division: string;
   teamName: string;
   season: string;

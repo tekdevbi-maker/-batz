@@ -170,3 +170,25 @@ export async function attestPlayerParent(supabase: SupabaseClient, playerId: str
   const { error } = await supabase.rpc("attest_player_parent", { p_player_id: playerId });
   if (error) throw error;
 }
+
+export class AlreadyClaimedByParentError extends Error {}
+
+// Self-service: any signed-in user can claim a roster spot themselves,
+// without coach approval -- but only while the current owner is a coach
+// on that team (auto-claimed-at-import default), never a real parent.
+// Auto-joins the team (same as register_player) and clears any prior
+// coach attestation, since the new owner hasn't attested.
+export async function claimPlayerAsParent(supabase: SupabaseClient, rosterEntryId: string): Promise<void> {
+  const { error } = await supabase.rpc("parent_claim_player", { p_roster_entry_id: rosterEntryId });
+  if (error) {
+    if (error.message?.includes("already_claimed_by_a_parent")) {
+      throw new AlreadyClaimedByParentError(
+        "This player has already been claimed by a parent. Ask that team's coach if this was a mistake."
+      );
+    }
+    if (error.message?.includes("team_at_capacity")) {
+      throw new TeamAtCapacityError("This team's 100-member limit has been reached.");
+    }
+    throw error;
+  }
+}
