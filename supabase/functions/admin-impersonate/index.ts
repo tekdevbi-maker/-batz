@@ -72,10 +72,12 @@ Deno.serve(async (req) => {
   const { data: sessionData, error: verifyError } = await anonClient.auth.verifyOtp({
     type: "magiclink",
     token_hash: linkData.properties.hashed_token,
-    email: targetEmail,
   });
   if (verifyError || !sessionData.session) {
-    return new Response(JSON.stringify({ error: "could_not_create_session" }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: "could_not_create_session", detail: verifyError?.message ?? "no_session" }),
+      { status: 500 }
+    );
   }
 
   await serviceClient.from("admin_impersonation_log").insert({

@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 
@@ -27,9 +28,10 @@ function Gate({ children }: { children: React.ReactNode }) {
 // requiring a re-login.
 function ImpersonationBanner() {
   const { impersonatingEmail, returnToAdmin } = useAuth();
+  const insets = useSafeAreaInsets();
   if (!impersonatingEmail) return null;
   return (
-    <View style={bannerStyles.banner}>
+    <View style={[bannerStyles.banner, { paddingTop: insets.top + 8 }]}>
       <Text style={bannerStyles.text} numberOfLines={1}>
         Viewing as {impersonatingEmail}
       </Text>

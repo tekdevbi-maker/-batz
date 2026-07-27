@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // itself, which otherwise only ever says "non-2xx status code".
       const context = (error as { context?: Response }).context;
       const body = await context?.json().catch(() => null);
-      throw new Error(body?.error ?? error.message);
+      throw new Error(body?.detail ?? body?.error ?? error.message);
     }
     if (data?.error) throw new Error(data.error);
 
