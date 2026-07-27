@@ -3,7 +3,13 @@ import { View, Text, Pressable, StyleSheet, ScrollView, Image } from "react-nati
 import { Link, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
-import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
+import {
+  listMyCoachedTeams,
+  listMyMemberTeams,
+  listMyPreviousCoachedTeams,
+  listMyPreviousMemberTeams,
+  type CoachedTeam,
+} from "../lib/teamsRepository";
 import { listMyPlayers, type MyPlayer } from "../lib/playerRepository";
 import { colors } from "../lib/theme";
 
@@ -16,6 +22,8 @@ export default function Home() {
   const { session, isAdmin, signOut } = useRequireAuth();
   const [coachedTeams, setCoachedTeams] = useState<CoachedTeam[]>([]);
   const [memberTeams, setMemberTeams] = useState<CoachedTeam[]>([]);
+  const [previousCoachedTeams, setPreviousCoachedTeams] = useState<CoachedTeam[]>([]);
+  const [previousMemberTeams, setPreviousMemberTeams] = useState<CoachedTeam[]>([]);
   const [myPlayers, setMyPlayers] = useState<MyPlayer[]>([]);
 
   // useFocusEffect, not a plain useEffect keyed on session -- session
@@ -27,6 +35,8 @@ export default function Home() {
       if (!session) return;
       listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {});
       listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
+      listMyPreviousCoachedTeams(supabase, session.user.id).then(setPreviousCoachedTeams).catch(() => {});
+      listMyPreviousMemberTeams(supabase, session.user.id).then(setPreviousMemberTeams).catch(() => {});
       listMyPlayers(supabase, session.user.id).then(setMyPlayers).catch(() => {});
     }, [session])
   );
@@ -44,6 +54,21 @@ export default function Home() {
   const teamCards: TeamCard[] = Array.from(teamById.values()).map((t) => ({
     ...t,
     role: Array.from(roleByTeamId.get(t.id) ?? []).join(" & "),
+  }));
+
+  // Same combine-and-dedupe treatment for ended-season teams -- Previous
+  // Teams follows the exact same layout as Teams, just filtered to
+  // season_status = 'ended' (see markSeasonEnded in teamsRepository.ts).
+  const previousRoleByTeamId = new Map<string, Set<string>>();
+  for (const t of previousCoachedTeams)
+    previousRoleByTeamId.set(t.id, (previousRoleByTeamId.get(t.id) ?? new Set()).add("Coach"));
+  for (const t of previousMemberTeams)
+    previousRoleByTeamId.set(t.id, (previousRoleByTeamId.get(t.id) ?? new Set()).add("Parent"));
+  const previousTeamById = new Map<string, CoachedTeam>();
+  for (const t of [...previousCoachedTeams, ...previousMemberTeams]) previousTeamById.set(t.id, t);
+  const previousTeamCards: TeamCard[] = Array.from(previousTeamById.values()).map((t) => ({
+    ...t,
+    role: Array.from(previousRoleByTeamId.get(t.id) ?? []).join(" & "),
   }));
 
   return (
@@ -82,6 +107,26 @@ export default function Home() {
             </Pressable>
           ))}
         </View>
+      )}
+
+      {previousTeamCards.length > 0 && (
+        <>
+          <Text style={styles.label}>Previous Teams</Text>
+          <View style={styles.tileGrid}>
+            {previousTeamCards.map((team) => (
+              <Pressable key={team.id} style={styles.teamTile} onPress={() => router.push(`/team/${team.id}`)}>
+                <Text style={styles.teamName} numberOfLines={2}>
+                  {team.name}
+                </Text>
+                {team.divisionName ? <Text style={styles.teamMeta}>{team.divisionName}</Text> : null}
+                <Text style={styles.teamMeta}>
+                  {team.season} {team.year}
+                </Text>
+                <Text style={styles.teamRole}>{team.role}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
       )}
 
       {myPlayers.length > 0 && (

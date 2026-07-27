@@ -1,11 +1,17 @@
 import { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { updateTeamName, uploadTeamLogo, updateTeamDisplayMode, type PlayerDisplayMode } from "../../../lib/teamsRepository";
+import {
+  updateTeamName,
+  uploadTeamLogo,
+  updateTeamDisplayMode,
+  markSeasonEnded,
+  type PlayerDisplayMode,
+} from "../../../lib/teamsRepository";
 import CategoryTabs from "../../../components/CategoryTabs";
 import { colors } from "../../../lib/theme";
 
@@ -24,11 +30,14 @@ function errorMessage(err: unknown): string {
 export default function TeamSettingsScreen() {
   useRequireAuth();
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
+  const router = useRouter();
 
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<PlayerDisplayMode>("all");
   const [savingDisplayMode, setSavingDisplayMode] = useState(false);
+  const [seasonStatus, setSeasonStatus] = useState<string>("in_season");
+  const [endingSeason, setEndingSeason] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +50,7 @@ export default function TeamSettingsScreen() {
       if (!teamId) return;
       supabase
         .from("team")
-        .select("name, logo_url, player_display_mode")
+        .select("name, logo_url, player_display_mode, season_status")
         .eq("id", teamId)
         .single()
         .then(({ data, error: err }) => {
@@ -51,11 +60,40 @@ export default function TeamSettingsScreen() {
             setName(data.name);
             setLogoUrl(data.logo_url);
             setDisplayMode(data.player_display_mode);
+            setSeasonStatus(data.season_status);
           }
           setLoaded(true);
         });
     }, [teamId])
   );
+
+  function confirmEndSeason() {
+    Alert.alert(
+      "Mark season complete?",
+      `${name} will move to Previous Teams. This can't be undone from here.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Mark Complete",
+          style: "destructive",
+          onPress: async () => {
+            if (!teamId) return;
+            setEndingSeason(true);
+            setError(null);
+            try {
+              await markSeasonEnded(supabase, teamId);
+              setSeasonStatus("ended");
+              router.replace("/");
+            } catch (err) {
+              setError(errorMessage(err));
+            } finally {
+              setEndingSeason(false);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   async function handleChangeDisplayMode(mode: PlayerDisplayMode) {
     if (!teamId) return;
@@ -179,6 +217,28 @@ export default function TeamSettingsScreen() {
       <Text selectable style={styles.code}>
         {Linking.createURL(`/join/${teamId}`)}
       </Text>
+
+      <Text style={styles.label}>Season</Text>
+      {seasonStatus === "ended" ? (
+        <Text style={styles.hint}>This team's season is complete -- it's in Previous Teams on Home.</Text>
+      ) : (
+        <>
+          <Text style={styles.hint}>
+            Once the season is over, mark it complete to move this team to Previous Teams on Home.
+          </Text>
+          <Pressable
+            style={[styles.dangerButton, endingSeason && styles.buttonDisabled]}
+            disabled={endingSeason}
+            onPress={confirmEndSeason}
+          >
+            {endingSeason ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Mark Season Complete</Text>
+            )}
+          </Pressable>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -226,6 +286,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
+  dangerButton: { backgroundColor: colors.danger, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 8 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
   secondaryButton: {

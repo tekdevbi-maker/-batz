@@ -8,10 +8,10 @@ export interface CoachedTeam {
   year: number;
 }
 
-function inSeasonOnly(rows: any[]): CoachedTeam[] {
+function byStatus(rows: any[], status: "in_season" | "ended"): CoachedTeam[] {
   return rows
     .map((row) => row.team)
-    .filter((team) => team && team.season_status === "in_season")
+    .filter((team) => team && team.season_status === status)
     .map((team) => ({
       id: team.id,
       name: team.name,
@@ -21,16 +21,16 @@ function inSeasonOnly(rows: any[]): CoachedTeam[] {
     }));
 }
 
-// Teams the signed-in user coaches. Only in-season teams surface here
-// (spec Section 6: "Only in-season teams appear on Home" -- historical
-// access still exists, just not on this list).
+// Teams the signed-in user coaches. Only in-season teams surface here by
+// default (spec Section 6: "Only in-season teams appear on Home") --
+// listMyPreviousCoachedTeams below covers the ended ones (Previous Teams).
 export async function listMyCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
     .from("coach_assignment")
     .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
     .eq("user_id", userId);
   if (error) throw error;
-  return inSeasonOnly(data ?? []);
+  return byStatus(data ?? [], "in_season");
 }
 
 // Teams the signed-in user has claimed a player on (spec Section 6: "as
@@ -41,7 +41,35 @@ export async function listMyMemberTeams(supabase: SupabaseClient, userId: string
     .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
     .eq("user_id", userId);
   if (error) throw error;
-  return inSeasonOnly(data ?? []);
+  return byStatus(data ?? [], "in_season");
+}
+
+// Ended-season counterparts, backing Home's "Previous Teams" section.
+export async function listMyPreviousCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
+  const { data, error } = await supabase
+    .from("coach_assignment")
+    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return byStatus(data ?? [], "ended");
+}
+
+export async function listMyPreviousMemberTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
+  const { data, error } = await supabase
+    .from("team_membership")
+    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return byStatus(data ?? [], "ended");
+}
+
+// Coach-only (RLS: "team coaches can update their team"). One-way in the
+// UI (no "reopen" flow) -- ending a season is what moves a team from
+// Home's Teams grid to Previous Teams and stops it counting toward the
+// "only in-season teams" visibility rules used elsewhere.
+export async function markSeasonEnded(supabase: SupabaseClient, teamId: string): Promise<void> {
+  const { error } = await supabase.from("team").update({ season_status: "ended" }).eq("id", teamId);
+  if (error) throw error;
 }
 
 export async function updateTeamName(supabase: SupabaseClient, teamId: string, name: string): Promise<void> {
