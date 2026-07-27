@@ -58,9 +58,14 @@ export default function Home() {
 
       <View style={styles.teamsHeaderRow}>
         <Text style={styles.label}>Teams</Text>
-        <Pressable onPress={() => router.push("/register-team")}>
-          <Text style={styles.addTeamLink}>+ Add a Team</Text>
-        </Pressable>
+        <View style={styles.teamsHeaderLinks}>
+          <Pressable onPress={() => router.push("/join-team")}>
+            <Text style={styles.addTeamLink}>Join a Team</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push("/register-team")}>
+            <Text style={styles.addTeamLink}>+ Add a Team</Text>
+          </Pressable>
+        </View>
       </View>
       {teamCards.length > 0 && (
         <View style={styles.tileGrid}>
@@ -120,6 +125,7 @@ const styles = StyleSheet.create({
   hint: { color: colors.textSecondary, textAlign: "center" },
   label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
   teamsHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  teamsHeaderLinks: { flexDirection: "row", gap: 16 },
   addTeamLink: { color: colors.accent, fontWeight: "600", fontSize: 14, marginTop: 12 },
   buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
   secondaryButton: {

@@ -74,6 +74,7 @@ export default function RootLayout() {
           <Stack.Screen name="login" options={{ title: "Log In" }} />
           <Stack.Screen name="coach-register" options={{ title: "Register as Coach" }} />
           <Stack.Screen name="register-team" options={{ title: "Register a New Team" }} />
+          <Stack.Screen name="join-team" options={{ title: "Join a Team" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
           <Stack.Screen name="shared-csv" options={{ title: "Import Game" }} />
           <Stack.Screen name="admin" options={{ title: "League/Division Admin" }} />
