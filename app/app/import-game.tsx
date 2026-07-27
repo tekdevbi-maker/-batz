@@ -12,7 +12,6 @@ import {
   Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as DocumentPicker from "expo-document-picker";
 import * as LegacyFileSystem from "expo-file-system/legacy";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useRequireAuth } from "../lib/AuthContext";
@@ -153,10 +152,10 @@ export default function ImportGameScreen() {
     setSubmitError(null);
 
     try {
-      // fetch() is the proven-reliable path (works on web and for the
-      // file:// URIs DocumentPicker normally returns) -- fall back to a
-      // copy-then-read for content:// URIs from an incoming "Open with"
-      // intent. Ruled out via real device/emulator testing, in order:
+      // fetch() is the proven-reliable path (works on web and for plain
+      // file:// URIs) -- fall back to a copy-then-read for content://
+      // URIs from an incoming "Open with" intent. Ruled out via real
+      // device/emulator testing, in order:
       // the new File class (web: "this.validatePath is not a function";
       // Android: SecurityException reading an externally-granted
       // content:// URI, since File is scoped to app-owned files) and
@@ -189,17 +188,6 @@ export default function ImportGameScreen() {
     } catch (err) {
       setParseError(errorMessage(err));
     }
-  }
-
-  async function pickFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ["text/csv", "text/comma-separated-values", "application/vnd.ms-excel", "text/plain"],
-      copyToCacheDirectory: true,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-
-    const asset = result.assets[0];
-    await loadFile(asset.uri, asset.name);
   }
 
   // Arrived here from the OS "Open With @Batz" file-open flow (via
@@ -371,19 +359,14 @@ export default function ImportGameScreen() {
 
       <Text style={styles.label}>GameChanger CSV</Text>
       {/*
-        Manual file-picking (pickFile(), still defined below) is
-        deliberately not wired into the UI: a coach choosing an arbitrary
-        local file could hand-edit stats in a spreadsheet app before
-        "importing" it, undermining the app's core fairness/auditability
-        mission (spec Section 7's founding rationale). The only sanctioned
-        path is exporting directly from GameChanger and sharing straight
-        to @Batz (Sprint 9's "Open With"/Share intent handling), which
-        this screen only ever receives via incomingFileUri below.
-        Re-enable by restoring this button if a manual fallback is ever
-        needed:
-        <Pressable style={styles.secondaryButton} onPress={pickFile}>
-          <Text>{fileName ?? "Choose file..."}</Text>
-        </Pressable>
+        No manual file-picker here by design: a coach choosing an
+        arbitrary local file could hand-edit stats in a spreadsheet app
+        before "importing" it, undermining the app's core
+        fairness/auditability mission (spec Section 7's founding
+        rationale). The only sanctioned path is exporting directly from
+        GameChanger and sharing straight to @Batz (the "Open With"/Share
+        intent handling), which this screen only ever receives via
+        incomingFileUri below.
       */}
       {fileName ? (
         <Text style={styles.hint}>File: {fileName}</Text>
