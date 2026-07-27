@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 
@@ -13,8 +13,47 @@ function Gate({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
-  return <>{children}</>;
+  return (
+    <>
+      <ImpersonationBanner />
+      {children}
+    </>
+  );
 }
+
+// Persistent reminder that the active session belongs to another user,
+// not the admin -- shown above everything else while impersonating, with
+// a one-tap way back that restores the stashed admin session instead of
+// requiring a re-login.
+function ImpersonationBanner() {
+  const { impersonatingEmail, returnToAdmin } = useAuth();
+  if (!impersonatingEmail) return null;
+  return (
+    <View style={bannerStyles.banner}>
+      <Text style={bannerStyles.text} numberOfLines={1}>
+        Viewing as {impersonatingEmail}
+      </Text>
+      <Pressable style={bannerStyles.button} onPress={() => returnToAdmin()}>
+        <Text style={bannerStyles.buttonText}>Return to Admin</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const bannerStyles = StyleSheet.create({
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.warningBg,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  text: { flex: 1, color: colors.warningText, fontWeight: "600", fontSize: 13 },
+  button: { borderWidth: 1, borderColor: colors.warningText, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 10 },
+  buttonText: { color: colors.warningText, fontWeight: "700", fontSize: 12 },
+});
 
 export default function RootLayout() {
   return (

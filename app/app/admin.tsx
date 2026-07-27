@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
@@ -142,13 +143,33 @@ function LeagueRow({ league, onChanged }: { league: League; onChanged: () => voi
 }
 
 export default function AdminScreen() {
-  const { isAdmin, loading } = useRequireAuth();
+  const { isAdmin, loading, impersonate } = useRequireAuth();
+  const router = useRouter();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [careRequests, setCareRequests] = useState<CustomerCareRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [newLeagueName, setNewLeagueName] = useState("");
   const [newLeagueBody, setNewLeagueBody] = useState<SanctioningBody>(SANCTIONING_BODIES[0]);
+
+  const [impersonateEmail, setImpersonateEmail] = useState("");
+  const [impersonateBusy, setImpersonateBusy] = useState(false);
+  const [impersonateError, setImpersonateError] = useState<string | null>(null);
+
+  async function handleImpersonate() {
+    if (!impersonateEmail.trim()) return;
+    setImpersonateBusy(true);
+    setImpersonateError(null);
+    try {
+      await impersonate(impersonateEmail.trim());
+      setImpersonateEmail("");
+      router.replace("/");
+    } catch (err) {
+      setImpersonateError(errorMessage(err));
+    } finally {
+      setImpersonateBusy(false);
+    }
+  }
 
   function refresh() {
     listLeagues(supabase).then(setLeagues).catch((err) => setError(errorMessage(err)));
@@ -190,6 +211,29 @@ export default function AdminScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Impersonate a User</Text>
+      <Text style={styles.hint}>
+        Sign in as this user to see exactly what they see while debugging a report. You'll get a "Return
+        to Admin" banner to switch back at any time.
+      </Text>
+      <TextInput
+        style={styles.input}
+        value={impersonateEmail}
+        onChangeText={setImpersonateEmail}
+        placeholder="user@example.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+      />
+      {impersonateError && <Text style={styles.error}>{impersonateError}</Text>}
+      <Pressable
+        style={[styles.button, (!impersonateEmail.trim() || impersonateBusy) && styles.buttonDisabled]}
+        disabled={!impersonateEmail.trim() || impersonateBusy}
+        onPress={handleImpersonate}
+      >
+        {impersonateBusy ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Impersonate</Text>}
+      </Pressable>
+
       <Text style={styles.title}>Leagues</Text>
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -268,6 +312,7 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textPrimary },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 12 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,

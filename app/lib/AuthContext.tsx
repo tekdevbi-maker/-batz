@@ -14,6 +14,9 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (newPassword: string) => Promise<void>;
+  impersonatingEmail: string | null;
+  impersonate: (targetEmail: string) => Promise<void>;
+  returnToAdmin: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -23,6 +26,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  // The admin's own session, stashed while a target user's session is
+  // active, so "Return to Admin" is a restore rather than a re-login.
+  const [adminSession, setAdminSession] = useState<Session | null>(null);
+  const [impersonatingEmail, setImpersonatingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -88,6 +95,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsPasswordRecovery(false);
   }
 
+  // Admin-only: swaps the active session to the target user's, via the
+  // admin-impersonate Edge Function (the only place the service role key
+  // is ever used). Stashes the current (admin) session first so
+  // returnToAdmin() can restore it without a re-login.
+  async function impersonate(targetEmail: string) {
+    if (!session) throw new Error("Not signed in.");
+    const { data, error } = await supabase.functions.invoke("admin-impersonate", {
+      body: { targetEmail },
+    });
+    if (error) {
+      // Supabase's client doesn't unwrap a non-2xx function response body
+      // automatically -- the real reason (e.g. "user_not_found") is JSON
+      // on the raw Response it attaches as `.context`, not on `error`
+      // itself, which otherwise only ever says "non-2xx status code".
+      const context = (error as { context?: Response }).context;
+      const body = await context?.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    if (data?.error) throw new Error(data.error);
+
+    setAdminSession(session);
+    const { error: setError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+    if (setError) throw setError;
+    setImpersonatingEmail(data.email);
+  }
+
+  async function returnToAdmin() {
+    if (!adminSession) return;
+    const { error } = await supabase.auth.setSession({
+      access_token: adminSession.access_token,
+      refresh_token: adminSession.refresh_token,
+    });
+    if (error) throw error;
+    setAdminSession(null);
+    setImpersonatingEmail(null);
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -100,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         requestPasswordReset,
         completePasswordReset,
+        impersonatingEmail,
+        impersonate,
+        returnToAdmin,
       }}
     >
       {children}
