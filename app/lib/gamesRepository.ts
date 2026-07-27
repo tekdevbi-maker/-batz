@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ImportedBattingLine } from "./gameChangerImport";
 import { aggregateBattingCounts, type BattingCounts } from "./stats";
 import { calculateStarTiers } from "./starTiers";
+import { generateDefaultPlayerTag } from "./playerTag";
+import { getTeamJoinContext } from "./claimRepository";
 
 export interface ExistingGameSummary {
   id: string;
@@ -111,28 +113,81 @@ interface RosterEntryRow {
   uniform_number: number;
   first_name: string | null;
   last_name: string | null;
+  player_id: string | null;
 }
 
 function namesMatch(stored: string | null, imported: string): boolean {
   return (stored ?? "").trim().toLowerCase() === imported.trim().toLowerCase();
 }
 
+// Auto-claim (spec: every imported player line is automatically claimed by
+// the importing coach -- name/uniform number come straight from the file,
+// no manual entry). Only ever touches a roster_entry with no player_id
+// yet; an already-claimed spot's real owner is never overwritten. New
+// players default to Private via the player table's column default.
+async function claimUnderCoach(
+  supabase: SupabaseClient,
+  rosterEntryId: string,
+  uniformNumber: number,
+  firstName: string,
+  lastName: string,
+  coachUserId: string,
+  tagContext: Omit<Parameters<typeof generateDefaultPlayerTag>[0], "uniformNumber">
+): Promise<void> {
+  const playerTag = generateDefaultPlayerTag({ ...tagContext, uniformNumber });
+  const { data: player, error: playerError } = await supabase
+    .from("player")
+    .insert({
+      parent_user_id: coachUserId,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      player_tag: playerTag,
+    })
+    .select("id")
+    .single();
+  if (playerError) throw playerError;
+
+  // Deliberately no team_membership insert here: the coach's team access
+  // already comes from coach_assignment, and team_membership specifically
+  // signals "claimed a player" or "joined as follower" for Home's role
+  // badge -- auto-claiming every rostered kid on import would mislabel the
+  // coach as "Parent" of all of them rather than just the technical owner
+  // pending transfer.
+  const { error: linkError } = await supabase
+    .from("roster_entry")
+    .update({ player_id: player.id })
+    .eq("id", rosterEntryId)
+    .is("player_id", null);
+  if (linkError) throw linkError;
+}
+
 // Matches each imported line to a RosterEntry by name, not jersey number
 // (spec Section 3a: "Number... display only, not identity" / "Last, First
 // ... roster matching") -- numbers can be reassigned game-to-game, so a
 // matched entry's uniform_number is updated to the latest import. Creates
-// an unclaimed roster_entry (player_id null) when no match exists, same as
-// a never-claimed roster spot.
+// a roster_entry when no match exists. Every unclaimed spot touched here
+// (new or previously-imported-but-never-claimed) gets auto-claimed under
+// the importing coach.
 export async function matchOrCreateRosterEntries(
   supabase: SupabaseClient,
   teamId: string,
-  lines: ImportedBattingLine[]
+  lines: ImportedBattingLine[],
+  coachUserId: string
 ): Promise<string[]> {
   const { data: existing, error } = await supabase
     .from("roster_entry")
-    .select("id, uniform_number, first_name, last_name")
+    .select("id, uniform_number, first_name, last_name, player_id")
     .eq("team_id", teamId);
   if (error) throw error;
+
+  const context = await getTeamJoinContext(supabase, teamId);
+  const tagContext = {
+    division: context.divisionName,
+    teamName: context.teamName,
+    season: context.season,
+    year: context.year,
+    leagueInitials: context.leagueInitials,
+  };
 
   const rosterEntries = (existing ?? []) as RosterEntryRow[];
   // Indexed to match `lines` 1:1 -- jersey number is not a safe correlation
@@ -144,16 +199,19 @@ export async function matchOrCreateRosterEntries(
     const match = rosterEntries.find(
       (r) => namesMatch(r.first_name, line.firstName) && namesMatch(r.last_name, line.lastName)
     );
+    const importedNumber = Number.parseInt(line.jerseyNumber, 10) || 0;
 
     if (match) {
       rosterEntryIds.push(match.id);
-      const importedNumber = Number.parseInt(line.jerseyNumber, 10);
-      if (!Number.isNaN(importedNumber) && importedNumber !== match.uniform_number) {
+      if (importedNumber && importedNumber !== match.uniform_number) {
         const { error: updateError } = await supabase
           .from("roster_entry")
           .update({ uniform_number: importedNumber })
           .eq("id", match.id);
         if (updateError) throw updateError;
+      }
+      if (!match.player_id) {
+        await claimUnderCoach(supabase, match.id, importedNumber, line.firstName, line.lastName, coachUserId, tagContext);
       }
       continue;
     }
@@ -162,7 +220,7 @@ export async function matchOrCreateRosterEntries(
       .from("roster_entry")
       .insert({
         team_id: teamId,
-        uniform_number: Number.parseInt(line.jerseyNumber, 10) || 0,
+        uniform_number: importedNumber,
         first_name: line.firstName,
         last_name: line.lastName,
       })
@@ -170,6 +228,7 @@ export async function matchOrCreateRosterEntries(
       .single();
     if (insertError) throw insertError;
     rosterEntryIds.push(created.id);
+    await claimUnderCoach(supabase, created.id, importedNumber, line.firstName, line.lastName, coachUserId, tagContext);
   }
 
   return rosterEntryIds;
@@ -177,6 +236,7 @@ export async function matchOrCreateRosterEntries(
 
 export interface ImportGameInput {
   teamId: string;
+  coachUserId: string;
   gameDate: string; // YYYY-MM-DD
   gameNumber: number;
   opponent: string | null;
@@ -189,7 +249,7 @@ export async function importGame(
   supabase: SupabaseClient,
   input: ImportGameInput
 ): Promise<{ gameId: string }> {
-  const rosterEntryIds = await matchOrCreateRosterEntries(supabase, input.teamId, input.lines);
+  const rosterEntryIds = await matchOrCreateRosterEntries(supabase, input.teamId, input.lines, input.coachUserId);
 
   const { data: game, error: gameError } = await supabase
     .from("game")

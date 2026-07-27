@@ -103,6 +103,7 @@ async function main() {
   };
   const { gameId: game1Id } = await importGame(coach as any, {
     teamId: team!.id,
+    coachUserId: coachId,
     gameDate: "2026-04-01",
     gameNumber: 1,
     opponent: "X",
@@ -119,6 +120,7 @@ async function main() {
   const line2 = { ...line1, ab: 1, h: 1, singles: 1 };
   const { gameId: game2Id } = await importGame(coach as any, {
     teamId: team!.id,
+    coachUserId: coachId,
     gameDate: "2026-04-08",
     gameNumber: 2,
     opponent: "Y",

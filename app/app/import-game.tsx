@@ -211,12 +211,13 @@ export default function ImportGameScreen() {
     (customOpponent ? opponent.trim().length > 0 : opponent.length > 0);
 
   async function handleSubmit() {
-    if (!teamId || !fileText || !parsedLines) return;
+    if (!teamId || !fileText || !parsedLines || !session) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       await importGame(supabase, {
         teamId,
+        coachUserId: session.user.id,
         gameDate,
         gameNumber: Number.parseInt(gameNumber, 10),
         opponent: opponent.trim() || null,

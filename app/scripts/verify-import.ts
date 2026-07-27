@@ -32,6 +32,17 @@ if (!serviceRoleKey || !supabaseUrl) {
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function main() {
+  // A throwaway coach account -- importGame() now auto-claims every
+  // imported line under the importing coach, so player.parent_user_id
+  // needs a real auth.users row to satisfy the FK.
+  const { data: coachUser, error: coachError } = await supabase.auth.admin.createUser({
+    email: `verify-coach-${Date.now()}@example.com`,
+    password: crypto.randomUUID(),
+    email_confirm: true,
+  });
+  if (coachError) throw coachError;
+  const coachUserId = coachUser.user.id;
+
   const { data: league, error: leagueError } = await supabase
     .from("league")
     .insert({ name: "__verify_league__", sanctioning_body: "Little League", initials: `VL${Date.now()}` })
@@ -60,6 +71,7 @@ async function main() {
 
     const { gameId } = await importGame(supabase, {
       teamId: team.id,
+      coachUserId,
       gameDate: "2026-04-01",
       gameNumber: 1,
       opponent: "__verify_opponent__",
@@ -118,6 +130,7 @@ async function main() {
     const renumbered = lines.map((l) => (l.lastName === "Merkal" ? { ...l, jerseyNumber: "99" } : l));
     await importGame(supabase, {
       teamId: team.id,
+      coachUserId,
       gameDate: "2026-04-08",
       gameNumber: 2,
       opponent: "__verify_opponent__",
@@ -141,6 +154,10 @@ async function main() {
     const { error: cleanupError } = await supabase.from("league").delete().eq("id", league.id);
     if (cleanupError) {
       console.error("CLEANUP FAILED -- test data was left in the database:", cleanupError);
+    }
+    const { error: userCleanupError } = await supabase.auth.admin.deleteUser(coachUserId);
+    if (userCleanupError) {
+      console.error("CLEANUP FAILED -- throwaway coach account was left behind:", userCleanupError);
     }
   }
 }
