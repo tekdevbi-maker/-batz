@@ -46,9 +46,8 @@ const YEAR_OPTIONS = Array.from({ length: 9 }, (_, i) => currentYear() - 2 + i);
 export default function RegisterTeamScreen() {
   const router = useRouter();
   const { session } = useRequireAuth();
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const firstName = (session?.user.user_metadata?.first_name as string | undefined) ?? "";
+  const lastName = (session?.user.user_metadata?.last_name as string | undefined) ?? "";
 
   const [leagues, setLeagues] = useState<League[]>([]);
   const [sanctioningBody, setSanctioningBody] = useState<SanctioningBody>(SANCTIONING_BODIES[0]);
@@ -161,14 +160,10 @@ export default function RegisterTeamScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Register a New Team</Text>
       <Text style={styles.hint}>
-        Already coach a team here? Use this to become Head Coach of a second, separate team -- e.g. one
-        kid in Majors, another in Minors.
+        If you are also the Head Coach of another team, please fill out the registration below. If you
+        are an assistant coach, please ask the Head Coach for the link to join the team. Only the Head
+        Coach has access to designate the Assistant Coaches.
       </Text>
-
-      <Text style={styles.label}>Your First Name</Text>
-      <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
-      <Text style={styles.label}>Your Last Name</Text>
-      <TextInput style={styles.input} value={lastName} onChangeText={setLastName} />
 
       <Dropdown
         label="Sanctioning Body"
