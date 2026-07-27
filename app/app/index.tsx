@@ -56,24 +56,27 @@ export default function Home() {
         </Pressable>
       )}
 
+      <View style={styles.teamsHeaderRow}>
+        <Text style={styles.label}>Teams</Text>
+        <Pressable onPress={() => router.push("/register-team")}>
+          <Text style={styles.addTeamLink}>+ Add a Team</Text>
+        </Pressable>
+      </View>
       {teamCards.length > 0 && (
-        <>
-          <Text style={styles.label}>Teams</Text>
-          <View style={styles.tileGrid}>
-            {teamCards.map((team) => (
-              <Pressable key={team.id} style={styles.teamTile} onPress={() => router.push(`/team/${team.id}`)}>
-                <Text style={styles.teamName} numberOfLines={2}>
-                  {team.name}
-                </Text>
-                {team.divisionName ? <Text style={styles.teamMeta}>{team.divisionName}</Text> : null}
-                <Text style={styles.teamMeta}>
-                  {team.season} {team.year}
-                </Text>
-                <Text style={styles.teamRole}>{team.role}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </>
+        <View style={styles.tileGrid}>
+          {teamCards.map((team) => (
+            <Pressable key={team.id} style={styles.teamTile} onPress={() => router.push(`/team/${team.id}`)}>
+              <Text style={styles.teamName} numberOfLines={2}>
+                {team.name}
+              </Text>
+              {team.divisionName ? <Text style={styles.teamMeta}>{team.divisionName}</Text> : null}
+              <Text style={styles.teamMeta}>
+                {team.season} {team.year}
+              </Text>
+              <Text style={styles.teamRole}>{team.role}</Text>
+            </Pressable>
+          ))}
+        </View>
       )}
 
       {myPlayers.length > 0 && (
@@ -116,6 +119,8 @@ const styles = StyleSheet.create({
   logo: { width: 220, height: 98, alignSelf: "center" },
   hint: { color: colors.textSecondary, textAlign: "center" },
   label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  teamsHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  addTeamLink: { color: colors.accent, fontWeight: "600", fontSize: 14, marginTop: 12 },
   buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,
