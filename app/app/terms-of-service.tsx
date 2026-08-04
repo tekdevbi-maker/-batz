@@ -4,10 +4,10 @@ import SafeTopSpacer from "../components/SafeTopSpacer";
 
 // Companion to privacy-policy.tsx (Sprint 10, spec Section 10/13) --
 // same caveat applies: solid first draft, have it reviewed by a lawyer
-// (and fill in GOVERNING_LAW) before real users onboard.
+// before real users onboard.
 const EFFECTIVE_DATE = "August 4, 2026";
 const CONTACT_EMAIL = "tekdevbi@gmail.com";
-const GOVERNING_LAW = "[State/Country to be specified]";
+const GOVERNING_LAW = "the State of Florida";
 
 const SECTIONS: Array<{ heading: string; body: string }> = [
   {
