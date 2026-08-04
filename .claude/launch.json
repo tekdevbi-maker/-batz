@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\Users\\cbago\\Projects\\@Batz\\start-web.cmd",
       "runtimeArgs": [],
       "port": 8081
+    },
+    {
+      "name": "expo-dev-client",
+      "runtimeExecutable": "C:\\Users\\cbago\\Projects\\@Batz\\start-dev-client.cmd",
+      "runtimeArgs": [],
+      "port": 8082
     }
   ]
 }
