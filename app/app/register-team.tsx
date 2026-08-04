@@ -41,8 +41,8 @@ const YEAR_OPTIONS = Array.from({ length: 9 }, (_, i) => currentYear() - 2 + i);
 
 // For a coach who already has an account (e.g. one kid in Majors, another
 // in Minors) and needs to become Head Coach of a second, separate team.
-// Reuses the same league/division/season/team-name picker as
-// coach-register.tsx, minus the account-creation step -- createTeam() and
+// Reuses the same league/division/season/team-name picker as the
+// dev-register wizard, minus the account-creation step -- createTeam() and
 // assignPrimaryCoach() only ever needed a userId, so this signed-in path
 // was always possible at the data layer, just missing a screen.
 export default function RegisterTeamScreen() {

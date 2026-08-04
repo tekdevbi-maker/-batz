@@ -13,7 +13,7 @@ function errorMessage(err: unknown): string {
 }
 
 // Bare-bones account with no team attached -- for a parent/fan who isn't
-// claiming a player or coaching yet. Coaches still use /coach-register
+// claiming a player or coaching yet. Coaches use /dev-register instead
 // (which gathers the same identity fields plus their team in one flow);
 // this is the plain "just an account" path linked from the Log In screen.
 export default function SignUpScreen() {
@@ -64,6 +64,7 @@ export default function SignUpScreen() {
         <SafeTopSpacer />
         <AgeAttestationGate
           confirming={submitting}
+          error={error}
           onConfirm={handleSubmit}
           onCancel={() => setStep("form")}
         />

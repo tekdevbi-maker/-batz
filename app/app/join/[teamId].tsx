@@ -112,6 +112,7 @@ export default function JoinTeamScreen() {
     return (
       <AgeAttestationGate
         confirming={creatingAccount}
+        error={accountError}
         onConfirm={handleCreateAccount}
         onCancel={() => setStep("form")}
       />

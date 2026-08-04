@@ -7,6 +7,7 @@ import { resetDevWizardState, updateDevWizardState } from "../lib/devRegistratio
 import { colors } from "../lib/theme";
 import SafeTopSpacer from "../components/SafeTopSpacer";
 import FadeIn from "../components/FadeIn";
+import AgeAttestationGate from "../components/AgeAttestationGate";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -14,9 +15,9 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-// DEV-only wizard, page 1 of 11: identity, same fields/behavior as the
-// real Coach Register page 1 -- confirms the email isn't taken, creates
-// no account yet. See app/coach-register.tsx for the twin of this screen.
+// Coach registration wizard, page 1 of 11: identity -- confirms the email
+// isn't taken and gates on age attestation before any account is created,
+// same order as the plain Sign Up flow.
 export default function DevRegisterScreen() {
   const router = useRouter();
 
@@ -28,6 +29,7 @@ export default function DevRegisterScreen() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<"form" | "attest">("form");
 
   const canSubmit =
     !!firstName.trim() &&
@@ -37,7 +39,7 @@ export default function DevRegisterScreen() {
     password === confirmPassword &&
     !submitting;
 
-  async function handleSubmit() {
+  async function handleContinue() {
     setSubmitting(true);
     setError(null);
     try {
@@ -46,14 +48,7 @@ export default function DevRegisterScreen() {
         setError("An account with this email already exists. Log in instead.");
         return;
       }
-      resetDevWizardState();
-      updateDevWizardState({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        password,
-      });
-      router.push("/dev-register-intro");
+      setStep("attest");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -61,12 +56,32 @@ export default function DevRegisterScreen() {
     }
   }
 
+  function handleAttestConfirm() {
+    resetDevWizardState();
+    updateDevWizardState({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      password,
+    });
+    router.push("/dev-register-intro");
+  }
+
+  if (step === "attest") {
+    return (
+      <>
+        <SafeTopSpacer />
+        <AgeAttestationGate onConfirm={handleAttestConfirm} onCancel={() => setStep("form")} />
+      </>
+    );
+  }
+
   return (
     <>
       <SafeTopSpacer />
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Register as Coach (DEV)</Text>
+        <Text style={styles.title}>Register as Coach</Text>
         <Text style={styles.hint}>Create your @Batz account. Team details come next.</Text>
 
         <Text style={styles.label}>First Name</Text>
@@ -96,7 +111,7 @@ export default function DevRegisterScreen() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        <Pressable style={[styles.button, !canSubmit && styles.buttonDisabled]} disabled={!canSubmit} onPress={handleSubmit}>
+        <Pressable style={[styles.button, !canSubmit && styles.buttonDisabled]} disabled={!canSubmit} onPress={handleContinue}>
           {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue</Text>}
         </Pressable>
       </ScrollView>
