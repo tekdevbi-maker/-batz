@@ -7,8 +7,8 @@ import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import Dropdown from "../components/Dropdown";
 import CategoryTabs from "../components/CategoryTabs";
+import CopyableLink from "../components/CopyableLink";
 import {
-  SANCTIONING_BODIES,
   assignPrimaryCoach,
   createDivision,
   createPendingLeague,
@@ -17,7 +17,6 @@ import {
   listLeagues,
   type Division,
   type League,
-  type SanctioningBody,
 } from "../lib/leaguesRepository";
 
 function errorMessage(err: unknown): string {
@@ -26,8 +25,11 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-const DIVISIONS = ["Tee Ball", "Minors", "Majors", "Juniors", "Seniors"] as const;
+const DIVISIONS = ["Tee Ball", "Rookies", "Minors", "Majors", "Juniors", "Seniors"] as const;
 const DIVISION_TABS = DIVISIONS.map((d) => ({ key: d, label: d }));
+
+const SPORTS = ["Baseball", "Softball"] as const;
+const SPORT_TABS = SPORTS.map((s) => ({ key: s, label: s }));
 
 const SEASONS = ["Spring", "Summer", "Fall", "Winter"] as const;
 const SEASON_TABS = SEASONS.map((s) => ({ key: s, label: s }));
@@ -50,10 +52,11 @@ export default function RegisterTeamScreen() {
   const lastName = (session?.user.user_metadata?.last_name as string | undefined) ?? "";
 
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [sanctioningBody, setSanctioningBody] = useState<SanctioningBody>(SANCTIONING_BODIES[0]);
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [newLeagueName, setNewLeagueName] = useState("");
   const [enteringNewLeague, setEnteringNewLeague] = useState(false);
+
+  const [sport, setSport] = useState<(typeof SPORTS)[number]>("Baseball");
 
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [selectedDivisionTab, setSelectedDivisionTab] = useState<(typeof DIVISIONS)[number] | null>(null);
@@ -93,7 +96,6 @@ export default function RegisterTeamScreen() {
       if (enteringNewLeague) {
         const created = await createPendingLeague(supabase, {
           name: newLeagueName.trim(),
-          sanctioningBody,
         });
         leagueId = created.id;
         leagueIsPending = true;
@@ -112,6 +114,7 @@ export default function RegisterTeamScreen() {
       const team = await createTeam(supabase, {
         divisionId,
         name: teamName.trim(),
+        sport,
         season,
         year,
       });
@@ -146,9 +149,7 @@ export default function RegisterTeamScreen() {
           <Text style={styles.hint}>Your league is already verified -- you're all set.</Text>
         )}
         <Text style={styles.label}>Share this with parents to join your team:</Text>
-        <Text selectable style={styles.code}>
-          {Linking.createURL(`/join/${createdTeamId}`)}
-        </Text>
+        <CopyableLink value={Linking.createURL(`/join/${createdTeamId}`)} />
         <Pressable style={styles.button} onPress={() => router.replace("/")}>
           <Text style={styles.buttonText}>Done</Text>
         </Pressable>
@@ -164,13 +165,6 @@ export default function RegisterTeamScreen() {
         are an assistant coach, please ask the Head Coach for the link to join the team. Only the Head
         Coach has access to designate the Assistant Coaches.
       </Text>
-
-      <Dropdown
-        label="Sanctioning Body"
-        options={SANCTIONING_BODIES}
-        selected={sanctioningBody}
-        onSelect={setSanctioningBody}
-      />
 
       <Dropdown
         label="League Name"
@@ -203,6 +197,9 @@ export default function RegisterTeamScreen() {
         </>
       )}
 
+      <Text style={styles.label}>Sport</Text>
+      <CategoryTabs categories={SPORT_TABS} selectedKey={sport} onSelect={setSport} />
+
       <Text style={styles.label}>Division</Text>
       <CategoryTabs categories={DIVISION_TABS} selectedKey={selectedDivisionTab} onSelect={setSelectedDivisionTab} />
 
@@ -229,29 +226,21 @@ export default function RegisterTeamScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
-  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
-  code: {
-    fontFamily: "monospace",
-    backgroundColor: colors.surface,
-    padding: 10,
-    borderRadius: 6,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
+  title: { fontSize: 24, fontFamily: "Montserrat_700Bold", marginBottom: 4, color: colors.textPrimary },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 8 },
+  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
 });

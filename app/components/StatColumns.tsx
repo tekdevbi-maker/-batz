@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 28, marginTop: 4 },
   col: { gap: 2 },
   line: { flexDirection: "row" },
-  label: { width: 44, fontSize: 14, color: colors.textSecondary, textAlign: "right" },
-  value: { fontSize: 14, color: colors.textSecondary },
+  label: { width: 44, fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, textAlign: "right" },
+  value: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
 });

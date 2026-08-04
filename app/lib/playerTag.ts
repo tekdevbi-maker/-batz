@@ -28,3 +28,13 @@ export function generateDefaultPlayerTag(input: PlayerTagInput): string {
     sanitize(input.leagueInitials),
   ].join("_");
 }
+
+// Locked-player default (imported, unclaimed): "[TeamName] Player
+// [UniformNumber]", e.g. "Rays Player 17" -- the ONLY identity shown to a
+// non-coach viewer while the player is locked, so unlike
+// generateDefaultPlayerTag it deliberately carries no season/year/league
+// disambiguation. findFreePlayerTag still swaps in a "0_1", "0_2", ...
+// suffix on the uniform-number segment if the same team reuses a number.
+export function generateLockedPlayerTag(input: { teamName: string; uniformNumber: number | string }): string {
+  return `${input.teamName} Player ${input.uniformNumber}`;
+}

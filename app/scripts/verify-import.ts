@@ -56,7 +56,7 @@ async function main() {
 
   const { data: league, error: leagueError } = await supabase
     .from("league")
-    .insert({ name: "__verify_league__", sanctioning_body: "Little League", initials: `VL${Date.now()}` })
+    .insert({ name: "__verify_league__", initials: `VL${Date.now()}` })
     .select("id")
     .single();
   if (leagueError) throw leagueError;

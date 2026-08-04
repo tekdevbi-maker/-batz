@@ -2,24 +2,10 @@ import { useCallback, useState } from "react";
 import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import {
-  updateTeamName,
-  uploadTeamLogo,
-  updateTeamDisplayMode,
-  markSeasonEnded,
-  type PlayerDisplayMode,
-} from "../../../lib/teamsRepository";
-import CategoryTabs from "../../../components/CategoryTabs";
+import { updateTeamName, uploadTeamLogo, markSeasonEnded } from "../../../lib/teamsRepository";
 import { colors } from "../../../lib/theme";
-
-const DISPLAY_MODE_OPTIONS: { key: PlayerDisplayMode; label: string }[] = [
-  { key: "uniform_only", label: "Uniform Number" },
-  { key: "initials", label: "Initials" },
-  { key: "all", label: "All" },
-];
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -34,8 +20,6 @@ export default function TeamSettingsScreen() {
 
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<PlayerDisplayMode>("all");
-  const [savingDisplayMode, setSavingDisplayMode] = useState(false);
   const [seasonStatus, setSeasonStatus] = useState<string>("in_season");
   const [endingSeason, setEndingSeason] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -50,7 +34,7 @@ export default function TeamSettingsScreen() {
       if (!teamId) return;
       supabase
         .from("team")
-        .select("name, logo_url, player_display_mode, season_status")
+        .select("name, logo_url, season_status")
         .eq("id", teamId)
         .single()
         .then(({ data, error: err }) => {
@@ -59,7 +43,6 @@ export default function TeamSettingsScreen() {
           } else {
             setName(data.name);
             setLogoUrl(data.logo_url);
-            setDisplayMode(data.player_display_mode);
             setSeasonStatus(data.season_status);
           }
           setLoaded(true);
@@ -93,20 +76,6 @@ export default function TeamSettingsScreen() {
         },
       ]
     );
-  }
-
-  async function handleChangeDisplayMode(mode: PlayerDisplayMode) {
-    if (!teamId) return;
-    setDisplayMode(mode);
-    setSavingDisplayMode(true);
-    setError(null);
-    try {
-      await updateTeamDisplayMode(supabase, teamId, mode);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setSavingDisplayMode(false);
-    }
   }
 
   async function handleSaveName() {
@@ -201,23 +170,6 @@ export default function TeamSettingsScreen() {
         {savingName ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Save Name</Text>}
       </Pressable>
 
-      <Text style={styles.label}>Player Display Format</Text>
-      <Text style={styles.hint}>
-        Controls how players are identified app-wide for this team -- on the Roster, Leaderboards, and Game
-        Log.
-      </Text>
-      <CategoryTabs categories={DISPLAY_MODE_OPTIONS} selectedKey={displayMode} onSelect={handleChangeDisplayMode} />
-      {savingDisplayMode && <ActivityIndicator size="small" />}
-
-      <Text style={styles.label}>Team Join Link</Text>
-      <Text style={styles.hint}>
-        The only way to join this team, in any role -- Head Coach, up to 3 Assistant Coaches, Parents, and
-        Followers (view-only). Capped at 100 members total.
-      </Text>
-      <Text selectable style={styles.code}>
-        {Linking.createURL(`/join/${teamId}`)}
-      </Text>
-
       <Text style={styles.label}>Season</Text>
       {seasonStatus === "ended" ? (
         <Text style={styles.hint}>This team's season is complete -- it's in Previous Teams on Home.</Text>
@@ -245,24 +197,16 @@ export default function TeamSettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
-  error: { color: colors.error, fontSize: 14 },
-  success: { color: colors.success, fontSize: 14 },
-  code: {
-    fontFamily: "monospace",
-    backgroundColor: colors.surface,
-    color: colors.textPrimary,
-    padding: 10,
-    borderRadius: 6,
-    fontSize: 13,
-  },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular", marginBottom: 4 },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  success: { color: colors.success, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
@@ -278,7 +222,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   logoImage: { width: "100%", height: "100%" },
-  logoPlaceholderText: { color: colors.textMuted, fontSize: 13, textAlign: "center", paddingHorizontal: 8 },
+  logoPlaceholderText: { color: colors.textMuted, fontSize: 13, fontFamily: "Montserrat_400Regular", textAlign: "center", paddingHorizontal: 8 },
   logoOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.35)",
@@ -288,7 +232,7 @@ const styles = StyleSheet.create({
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   dangerButton: { backgroundColor: colors.danger, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 8 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -300,5 +244,5 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 16,
   },
-  secondaryButtonText: { color: colors.textPrimary, fontWeight: "600" },
+  secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold" },
 });

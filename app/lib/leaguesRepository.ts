@@ -8,21 +8,9 @@ export async function listAllUserEmails(supabase: SupabaseClient): Promise<strin
   return (data ?? []).map((row: { email: string }) => row.email);
 }
 
-export const SANCTIONING_BODIES = [
-  "Little League",
-  "Babe Ruth League",
-  "PONY Baseball/Softball",
-  "Dixie Youth Baseball",
-  "USSSA",
-  "AABC",
-  "Independent",
-] as const;
-export type SanctioningBody = (typeof SANCTIONING_BODIES)[number];
-
 export interface League {
   id: string;
   name: string;
-  sanctioningBody: string;
   initials: string;
   verificationStatus: "pending" | "verified";
 }
@@ -37,7 +25,6 @@ function toLeague(row: any): League {
   return {
     id: row.id,
     name: row.name,
-    sanctioningBody: row.sanctioning_body,
     initials: row.initials,
     verificationStatus: row.verification_status,
   };
@@ -65,14 +52,13 @@ export async function listDivisions(supabase: SupabaseClient, leagueId: string):
 // non-admins (see supabase/migrations/20260719011114_auth_and_ownership_rls.sql).
 export async function createPendingLeague(
   supabase: SupabaseClient,
-  input: { name: string; sanctioningBody: SanctioningBody }
+  input: { name: string }
 ): Promise<League> {
   const initials = await generateUniqueInitials(supabase, input.name);
   const { data, error } = await supabase
     .from("league")
     .insert({
       name: input.name,
-      sanctioning_body: input.sanctioningBody,
       initials,
       verification_status: "pending",
     })
@@ -86,14 +72,13 @@ export async function createPendingLeague(
 // the self-serve pending-review hold.
 export async function createVerifiedLeague(
   supabase: SupabaseClient,
-  input: { name: string; sanctioningBody: SanctioningBody }
+  input: { name: string }
 ): Promise<League> {
   const initials = await generateUniqueInitials(supabase, input.name);
   const { data, error } = await supabase
     .from("league")
     .insert({
       name: input.name,
-      sanctioning_body: input.sanctioningBody,
       initials,
       verification_status: "verified",
     })
@@ -137,9 +122,14 @@ export async function deleteDivision(supabase: SupabaseClient, divisionId: strin
 export interface CreateTeamInput {
   divisionId: string;
   name: string;
+  sport: "Baseball" | "Softball";
   season: "Spring" | "Summer" | "Fall" | "Winter";
   year: number;
   logoUrl?: string | null;
+  // Historical-stats registrations (backfilling a completed season) create
+  // an Inactive team: excluded from leaderboards/counts, but still gets a
+  // real Follow link. Defaults true (a normal, currently-competing team).
+  isActive?: boolean;
 }
 
 export async function createTeam(supabase: SupabaseClient, input: CreateTeamInput): Promise<{ id: string }> {
@@ -148,14 +138,102 @@ export async function createTeam(supabase: SupabaseClient, input: CreateTeamInpu
     .insert({
       division_id: input.divisionId,
       name: input.name,
+      sport: input.sport,
       season: input.season,
       year: input.year,
       logo_url: input.logoUrl ?? null,
+      is_active: input.isActive ?? true,
     })
     .select("id")
     .single();
   if (error) throw error;
   return { id: data.id };
+}
+
+export interface SameGroupTeam {
+  id: string;
+  name: string;
+}
+
+// Page 11 of the DEV registration wizard: every other ACTIVE team sharing
+// this team's League + Sport + Division + Season + Year -- Inactive
+// (historical-stats) teams never count toward or appear in this list,
+// same as they're excluded from the leaderboard itself.
+export async function listSameGroupTeams(
+  supabase: SupabaseClient,
+  input: { divisionId: string; sport: "Baseball" | "Softball"; season: string; year: number; excludeTeamId: string }
+): Promise<SameGroupTeam[]> {
+  const { data, error } = await supabase
+    .from("team")
+    .select("id, name")
+    .eq("division_id", input.divisionId)
+    .eq("sport", input.sport)
+    .eq("season", input.season)
+    .eq("year", input.year)
+    .eq("is_active", true)
+    .neq("id", input.excludeTeamId)
+    .order("name");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export interface DuplicateTeamMatch {
+  name: string;
+  coachFirstName: string | null;
+  coachLastInitial: string | null;
+}
+
+// DEV wizard's Team Name page (pre-creation duplicate-name warning): only
+// meaningful when reusing an EXISTING league, since a brand-new League or
+// Division can't already contain a team. Division is looked up by name
+// within the league rather than by id, since the Division isn't actually
+// created until "Complete Registration" runs.
+export async function findDuplicateTeamNames(
+  supabase: SupabaseClient,
+  input: {
+    leagueId: string;
+    divisionName: string;
+    sport: "Baseball" | "Softball";
+    season: string;
+    year: number;
+    name: string;
+  }
+): Promise<DuplicateTeamMatch[]> {
+  const { data: division, error: divError } = await supabase
+    .from("division")
+    .select("id")
+    .eq("league_id", input.leagueId)
+    .ilike("name", input.divisionName)
+    .maybeSingle();
+  if (divError) throw divError;
+  if (!division) return [];
+
+  const { data: teams, error } = await supabase
+    .from("team")
+    .select("id, name")
+    .eq("division_id", division.id)
+    .eq("sport", input.sport)
+    .eq("season", input.season)
+    .eq("year", input.year)
+    .ilike("name", input.name);
+  if (error) throw error;
+  if (!teams || teams.length === 0) return [];
+
+  const { data: coaches, error: coachError } = await supabase
+    .from("coach_assignment")
+    .select("team_id, first_name, last_name")
+    .eq("role", "primary")
+    .in("team_id", teams.map((t) => t.id));
+  if (coachError) throw coachError;
+
+  return teams.map((t) => {
+    const coach = coaches?.find((c) => c.team_id === t.id);
+    return {
+      name: t.name,
+      coachFirstName: coach?.first_name ?? null,
+      coachLastInitial: coach?.last_name ? `${coach.last_name.charAt(0).toUpperCase()}.` : null,
+    };
+  });
 }
 
 export async function assignPrimaryCoach(

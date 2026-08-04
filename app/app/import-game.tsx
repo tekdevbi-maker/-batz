@@ -412,21 +412,21 @@ export default function ImportGameScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  plainText: { color: colors.textPrimary },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14 },
-  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
-  success: { color: colors.success, fontSize: 15, fontWeight: "600" },
+  plainText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  success: { color: colors.success, fontSize: 15, fontFamily: "Montserrat_600SemiBold" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 10,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
   },
-  inputText: { color: colors.textPrimary },
+  inputText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
-  chipText: { color: colors.textPrimary },
+  chipText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   suggestionList: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  suggestionText: { color: colors.textPrimary, fontSize: 15 },
+  suggestionText: { color: colors.textPrimary, fontSize: 15, fontFamily: "Montserrat_400Regular" },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
   },
-  secondaryButtonText: { color: colors.textPrimary },
+  secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   button: {
     backgroundColor: colors.accent,
     borderRadius: 8,
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
+  buttonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   gameRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  gameRowText: { fontSize: 15, color: colors.textPrimary },
+  gameRowText: { fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
   deleteButton: {
     borderWidth: 1,
     borderColor: colors.danger,
@@ -485,5 +485,5 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
-  deleteButtonText: { color: colors.danger, fontSize: 14, fontWeight: "600" },
+  deleteButtonText: { color: colors.danger, fontSize: 14, fontFamily: "Montserrat_600SemiBold" },
 });

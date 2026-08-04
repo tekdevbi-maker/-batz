@@ -87,9 +87,9 @@ async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): P
 }
 
 // Following feed (spec Section 8: "Surfaces recent milestones ... to a
-// player's followers"). PlayerTag is used directly rather than the
-// reveal_full_name-aware display helper -- deliberately simple for v1;
-// a follower who's revealed a name relationship would see the tag here.
+// player's followers"). PlayerTag is used directly rather than the full
+// display-mode-aware helper -- deliberately simple for v1; a follower of
+// a player displaying under a different mode would still see the tag here.
 export async function listFollowingFeed(supabase: SupabaseClient, userId: string, limit = 50): Promise<ActivityFeedPost[]> {
   const { data: follows, error: followError } = await supabase.from("follow").select("player_id").eq("follower_user_id", userId);
   if (followError) throw followError;

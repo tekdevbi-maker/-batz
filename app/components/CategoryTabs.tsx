@@ -64,11 +64,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentMuted,
   },
   label: {
-    fontSize: 12,
+    fontSize: 12, fontFamily: "Montserrat_400Regular",
     color: colors.textPrimary,
   },
   labelSelected: {
     color: colors.accent,
-    fontWeight: "700",
+    fontFamily: "Montserrat_700Bold",
   },
 });

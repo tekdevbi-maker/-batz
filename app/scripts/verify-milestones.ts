@@ -60,7 +60,7 @@ async function main() {
 
   const { data: league } = await admin
     .from("league")
-    .insert({ name: "__s7_league__", sanctioning_body: "Little League", initials: `S7${Date.now()}`, verification_status: "verified" })
+    .insert({ name: "__s7_league__", initials: `S7${Date.now()}`, verification_status: "verified" })
     .select("id")
     .single();
   created.leagueId = league!.id;

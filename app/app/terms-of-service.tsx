@@ -1,10 +1,11 @@
 import { ScrollView, Text, StyleSheet } from "react-native";
 import { colors } from "../lib/theme";
+import SafeTopSpacer from "../components/SafeTopSpacer";
 
 // Companion to privacy-policy.tsx (Sprint 10, spec Section 10/13) --
 // same caveat applies: solid first draft, have it reviewed by a lawyer
 // (and fill in GOVERNING_LAW) before real users onboard.
-const EFFECTIVE_DATE = "July 20, 2026";
+const EFFECTIVE_DATE = "August 4, 2026";
 const CONTACT_EMAIL = "tekdevbi@gmail.com";
 const GOVERNING_LAW = "[State/Country to be specified]";
 
@@ -26,18 +27,24 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
   {
     heading: "Eligibility and accounts",
     body:
-      "You must be at least 18 years old to create an @Batz account. @Batz accounts are for coaches and " +
-      "parents/guardians -- players themselves do not create accounts. You're responsible for keeping your " +
-      "login credentials secure and for all activity under your account. Provide accurate information when " +
-      "registering as a coach or registering a player.",
+      "You must be at least 13 years old to create an @Batz account, and you'll be asked to confirm this " +
+      "before your account is created. @Batz accounts are for coaches, parents/guardians, and other adults and " +
+      "teens following a team -- players themselves do not create accounts, regardless of their age, and never " +
+      "provide information to @Batz directly. You're responsible for keeping your login credentials secure and " +
+      "for all activity under your account. Provide accurate information when registering as a coach or " +
+      "registering a player.",
   },
   {
     heading: "Accountability for player information",
     body:
-      "Whoever registers a player in @Batz is the accountable party for that player's account-related " +
-      "decisions -- including their visibility setting (Public/Private), display name, and PlayerTag. By " +
-      "registering a player, you confirm you are that player's parent or legal guardian, or are otherwise " +
-      "authorized to act on their behalf (e.g. as their coach, where no parent has yet claimed the player).",
+      "Whoever imports or registers a player in @Batz is the accountable party for that player's account-related " +
+      "decisions until a parent/guardian claims them, at which point that responsibility -- including the " +
+      "player's visibility setting (Public/Private), display name, and PlayerTag -- passes to the claiming " +
+      "parent/guardian. An imported player starts locked (see our Privacy Policy) and stays that way until a " +
+      "parent/guardian completes the consent step to unlock them; by completing that step, you confirm you are " +
+      "that player's parent or legal guardian. By importing or registering a player before a parent/guardian has " +
+      "claimed them, a coach confirms they are otherwise authorized to act on that player's behalf in the " +
+      "interim (e.g. as their coach).",
   },
   {
     heading: "Acceptable use",
@@ -101,23 +108,26 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
 
 export default function TermsOfServiceScreen() {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Terms of Service</Text>
-      <Text style={styles.effectiveDate}>Effective {EFFECTIVE_DATE}</Text>
-      {SECTIONS.map((section) => (
-        <Text key={section.heading} style={styles.section}>
-          <Text style={styles.heading}>{section.heading}{"\n"}</Text>
-          {section.body}
-        </Text>
-      ))}
-    </ScrollView>
+    <>
+      <SafeTopSpacer />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Terms of Service</Text>
+        <Text style={styles.effectiveDate}>Effective {EFFECTIVE_DATE}</Text>
+        {SECTIONS.map((section) => (
+          <Text key={section.heading} style={styles.section}>
+            <Text style={styles.heading}>{section.heading}{"\n"}</Text>
+            {section.body}
+          </Text>
+        ))}
+      </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 48, gap: 16, backgroundColor: colors.background },
-  title: { fontSize: 26, fontWeight: "700", color: colors.textPrimary },
-  effectiveDate: { color: colors.textSecondary, fontSize: 14, marginBottom: 4 },
-  section: { fontSize: 15, lineHeight: 21, color: colors.textPrimary },
-  heading: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
+  title: { fontSize: 26, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
+  effectiveDate: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 4 },
+  section: { fontSize: 15, fontFamily: "Montserrat_400Regular", lineHeight: 21, color: colors.textPrimary },
+  heading: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
 });

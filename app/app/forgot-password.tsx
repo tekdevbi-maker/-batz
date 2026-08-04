@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
+import SafeTopSpacer from "../components/SafeTopSpacer";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -31,17 +32,22 @@ export default function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Check your email</Text>
-        <Text style={styles.hint}>
-          If an account exists for {email}, a password reset link is on its way.
-        </Text>
-      </View>
+      <>
+        <SafeTopSpacer />
+        <View style={styles.container}>
+          <Text style={styles.title}>Check your email</Text>
+          <Text style={styles.hint}>
+            If an account exists for {email}, a password reset link is on its way.
+          </Text>
+        </View>
+      </>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <>
+      <SafeTopSpacer />
+      <View style={styles.container}>
       <Text style={styles.title}>Reset Your Password</Text>
       <TextInput
         style={styles.input}
@@ -60,25 +66,26 @@ export default function ForgotPasswordScreen() {
       >
         {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Send Reset Link</Text>}
       </Pressable>
-    </View>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
-  title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  hint: { color: colors.textSecondary },
+  container: { flex: 1, padding: 24, paddingTop: 80, gap: 12, backgroundColor: colors.background },
+  title: { fontSize: 26, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
-  error: { color: colors.error, fontSize: 14 },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
 });

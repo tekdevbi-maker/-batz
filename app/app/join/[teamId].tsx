@@ -6,6 +6,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { getTeamJoinContext, joinTeamAsFollower, TeamAtCapacityError, type TeamJoinContext } from "../../lib/claimRepository";
 import { colors } from "../../lib/theme";
+import AgeAttestationGate from "../../components/AgeAttestationGate";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -44,6 +45,7 @@ export default function JoinTeamScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [followed, setFollowed] = useState(false);
+  const [step, setStep] = useState<"form" | "attest">("form");
 
   useEffect(() => {
     if (!teamId) return;
@@ -106,6 +108,16 @@ export default function JoinTeamScreen() {
     );
   }
 
+  if (step === "attest") {
+    return (
+      <AgeAttestationGate
+        confirming={creatingAccount}
+        onConfirm={handleCreateAccount}
+        onCancel={() => setStep("form")}
+      />
+    );
+  }
+
   if (followed) {
     return (
       <View style={styles.container}>
@@ -163,9 +175,9 @@ export default function JoinTeamScreen() {
                 styles.buttonDisabled,
             ]}
             disabled={!firstName.trim() || !lastName.trim() || !email || !password || creatingAccount}
-            onPress={handleCreateAccount}
+            onPress={() => setStep("attest")}
           >
-            {creatingAccount ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue</Text>}
+            <Text style={styles.buttonText}>Continue Registration</Text>
           </Pressable>
           <Text style={styles.legalText}>
             By continuing, you agree to our{" "}
@@ -191,23 +203,23 @@ export default function JoinTeamScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 12 },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 14 },
-  plainText: { color: colors.textPrimary },
+  title: { fontSize: 24, fontFamily: "Montserrat_700Bold", marginBottom: 4, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 12 },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  plainText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
-  legalText: { marginTop: 12, textAlign: "center", fontSize: 13, color: colors.textSecondary },
-  legalLink: { color: colors.accent },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
+  legalText: { marginTop: 12, textAlign: "center", fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
+  legalLink: { color: colors.accent, fontFamily: "Montserrat_400Regular" },
 });

@@ -1,19 +1,33 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { aggregateBattingCounts, calculateStats, type BattingCounts, type CalculatedStats } from "./stats";
+import { generateLockedPlayerTag } from "./playerTag";
+
+const ZERO_COUNTS: BattingCounts = { ab: 0, h: 0, singles: 0, doubles: 0, triples: 0, hr: 0, rbi: 0, bb: 0, hbp: 0, sf: 0 };
+
+export type PlayerDisplayMode = "uniform" | "tag" | "real_name";
 
 export interface PlayerIdentity {
   playerTag: string;
   firstName: string | null;
   lastName: string | null;
-  revealFullName: boolean;
+  displayMode: PlayerDisplayMode;
+  uniformNumber?: number | null;
 }
 
-// The one place display identity is decided (spec Section 7): PlayerTag
-// unless the parent has explicitly revealed the real name in Settings.
+// The one place display identity is decided: a parent-controlled per-player
+// choice among "#N" (default), their PlayerTag (usable as a custom alias --
+// it's a free-text field the parent can edit in Settings), or their real
+// name. An unclaimed/coach-fallback player is forced to "uniform" at the
+// call site (see displayNameFor in statsRepository.ts) regardless of what's
+// stored here, since a coach-fallback owner shouldn't be able to reveal a
+// name pre-claim.
 export function playerDisplayName(identity: PlayerIdentity): string {
-  if (identity.revealFullName) {
+  if (identity.displayMode === "real_name") {
     const name = [identity.firstName, identity.lastName].filter(Boolean).join(" ").trim();
     if (name) return name;
+  }
+  if (identity.displayMode === "uniform" && identity.uniformNumber != null) {
+    return `#${identity.uniformNumber}`;
   }
   return identity.playerTag;
 }
@@ -46,11 +60,14 @@ export interface PlayerProfile extends PlayerDemographics {
   playerId: string;
   parentUserId: string;
   displayName: string;
+  realName: string | null;
   playerTag: string;
   visibilityScope: "public" | "private";
-  revealFullName: boolean;
+  displayMode: PlayerDisplayMode;
+  leaderboardOptOutTeam: boolean;
+  leaderboardOptOutLeague: boolean;
   isOwner: boolean;
-  isOwnedByCoach: boolean;
+  isCoachFallback: boolean;
   parentAttestedAt: string | null;
   seasons: PlayerSeasonLine[];
   careerCounts: BattingCounts;
@@ -85,7 +102,7 @@ export async function getPlayerProfile(
   const { data: player, error: playerError } = await supabase
     .from("player")
     .select(
-      "id, parent_user_id, first_name, last_name, reveal_full_name, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws, parent_attested_at"
+      "id, parent_user_id, first_name, last_name, display_mode, leaderboard_opt_out_team, leaderboard_opt_out_league, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws, parent_attested_at, is_coach_fallback"
     )
     .eq("id", playerId)
     .maybeSingle();
@@ -137,47 +154,68 @@ export async function getPlayerProfile(
 
   const careerCounts = aggregateBattingCounts(seasons.map((s) => s.counts));
 
-  // Is the current owner a coach on the player's current team, rather
-  // than a real parent? Drives whether the Player Profile offers "Claim
-  // This Player" to a non-owner -- self-claim is only ever allowed while
-  // ownership is still the coach-auto-claimed default.
-  const currentTeamId = (seasons.find((s) => s.seasonStatus === "in_season") ?? seasons[0])?.teamId;
-  let isOwnedByCoach = false;
+  // Whether ownership is still the coach-auto-claimed default is answered
+  // directly by is_coach_fallback -- NOT by "is the current owner a coach
+  // on this team", which used to be used as a proxy (isOwnedByCoach) and
+  // is wrong whenever the real claiming parent also happens to coach that
+  // team (e.g. an assistant coach whose own kid plays for them): that
+  // proxy stayed true forever after a legitimate claim, so "I'm the
+  // Parent" kept reappearing for other Followers on an already-claimed
+  // player.
+  const current = seasons.find((s) => s.seasonStatus === "in_season") ?? seasons[0];
+  const currentTeamId = current?.teamId;
+  let viewerIsCoachOnTeam = false;
   if (currentTeamId) {
-    const { data: coachRow } = await supabase
+    const { data: viewerCoachRow } = await supabase
       .from("coach_assignment")
       .select("id")
       .eq("team_id", currentTeamId)
-      .eq("user_id", player.parent_user_id)
+      .eq("user_id", viewerUserId)
       .maybeSingle();
-    isOwnedByCoach = !!coachRow;
+    viewerIsCoachOnTeam = !!viewerCoachRow;
   }
 
+  // A locked (coach-fallback, unclaimed) player only reveals its real
+  // name/stats to coaching staff on its current team -- anyone else sees
+  // just "[TeamName] Player [UniformNumber]" and zeroed career stats,
+  // regardless of whatever display_mode happens to be stored.
+  const locked = player.is_coach_fallback && !viewerIsCoachOnTeam;
+  const effectiveDisplayMode: PlayerDisplayMode = player.is_coach_fallback ? "uniform" : player.display_mode;
+  const realName = [player.first_name, player.last_name].filter(Boolean).join(" ").trim() || null;
   const identity: PlayerIdentity = {
     playerTag: player.player_tag,
     firstName: player.first_name,
     lastName: player.last_name,
-    revealFullName: player.reveal_full_name,
+    displayMode: effectiveDisplayMode,
+    uniformNumber: current?.uniformNumber ?? null,
   };
+
+  const displayName = locked
+    ? generateLockedPlayerTag({ teamName: current?.teamName ?? "", uniformNumber: current?.uniformNumber ?? "?" })
+    : playerDisplayName(identity);
+  const careerStats = locked ? calculateStats(ZERO_COUNTS) : calculateStats(careerCounts);
 
   return {
     playerId: player.id,
     parentUserId: player.parent_user_id,
-    displayName: playerDisplayName(identity),
+    displayName,
+    realName: locked ? null : realName,
     playerTag: player.player_tag,
     visibilityScope: player.visibility_scope,
-    revealFullName: player.reveal_full_name,
+    displayMode: effectiveDisplayMode,
+    leaderboardOptOutTeam: player.leaderboard_opt_out_team,
+    leaderboardOptOutLeague: player.leaderboard_opt_out_league,
     isOwner: player.parent_user_id === viewerUserId,
-    isOwnedByCoach,
+    isCoachFallback: player.is_coach_fallback,
     parentAttestedAt: player.parent_attested_at,
-    seasons,
-    careerCounts,
-    careerStats: calculateStats(careerCounts),
-    heightFeet: player.height_feet,
-    heightInches: player.height_inches,
-    weightLbs: player.weight_lbs,
-    bats: player.bats,
-    throws: player.throws,
+    seasons: locked ? seasons.map((s) => ({ ...s, counts: ZERO_COUNTS, stats: calculateStats(ZERO_COUNTS) })) : seasons,
+    careerCounts: locked ? ZERO_COUNTS : careerCounts,
+    careerStats,
+    heightFeet: locked ? null : player.height_feet,
+    heightInches: locked ? null : player.height_inches,
+    weightLbs: locked ? null : player.weight_lbs,
+    bats: locked ? null : player.bats,
+    throws: locked ? null : player.throws,
   };
 }
 
@@ -210,14 +248,25 @@ export interface MyPlayersResult {
   myTeamPlayers: MyPlayer[];
 }
 
-function toMyPlayer(p: {
-  id: string;
-  player_tag: string;
-  first_name: string | null;
-  last_name: string | null;
-  reveal_full_name: boolean;
-  visibility_scope: "public" | "private";
-}): MyPlayer {
+// "Players I Coach" (myTeamPlayers) always lists locked players the caller
+// themselves owns as fallback coach -- so unlike a stranger's view, the
+// caller is entitled to see the real name here, not the locked tag.
+function toMyPlayer(
+  p: {
+    id: string;
+    player_tag: string;
+    first_name: string | null;
+    last_name: string | null;
+    display_mode: PlayerDisplayMode;
+    is_coach_fallback: boolean;
+    visibility_scope: "public" | "private";
+  },
+  uniformNumber: number | null
+): MyPlayer {
+  if (p.is_coach_fallback) {
+    const realName = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+    return { playerId: p.id, playerTag: p.player_tag, displayName: realName || p.player_tag, visibilityScope: p.visibility_scope };
+  }
   return {
     playerId: p.id,
     playerTag: p.player_tag,
@@ -225,7 +274,8 @@ function toMyPlayer(p: {
       playerTag: p.player_tag,
       firstName: p.first_name,
       lastName: p.last_name,
-      revealFullName: p.reveal_full_name,
+      displayMode: p.display_mode,
+      uniformNumber,
     }),
     visibilityScope: p.visibility_scope,
   };
@@ -234,30 +284,40 @@ function toMyPlayer(p: {
 export async function listMyPlayers(supabase: SupabaseClient, userId: string): Promise<MyPlayersResult> {
   const { data, error } = await supabase
     .from("player")
-    .select("id, player_tag, first_name, last_name, reveal_full_name, visibility_scope, is_coach_fallback")
+    .select("id, player_tag, first_name, last_name, display_mode, visibility_scope, is_coach_fallback")
     .eq("parent_user_id", userId)
     .order("created_at");
   if (error) throw error;
 
   const players = data ?? [];
-  const fallbackPlayers = players.filter((p: any) => p.is_coach_fallback);
-  const fallbackIds = fallbackPlayers.map((p: any) => p.id);
+  const playerIds = players.map((p: any) => p.id);
+  const fallbackIds = players.filter((p: any) => p.is_coach_fallback).map((p: any) => p.id);
 
   const activeFallbackIds = new Set<string>();
-  if (fallbackIds.length > 0) {
+  const uniformByPlayer = new Map<string, number>();
+  if (playerIds.length > 0) {
     const { data: rosterRows, error: rosterError } = await supabase
       .from("roster_entry")
-      .select("player_id, team:team_id(season_status)")
-      .in("player_id", fallbackIds);
+      .select("player_id, uniform_number, team:team_id(season_status)")
+      .in("player_id", playerIds);
     if (rosterError) throw rosterError;
     for (const row of (rosterRows ?? []) as any[]) {
-      if (row.team?.season_status === "in_season") activeFallbackIds.add(row.player_id);
+      if (row.team?.season_status === "in_season") {
+        activeFallbackIds.add(row.player_id);
+        uniformByPlayer.set(row.player_id, row.uniform_number);
+      } else if (!uniformByPlayer.has(row.player_id)) {
+        uniformByPlayer.set(row.player_id, row.uniform_number);
+      }
     }
   }
 
   return {
-    myPlayers: players.filter((p: any) => !p.is_coach_fallback).map(toMyPlayer),
-    myTeamPlayers: fallbackPlayers.filter((p: any) => activeFallbackIds.has(p.id)).map(toMyPlayer),
+    myPlayers: players
+      .filter((p: any) => !p.is_coach_fallback)
+      .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null)),
+    myTeamPlayers: players
+      .filter((p: any) => p.is_coach_fallback && activeFallbackIds.has(p.id))
+      .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null)),
   };
 }
 
@@ -277,25 +337,33 @@ export async function searchPlayers(supabase: SupabaseClient, query: string): Pr
   if (!trimmed) return [];
   const { data, error } = await supabase
     .from("player")
-    .select("id, player_tag, first_name, last_name, reveal_full_name")
+    .select("id, player_tag, first_name, last_name, display_mode, is_coach_fallback")
     .ilike("player_tag", `%${trimmed}%`)
     .limit(25);
   if (error) throw error;
   return (data ?? []).map((p: any) => ({
     playerId: p.id,
-    displayName: playerDisplayName({
-      playerTag: p.player_tag,
-      firstName: p.first_name,
-      lastName: p.last_name,
-      revealFullName: p.reveal_full_name,
-    }),
+    // A locked player's stored player_tag IS already the "[TeamName]
+    // Player [N]" default (see generateLockedPlayerTag) -- using it
+    // directly here, rather than resolving a real name, keeps a search
+    // result from ever revealing a locked player's identity.
+    displayName: p.is_coach_fallback
+      ? p.player_tag
+      : playerDisplayName({
+          playerTag: p.player_tag,
+          firstName: p.first_name,
+          lastName: p.last_name,
+          displayMode: p.display_mode,
+        }),
   }));
 }
 
 export interface PlayerSettingsInput {
   playerTag?: string;
   visibilityScope?: "public" | "private";
-  revealFullName?: boolean;
+  displayMode?: PlayerDisplayMode;
+  leaderboardOptOutTeam?: boolean;
+  leaderboardOptOutLeague?: boolean;
   heightFeet?: number | null;
   heightInches?: number | null;
   weightLbs?: number | null;
@@ -315,7 +383,9 @@ export async function updatePlayerSettings(
   const update: Record<string, unknown> = {};
   if (input.playerTag !== undefined) update.player_tag = input.playerTag.trim();
   if (input.visibilityScope !== undefined) update.visibility_scope = input.visibilityScope;
-  if (input.revealFullName !== undefined) update.reveal_full_name = input.revealFullName;
+  if (input.displayMode !== undefined) update.display_mode = input.displayMode;
+  if (input.leaderboardOptOutTeam !== undefined) update.leaderboard_opt_out_team = input.leaderboardOptOutTeam;
+  if (input.leaderboardOptOutLeague !== undefined) update.leaderboard_opt_out_league = input.leaderboardOptOutLeague;
   if (input.heightFeet !== undefined) update.height_feet = input.heightFeet;
   if (input.heightInches !== undefined) update.height_inches = input.heightInches;
   if (input.weightLbs !== undefined) update.weight_lbs = input.weightLbs;

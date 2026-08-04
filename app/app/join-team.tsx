@@ -138,21 +138,21 @@ export default function JoinTeamByLinkScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 4, color: colors.textPrimary },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
-  error: { color: colors.error, fontSize: 14 },
-  confirm: { color: colors.textPrimary, fontSize: 15, marginTop: 8, lineHeight: 21 },
+  title: { fontSize: 24, fontFamily: "Montserrat_700Bold", marginBottom: 4, color: colors.textPrimary },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 8 },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  confirm: { color: colors.textPrimary, fontSize: 15, fontFamily: "Montserrat_400Regular", marginTop: 8, lineHeight: 21 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 16, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
 });

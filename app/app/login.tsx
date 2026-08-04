@@ -92,7 +92,7 @@ export default function LoginScreen() {
       <Link href="/sign-up" style={styles.link}>
         <Text>New to @Batz? Sign up here!</Text>
       </Link>
-      <Link href="/coach-register" style={styles.link}>
+      <Link href="/dev-register" style={styles.link}>
         <Text>New coach? Register your team</Text>
       </Link>
       <Link href="/forgot-password" style={styles.link}>
@@ -110,21 +110,21 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
   logo: { alignSelf: "center", marginBottom: 8 },
-  title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
+  title: { fontSize: 24, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 16, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
-  error: { color: colors.error, fontSize: 14 },
+  error: { color: colors.error, fontSize: 13, fontFamily: "Montserrat_400Regular" },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
-  link: { marginTop: 12, textAlign: "center", color: colors.textPrimary },
-  legalText: { marginTop: 16, textAlign: "center", fontSize: 13, color: colors.textSecondary },
-  legalLink: { color: colors.accent },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
+  link: { marginTop: 12, textAlign: "center", color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 13 },
+  legalText: { marginTop: 16, textAlign: "center", fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
+  legalLink: { color: colors.accent, fontFamily: "Montserrat_400Regular" },
 });

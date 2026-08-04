@@ -63,6 +63,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     minHeight: 64,
   },
-  label: { fontSize: 12, color: colors.textSecondary, textAlign: "center" },
-  labelActive: { color: colors.accent, fontWeight: "600" },
+  label: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, textAlign: "center" },
+  labelActive: { color: colors.accent, fontFamily: "Montserrat_600SemiBold" },
 });

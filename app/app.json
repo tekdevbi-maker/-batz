@@ -118,7 +118,8 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "./plugins/withSplashScreenNavBarFix.js"
+      "./plugins/withSplashScreenNavBarFix.js",
+      "expo-font"
     ],
     "extra": {
       "router": {},

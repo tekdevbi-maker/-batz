@@ -106,9 +106,9 @@ export default function SharedCsvScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, gap: 8, backgroundColor: colors.background },
-  label: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 14 },
-  plainText: { color: colors.textPrimary },
+  label: { fontSize: 18, fontFamily: "Montserrat_600SemiBold", marginBottom: 8, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  plainText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   teamRow: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: colors.surface,
   },
-  teamName: { fontSize: 18, fontWeight: "600", color: colors.textPrimary },
-  teamMeta: { color: colors.textSecondary, fontSize: 14 },
+  teamName: { fontSize: 18, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary },
+  teamMeta: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
 });

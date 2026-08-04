@@ -63,25 +63,25 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
+  title: { fontSize: 22, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   resultRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  resultText: { color: colors.textPrimary },
+  resultText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
 });

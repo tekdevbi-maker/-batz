@@ -5,7 +5,6 @@ import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import {
-  SANCTIONING_BODIES,
   createDivision,
   createVerifiedLeague,
   deleteDivision,
@@ -16,7 +15,6 @@ import {
   verifyLeague,
   type Division,
   type League,
-  type SanctioningBody,
 } from "../lib/leaguesRepository";
 import {
   CUSTOMER_CARE_CATEGORIES,
@@ -96,7 +94,7 @@ function LeagueRow({ league, onChanged }: { league: League; onChanged: () => voi
     <View style={styles.leagueRow}>
       <Pressable onPress={() => setExpanded((e) => !e)} style={styles.leagueHeader}>
         <Text style={styles.leagueName}>
-          {league.name} ({league.initials}) -- {league.sanctioningBody}
+          {league.name} ({league.initials})
         </Text>
         <Text style={league.verificationStatus === "pending" ? styles.pendingBadge : styles.verifiedBadge}>
           {league.verificationStatus}
@@ -151,7 +149,6 @@ export default function AdminScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [newLeagueName, setNewLeagueName] = useState("");
-  const [newLeagueBody, setNewLeagueBody] = useState<SanctioningBody>(SANCTIONING_BODIES[0]);
 
   const [impersonateEmail, setImpersonateEmail] = useState("");
   const [impersonateBusy, setImpersonateBusy] = useState(false);
@@ -209,7 +206,7 @@ export default function AdminScreen() {
   async function handleAddLeague() {
     if (!newLeagueName.trim()) return;
     try {
-      await createVerifiedLeague(supabase, { name: newLeagueName.trim(), sanctioningBody: newLeagueBody });
+      await createVerifiedLeague(supabase, { name: newLeagueName.trim() });
       setNewLeagueName("");
       refresh();
     } catch (err) {
@@ -272,17 +269,6 @@ export default function AdminScreen() {
       ))}
 
       <Text style={styles.label}>Add a League (verified immediately)</Text>
-      <View style={styles.chipRow}>
-        {SANCTIONING_BODIES.map((body) => (
-          <Pressable
-            key={body}
-            style={[styles.chip, newLeagueBody === body && styles.chipSelected]}
-            onPress={() => setNewLeagueBody(body)}
-          >
-            <Text style={styles.chipText}>{body}</Text>
-          </Pressable>
-        ))}
-      </View>
       <TextInput
         style={styles.input}
         value={newLeagueName}
@@ -316,17 +302,17 @@ export default function AdminScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 8, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 16, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 13 },
-  error: { color: colors.error, fontSize: 14 },
-  plainText: { color: colors.textPrimary },
+  title: { fontSize: 22, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 16, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  plainText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 10,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
@@ -339,7 +325,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   suggestionRow: { paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: colors.border },
-  suggestionText: { color: colors.textPrimary, fontSize: 15 },
+  suggestionText: { color: colors.textPrimary, fontSize: 15, fontFamily: "Montserrat_400Regular" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
@@ -349,11 +335,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: colors.surface,
   },
-  chipText: { color: colors.textPrimary },
+  chipText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 12 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -361,7 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  secondaryButtonText: { color: colors.textPrimary },
+  secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   deleteButton: {
     borderWidth: 1,
     borderColor: colors.danger,
@@ -369,12 +355,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  deleteButtonText: { color: colors.danger, fontWeight: "600" },
+  deleteButtonText: { color: colors.danger, fontFamily: "Montserrat_600SemiBold" },
   leagueRow: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, gap: 8 },
   leagueHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  leagueName: { fontSize: 17, fontWeight: "600", flexShrink: 1, color: colors.textPrimary },
-  pendingBadge: { color: colors.warningText, backgroundColor: colors.warningBg, paddingHorizontal: 8, borderRadius: 4 },
-  verifiedBadge: { color: colors.success, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
+  leagueName: { fontSize: 17, fontFamily: "Montserrat_600SemiBold", flexShrink: 1, color: colors.textPrimary },
+  pendingBadge: { color: colors.warningText, fontFamily: "Montserrat_400Regular", backgroundColor: colors.warningBg, paddingHorizontal: 8, borderRadius: 4 },
+  verifiedBadge: { color: colors.success, fontFamily: "Montserrat_400Regular", backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
   actionRow: { flexDirection: "row", gap: 8 },
   divisionsBlock: { gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
   divisionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

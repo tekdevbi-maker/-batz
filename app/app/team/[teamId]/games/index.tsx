@@ -50,12 +50,12 @@ export default function GameLogScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  hint: { color: colors.textSecondary, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   gameRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  gameRowText: { fontSize: 15, color: colors.textPrimary },
+  gameRowText: { fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
 });

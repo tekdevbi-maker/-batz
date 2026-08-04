@@ -2,8 +2,24 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  useFonts,
+  Montserrat_400Regular,
+  Montserrat_600SemiBold,
+  Montserrat_700Bold,
+  Montserrat_800ExtraBold,
+} from "@expo-google-fonts/montserrat";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
+import AdBanner from "../components/AdBanner";
+
+// NOTE: an app-wide default via Text.defaultProps/TextInput.defaultProps
+// was tried here and reverted -- it's an undocumented hack that isn't
+// supported under React Native's New Architecture (Fabric, which this app
+// runs on) and caused a native SIGSEGV crash on launch. Montserrat is
+// applied per-style instead (see the fontFamily entries alongside
+// fontWeight across the app, added in the codemod pass) -- safe, just not
+// automatically covering styles that never set fontWeight at all.
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
@@ -16,6 +32,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   }
   return (
     <>
+      <AdBanner />
       <ImpersonationBanner />
       {children}
     </>
@@ -52,12 +69,27 @@ const bannerStyles = StyleSheet.create({
     paddingVertical: 8,
     gap: 8,
   },
-  text: { flex: 1, color: colors.warningText, fontWeight: "600", fontSize: 13 },
+  text: { flex: 1, color: colors.warningText, fontFamily: "Montserrat_600SemiBold", fontSize: 13 },
   button: { borderWidth: 1, borderColor: colors.warningText, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 10 },
-  buttonText: { color: colors.warningText, fontWeight: "700", fontSize: 12 },
+  buttonText: { color: colors.warningText, fontFamily: "Montserrat_700Bold", fontSize: 12 },
 });
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Montserrat_400Regular,
+    Montserrat_600SemiBold,
+    Montserrat_700Bold,
+    Montserrat_800ExtraBold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
   return (
     <AuthProvider>
       <Gate>
@@ -66,13 +98,30 @@ export default function RootLayout() {
           screenOptions={{
             headerStyle: { backgroundColor: colors.surface },
             headerTintColor: colors.textPrimary,
-            headerTitleStyle: { color: colors.textPrimary },
+            headerTitleStyle: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
             contentStyle: { backgroundColor: colors.background },
           }}
         >
-          <Stack.Screen name="index" options={{ title: "@Batz" }} />
-          <Stack.Screen name="login" options={{ title: "Log In" }} />
-          <Stack.Screen name="coach-register" options={{ title: "Register as Coach" }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+          <Stack.Screen name="coach-register" options={{ headerShown: false }} />
+          <Stack.Screen name="coach-register-team" options={{ headerShown: false }} />
+          <Stack.Screen name="dev-register" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-intro" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-league" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-sport" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-recball" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-division" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-season" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-active-check" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-teamname" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-confirm" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-complete" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-complete-link" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-complete-followers" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-complete-multiteam" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-complete-final" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
           <Stack.Screen name="register-team" options={{ title: "Register a New Team" }} />
           <Stack.Screen name="join-team" options={{ title: "Join a Team" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
@@ -85,10 +134,10 @@ export default function RootLayout() {
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="activity" options={{ title: "Activity Feed" }} />
           <Stack.Screen name="customer-care" options={{ title: "Customer Care" }} />
-          <Stack.Screen name="forgot-password" options={{ title: "Forgot Password" }} />
+          <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />
-          <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
-          <Stack.Screen name="terms-of-service" options={{ title: "Terms of Service" }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
         </Stack>
       </Gate>
     </AuthProvider>

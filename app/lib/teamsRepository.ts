@@ -1,5 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+// Whether the given user coaches this team at all (head or assistant) --
+// drives whether a locked (coach-fallback) player's real name/stats show,
+// since the lock is only lifted for coaching staff on that specific team.
+export async function isCoachOnTeam(supabase: SupabaseClient, teamId: string, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("coach_assignment")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
+}
+
 export interface CoachedTeam {
   id: string;
   name: string;
@@ -77,17 +90,6 @@ export async function updateTeamName(supabase: SupabaseClient, teamId: string, n
   if (error) throw error;
 }
 
-export type PlayerDisplayMode = "uniform_only" | "initials" | "all";
-
-export async function updateTeamDisplayMode(
-  supabase: SupabaseClient,
-  teamId: string,
-  mode: PlayerDisplayMode
-): Promise<void> {
-  const { error } = await supabase.from("team").update({ player_display_mode: mode }).eq("id", teamId);
-  if (error) throw error;
-}
-
 export type TeamMemberRole = "head_coach" | "assistant_coach" | "parent" | "follower";
 
 export interface TeamMember {
@@ -95,7 +97,12 @@ export interface TeamMember {
   email: string;
   displayName: string;
   role: TeamMemberRole;
+  // Players actually claimed (real or attested) -- shown as "Parent of ...".
   claimedPlayerNames: string | null;
+  // Coach-fallback/default-held roster spots -- unclaimed by any parent,
+  // just the coach's default ownership. Shown as "Coach of ...", never
+  // "Parent of ...".
+  coachFallbackPlayerNames: string | null;
 }
 
 // Coach-only (RLS-equivalent check happens inside the get_team_members
@@ -111,6 +118,7 @@ export async function getTeamMembers(supabase: SupabaseClient, teamId: string): 
     displayName: row.display_name,
     role: row.role,
     claimedPlayerNames: row.claimed_player_names,
+    coachFallbackPlayerNames: row.coach_fallback_player_names,
   }));
 }
 
@@ -132,6 +140,27 @@ export async function promoteToAssistantCoach(
   if (error) {
     if (error.message?.includes("assistant_coach_capacity_reached")) {
       throw new AssistantCoachCapacityError("This team already has 3 assistant coaches.");
+    }
+    throw error;
+  }
+}
+
+export class NotHeadCoachError extends Error {}
+
+// Head-Coach-only: undoes a promotion. The target keeps their existing
+// team_membership (parent/follower), just loses the coach_assignment row.
+export async function demoteAssistantCoach(
+  supabase: SupabaseClient,
+  teamId: string,
+  targetUserId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("demote_assistant_coach", {
+    p_team_id: teamId,
+    p_target_user_id: targetUserId,
+  });
+  if (error) {
+    if (error.message?.includes("not_the_head_coach")) {
+      throw new NotHeadCoachError("Only the Head Coach can demote an Assistant Coach.");
     }
     throw error;
   }

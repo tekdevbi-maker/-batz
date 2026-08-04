@@ -103,17 +103,17 @@ export default function ActivityFeedScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 4, backgroundColor: colors.background },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
+  title: { fontSize: 22, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   postRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 4,
   },
-  playerName: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
-  postText: { fontSize: 14, color: colors.textSecondary },
-  link: { color: colors.accent, fontSize: 14 },
-  likedLink: { color: colors.danger, fontSize: 14 },
+  playerName: { fontFamily: "Montserrat_600SemiBold", fontSize: 15, color: colors.textPrimary },
+  postText: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
+  link: { color: colors.accent, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  likedLink: { color: colors.danger, fontSize: 14, fontFamily: "Montserrat_400Regular" },
 });

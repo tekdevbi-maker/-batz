@@ -109,19 +109,19 @@ export default function ResetPasswordScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
-  title: { fontSize: 26, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  hint: { color: colors.textSecondary },
+  title: { fontSize: 26, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
-  error: { color: colors.error, fontSize: 14 },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
 });

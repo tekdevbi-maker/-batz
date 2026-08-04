@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
 import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
+import { isCoachOnTeam } from "../../../lib/teamsRepository";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 
@@ -22,18 +23,38 @@ export default function RosterScreen() {
   const [roster, setRoster] = useState<RosterSeasonStats[]>([]);
   const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!teamId || !session) return;
+    const viewerIsCoach = await isCoachOnTeam(supabase, teamId, session.user.id);
+    await Promise.all([
+      getTeamRosterWithSeasonStats(supabase, teamId, viewerIsCoach)
+        .then(setRoster)
+        .catch((err) => setError(errorMessage(err))),
+      getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err))),
+    ]);
+  }, [teamId, session]);
 
   useEffect(() => {
-    if (!teamId || !session) return;
-    getTeamRosterWithSeasonStats(supabase, teamId).then(setRoster).catch((err) => setError(errorMessage(err)));
-    getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err)));
-  }, [teamId, session]);
+    load();
+  }, [load]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   if (!session || !teamId) return null;
 
   return (
     <View style={styles.root}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+      >
         {context && (
           <>
             <Text style={styles.title}>{context.teamName}</Text>
@@ -70,9 +91,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary, marginBottom: 4 },
-  hint: { color: colors.textSecondary, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
+  title: { fontSize: 22, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, marginBottom: 4 },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -95,10 +116,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     opacity: 0.6,
   },
-  cardNumber: { fontSize: 33, fontWeight: "800", color: colors.textPrimary },
+  cardNumber: { fontSize: 33, fontFamily: "Montserrat_800ExtraBold", color: colors.textPrimary },
   cardName: {
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "Montserrat_600SemiBold",
     color: colors.textPrimary,
     textAlign: "center",
     marginTop: 8,

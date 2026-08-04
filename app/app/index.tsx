@@ -1,31 +1,58 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, Image } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, Image, RefreshControl } from "react-native";
 import { Link, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
-import {
-  listMyCoachedTeams,
-  listMyMemberTeams,
-  listMyPreviousCoachedTeams,
-  listMyPreviousMemberTeams,
-  type CoachedTeam,
-} from "../lib/teamsRepository";
+import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
 import { listMyPlayers, type MyPlayer } from "../lib/playerRepository";
+import {
+  listPendingClaimRequestCountsForCoach,
+  listNewlyAssignedPlayers,
+  acknowledgeNewPlayers,
+  listMyPendingTransferOffers,
+  type NewlyAssignedPlayer,
+  type PendingTransferOffer,
+} from "../lib/claimRepository";
+import TeamTileGrid from "../components/TeamTileGrid";
 import { colors } from "../lib/theme";
-
-interface TeamCard extends CoachedTeam {
-  role: string;
-}
 
 export default function Home() {
   const router = useRouter();
   const { session, isAdmin, signOut } = useRequireAuth();
   const [coachedTeams, setCoachedTeams] = useState<CoachedTeam[]>([]);
   const [memberTeams, setMemberTeams] = useState<CoachedTeam[]>([]);
-  const [previousCoachedTeams, setPreviousCoachedTeams] = useState<CoachedTeam[]>([]);
-  const [previousMemberTeams, setPreviousMemberTeams] = useState<CoachedTeam[]>([]);
   const [myPlayers, setMyPlayers] = useState<MyPlayer[]>([]);
   const [myTeamPlayers, setMyTeamPlayers] = useState<MyPlayer[]>([]);
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
+  const [newlyAssigned, setNewlyAssigned] = useState<NewlyAssignedPlayer[]>([]);
+  const [transferOffers, setTransferOffers] = useState<PendingTransferOffer[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!session) return;
+    await Promise.all([
+      listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {}),
+      listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {}),
+      listPendingClaimRequestCountsForCoach(supabase).then(setPendingCounts).catch(() => {}),
+      listNewlyAssignedPlayers(supabase).then(setNewlyAssigned).catch(() => {}),
+      listMyPendingTransferOffers(supabase).then(setTransferOffers).catch(() => {}),
+      listMyPlayers(supabase, session.user.id)
+        .then(({ myPlayers, myTeamPlayers }) => {
+          setMyPlayers(myPlayers);
+          setMyTeamPlayers(myTeamPlayers);
+        })
+        .catch(() => {}),
+    ]);
+  }, [session]);
+
+  async function handleDismissNewlyAssigned() {
+    setNewlyAssigned([]);
+    try {
+      await acknowledgeNewPlayers(supabase);
+    } catch {
+      // Non-critical -- worst case the banner reappears next load.
+    }
+  }
 
   // useFocusEffect, not a plain useEffect keyed on session -- session
   // doesn't change when navigating back to an already-mounted Home screen
@@ -33,53 +60,28 @@ export default function Home() {
   // effect would leave these lists stale until a full app reload.
   useFocusEffect(
     useCallback(() => {
-      if (!session) return;
-      listMyCoachedTeams(supabase, session.user.id).then(setCoachedTeams).catch(() => {});
-      listMyMemberTeams(supabase, session.user.id).then(setMemberTeams).catch(() => {});
-      listMyPreviousCoachedTeams(supabase, session.user.id).then(setPreviousCoachedTeams).catch(() => {});
-      listMyPreviousMemberTeams(supabase, session.user.id).then(setPreviousMemberTeams).catch(() => {});
-      listMyPlayers(supabase, session.user.id)
-        .then(({ myPlayers, myTeamPlayers }) => {
-          setMyPlayers(myPlayers);
-          setMyTeamPlayers(myTeamPlayers);
-        })
-        .catch(() => {});
-    }, [session])
+      load();
+    }, [load])
   );
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   if (!session) return null;
 
-  // Coach and member teams shown under one flat "Teams" grid -- a user can
-  // be both on the same team, so dedupe by id while combining their roles
-  // rather than rendering the same team twice.
-  const roleByTeamId = new Map<string, Set<string>>();
-  for (const t of coachedTeams) roleByTeamId.set(t.id, (roleByTeamId.get(t.id) ?? new Set()).add("Coach"));
-  for (const t of memberTeams) roleByTeamId.set(t.id, (roleByTeamId.get(t.id) ?? new Set()).add("Parent"));
-  const teamById = new Map<string, CoachedTeam>();
-  for (const t of [...coachedTeams, ...memberTeams]) teamById.set(t.id, t);
-  const teamCards: TeamCard[] = Array.from(teamById.values()).map((t) => ({
-    ...t,
-    role: Array.from(roleByTeamId.get(t.id) ?? []).join(" & "),
-  }));
-
-  // Same combine-and-dedupe treatment for ended-season teams -- Previous
-  // Teams follows the exact same layout as Teams, just filtered to
-  // season_status = 'ended' (see markSeasonEnded in teamsRepository.ts).
-  const previousRoleByTeamId = new Map<string, Set<string>>();
-  for (const t of previousCoachedTeams)
-    previousRoleByTeamId.set(t.id, (previousRoleByTeamId.get(t.id) ?? new Set()).add("Coach"));
-  for (const t of previousMemberTeams)
-    previousRoleByTeamId.set(t.id, (previousRoleByTeamId.get(t.id) ?? new Set()).add("Parent"));
-  const previousTeamById = new Map<string, CoachedTeam>();
-  for (const t of [...previousCoachedTeams, ...previousMemberTeams]) previousTeamById.set(t.id, t);
-  const previousTeamCards: TeamCard[] = Array.from(previousTeamById.values()).map((t) => ({
-    ...t,
-    role: Array.from(previousRoleByTeamId.get(t.id) ?? []).join(" & "),
-  }));
+  const firstName: string | undefined = session.user.user_metadata?.first_name;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+    >
       <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
+      {firstName && <Text style={styles.welcome}>Welcome {firstName}!</Text>}
 
       {isAdmin && (
         <Pressable style={styles.secondaryButton} onPress={() => router.push("/admin")}>
@@ -87,53 +89,73 @@ export default function Home() {
         </Pressable>
       )}
 
-      <View style={styles.teamsHeaderRow}>
-        <Text style={styles.label}>Teams</Text>
-        <View style={styles.teamsHeaderLinks}>
-          <Pressable onPress={() => router.push("/join-team")}>
-            <Text style={styles.addTeamLink}>Join a Team</Text>
+      {newlyAssigned.length > 0 && (
+        <View style={styles.newPlayerBanner}>
+          <Text style={styles.newPlayerBannerText}>
+            {newlyAssigned.length === 1
+              ? `🎉 ${newlyAssigned[0].displayName} has been added to your account!`
+              : `🎉 ${newlyAssigned.length} players have been added to your account: ${newlyAssigned
+                  .map((p) => p.displayName)
+                  .join(", ")}`}
+          </Text>
+          <Pressable style={styles.newPlayerBannerButton} onPress={handleDismissNewlyAssigned}>
+            <Text style={styles.newPlayerBannerButtonText}>Got it</Text>
           </Pressable>
-          <Pressable onPress={() => router.push("/register-team")}>
-            <Text style={styles.addTeamLink}>+ Add a Team</Text>
-          </Pressable>
-        </View>
-      </View>
-      {teamCards.length > 0 && (
-        <View style={styles.tileGrid}>
-          {teamCards.map((team) => (
-            <Pressable key={team.id} style={styles.teamTile} onPress={() => router.push(`/team/${team.id}`)}>
-              <Text style={styles.teamName} numberOfLines={2}>
-                {team.name}
-              </Text>
-              {team.divisionName ? <Text style={styles.teamMeta}>{team.divisionName}</Text> : null}
-              <Text style={styles.teamMeta}>
-                {team.season} {team.year}
-              </Text>
-              <Text style={styles.teamRole}>{team.role}</Text>
-            </Pressable>
-          ))}
         </View>
       )}
 
-      {previousTeamCards.length > 0 && (
-        <>
-          <Text style={styles.label}>Previous Teams</Text>
-          <View style={styles.tileGrid}>
-            {previousTeamCards.map((team) => (
-              <Pressable key={team.id} style={styles.teamTile} onPress={() => router.push(`/team/${team.id}`)}>
-                <Text style={styles.teamName} numberOfLines={2}>
-                  {team.name}
-                </Text>
-                {team.divisionName ? <Text style={styles.teamMeta}>{team.divisionName}</Text> : null}
-                <Text style={styles.teamMeta}>
-                  {team.season} {team.year}
-                </Text>
-                <Text style={styles.teamRole}>{team.role}</Text>
-              </Pressable>
-            ))}
+      {transferOffers.map((offer) => (
+        <Pressable
+          key={offer.requestId}
+          style={styles.newPlayerBanner}
+          onPress={() => router.push(`/player/${offer.playerId}`)}
+        >
+          <Text style={styles.newPlayerBannerText}>
+            {offer.teamName}'s coach is offering you {offer.displayName} to claim as the Parent/Legal Guardian.
+          </Text>
+          <View style={styles.newPlayerBannerButton}>
+            <Text style={styles.newPlayerBannerButtonText}>Review</Text>
           </View>
+        </Pressable>
+      ))}
+
+      {coachedTeams.length > 0 && (
+        <>
+          <View style={styles.teamsHeaderRow}>
+            <Text style={styles.label}>Teams I Coach</Text>
+            <Pressable onPress={() => router.push("/register-team")}>
+              <Text style={styles.addTeamLink}>Add a Team I Coach</Text>
+            </Pressable>
+          </View>
+          <TeamTileGrid teams={coachedTeams} pendingCounts={pendingCounts} />
         </>
       )}
+      {coachedTeams.length === 0 && (
+        <View style={styles.teamsHeaderRow}>
+          <View />
+          <Pressable onPress={() => router.push("/register-team")}>
+            <Text style={styles.addTeamLink}>Add a Team I Coach</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <View style={styles.teamsHeaderRow}>
+        <Text style={styles.label}>Teams I Follow</Text>
+        <Pressable onPress={() => router.push("/join-team")}>
+          <Text style={styles.addTeamLink}>Follow Another Team</Text>
+        </Pressable>
+      </View>
+      {memberTeams.length > 0 ? (
+        <TeamTileGrid teams={memberTeams} />
+      ) : (
+        <Text style={styles.hint}>You're not following any teams yet.</Text>
+      )}
+
+      <View style={styles.previousTeamsRow}>
+        <Pressable onPress={() => router.push("/previous-teams")}>
+          <Text style={styles.addTeamLink}>Previous Teams ›</Text>
+        </Pressable>
+      </View>
 
       {myPlayers.length > 0 && (
         <>
@@ -153,7 +175,7 @@ export default function Home() {
 
       {myTeamPlayers.length > 0 && (
         <>
-          <Text style={styles.label}>My Team Players</Text>
+          <Text style={styles.label}>Players I Coach</Text>
           <Text style={styles.hint}>Unclaimed roster spots you're holding for a parent to claim.</Text>
           <View style={styles.tileGrid}>
             {myTeamPlayers.map((p) => (
@@ -190,12 +212,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, gap: 12, flexGrow: 1 },
   logo: { width: 220, height: 98, alignSelf: "center" },
-  hint: { color: colors.textSecondary, textAlign: "center" },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  welcome: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "left" },
+  hint: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular", textAlign: "center" },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
   teamsHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  teamsHeaderLinks: { flexDirection: "row", gap: 16 },
-  addTeamLink: { color: colors.accent, fontWeight: "600", fontSize: 14, marginTop: 12 },
-  buttonText: { color: colors.textPrimary, fontWeight: "600", fontSize: 18 },
+  addTeamLink: { color: colors.accent, fontFamily: "Montserrat_600SemiBold", fontSize: 14, marginTop: 12 },
+  buttonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -204,22 +226,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
   },
-  tileGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  teamTile: {
-    width: "48%",
-    aspectRatio: 1,
+  newPlayerBanner: {
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 10,
-    marginBottom: 12,
+    borderColor: colors.success,
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
   },
-  teamName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
-  teamMeta: { fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 3 },
-  teamRole: { fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 8 },
+  newPlayerBannerText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 14, lineHeight: 20 },
+  newPlayerBannerButton: {
+    backgroundColor: colors.success,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+  },
+  newPlayerBannerButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 13 },
+  previousTeamsRow: { flexDirection: "row", justifyContent: "flex-end" },
+  tileGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   playerTile: {
     width: "31.5%",
     aspectRatio: 0.9,
@@ -232,9 +258,9 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 12,
   },
-  playerTileName: { fontSize: 14, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
-  playerTilePrivate: { fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 4 },
+  playerTileName: { fontSize: 14, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
+  playerTilePrivate: { fontSize: 10, fontFamily: "Montserrat_400Regular", color: colors.textMuted, textAlign: "center", marginTop: 4 },
   spacer: { flex: 1 },
-  footerLinks: { textAlign: "center", fontSize: 13, color: colors.textSecondary },
-  legalLink: { color: colors.accent },
+  footerLinks: { textAlign: "center", fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
+  legalLink: { color: colors.accent, fontFamily: "Montserrat_400Regular" },
 });

@@ -4,6 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useRequireAuth } from "../../../../lib/AuthContext";
 import { supabase } from "../../../../lib/supabase";
 import { getGameBoxScore, type BoxScoreLine, type GameSummary } from "../../../../lib/statsRepository";
+import { isCoachOnTeam } from "../../../../lib/teamsRepository";
 import { formatDateDisplay } from "../../../../lib/dateFormat";
 import { colors } from "../../../../lib/theme";
 
@@ -28,7 +29,7 @@ const COLUMNS: { key: SortKey; label: string; flex: number; value: (l: BoxScoreL
 
 export default function BoxScoreScreen() {
   const { session } = useRequireAuth();
-  const { gameId } = useLocalSearchParams<{ gameId: string }>();
+  const { gameId, teamId } = useLocalSearchParams<{ gameId: string; teamId: string }>();
   const [game, setGame] = useState<GameSummary | null>(null);
   const [lines, setLines] = useState<BoxScoreLine[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -36,14 +37,15 @@ export default function BoxScoreScreen() {
   const [sortAsc, setSortAsc] = useState(true);
 
   useEffect(() => {
-    if (!gameId || !session) return;
-    getGameBoxScore(supabase, gameId)
+    if (!gameId || !session || !teamId) return;
+    isCoachOnTeam(supabase, teamId, session.user.id)
+      .then((viewerIsCoach) => getGameBoxScore(supabase, gameId, viewerIsCoach))
       .then((result) => {
         setGame(result.game);
         setLines(result.lines);
       })
       .catch((err) => setError(errorMessage(err)));
-  }, [gameId, session]);
+  }, [gameId, teamId, session]);
 
   const column = COLUMNS.find((c) => c.key === sortKey)!;
   const sorted = useMemo(() => {
@@ -110,8 +112,8 @@ export default function BoxScoreScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, color: colors.textPrimary },
-  error: { color: colors.error, fontSize: 14 },
+  title: { fontSize: 20, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   table: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -124,8 +126,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   headerCell: { alignItems: "center", paddingHorizontal: 2 },
-  headerText: { fontSize: 12, fontWeight: "700", color: colors.textSecondary },
-  headerTextActive: { color: colors.accent },
+  headerText: { fontSize: 12, fontFamily: "Montserrat_700Bold", color: colors.textSecondary },
+  headerTextActive: { color: colors.accent, fontFamily: "Montserrat_400Regular" },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -133,7 +135,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  cell: { textAlign: "center", fontSize: 13, color: colors.textPrimary },
+  cell: { textAlign: "center", fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
   numCell: { fontVariant: ["tabular-nums"] },
   nameCell: { textAlign: "left", paddingLeft: 4 },
 });

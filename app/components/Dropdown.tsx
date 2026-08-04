@@ -64,7 +64,7 @@ export default function Dropdown<T extends string | number>({
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, color: colors.textPrimary },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
   field: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -75,9 +75,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  fieldText: { fontSize: 18, color: colors.textPrimary },
-  placeholderText: { fontSize: 18, color: colors.textMuted },
-  chevron: { fontSize: 14, color: colors.textSecondary },
+  fieldText: { fontSize: 18, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
+  placeholderText: { fontSize: 18, fontFamily: "Montserrat_400Regular", color: colors.textMuted },
+  chevron: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", padding: 24 },
   sheet: {
     backgroundColor: colors.background,
@@ -85,10 +85,10 @@ const styles = StyleSheet.create({
     maxHeight: "70%",
     padding: 16,
   },
-  sheetTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary, marginBottom: 8 },
+  sheetTitle: { fontSize: 17, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, marginBottom: 8 },
   list: { flexGrow: 0 },
   option: { paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8 },
   optionSelected: { backgroundColor: colors.accentMuted },
-  optionText: { fontSize: 16, color: colors.textPrimary },
-  optionTextSelected: { color: colors.accent, fontWeight: "600" },
+  optionText: { fontSize: 16, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
+  optionTextSelected: { color: colors.accent, fontFamily: "Montserrat_600SemiBold" },
 });

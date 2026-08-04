@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamRosterWithSeasonStats, type RosterSeasonStats } from "../../../lib/statsRepository";
 import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepository";
+import { isCoachOnTeam } from "../../../lib/teamsRepository";
 import { hitsStars, doublesStars, triplesStars, homeRunsStars } from "../../../lib/starTiers";
 import { computeStandardCompetitionRanks } from "../../../lib/ranking";
 import { STAT_CATEGORY_DESCRIPTIONS } from "../../../lib/statCategoryDescriptions";
@@ -58,12 +59,32 @@ export default function TeamLeaderboardScreen() {
   const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [categoryKey, setCategoryKey] = useState<(typeof CATEGORIES)[number]["key"]>("hits");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!teamId || !session) return;
+    const viewerIsCoach = await isCoachOnTeam(supabase, teamId, session.user.id);
+    await Promise.all([
+      // Locked (coach-fallback) players never appear on any leaderboard --
+      // for anyone, even coaching staff -- so they're filtered out here
+      // regardless of viewerIsCoach (that flag only controls whether the
+      // Roster/Box Score screens reveal their identity/stats).
+      getTeamRosterWithSeasonStats(supabase, teamId, viewerIsCoach)
+        .then((rows) => setRoster(rows.filter((r) => !r.leaderboardOptOutTeam && !r.isCoachFallback)))
+        .catch((err) => setError(errorMessage(err))),
+      getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err))),
+    ]);
+  }, [teamId, session]);
 
   useEffect(() => {
-    if (!teamId || !session) return;
-    getTeamRosterWithSeasonStats(supabase, teamId).then(setRoster).catch((err) => setError(errorMessage(err)));
-    getTeamJoinContext(supabase, teamId).then(setContext).catch((err) => setError(errorMessage(err)));
-  }, [teamId, session]);
+    load();
+  }, [load]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   const category = CATEGORIES.find((c) => c.key === categoryKey)!;
   const sorted = useMemo(() => [...roster].sort((a, b) => category.value(b) - category.value(a)), [roster, category]);
@@ -73,7 +94,11 @@ export default function TeamLeaderboardScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+      >
         {context && (
           <>
             <Text style={styles.title}>{context.teamName}</Text>
@@ -113,10 +138,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
-  error: { color: colors.error, fontSize: 14 },
-  categoryDescription: { fontSize: 12, color: colors.textMuted, marginBottom: 10 },
+  title: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 8 },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  categoryDescription: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textMuted, marginBottom: 10 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -125,8 +150,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 8,
   },
-  rank: { width: 24, color: colors.textSecondary, fontSize: 14 },
-  uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14 },
-  name: { flex: 2, fontSize: 15, color: colors.textPrimary },
-  value: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
+  rank: { width: 24, color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  name: { flex: 2, fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
+  value: { fontFamily: "Montserrat_600SemiBold", fontSize: 15, color: colors.textPrimary },
 });

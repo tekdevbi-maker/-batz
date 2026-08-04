@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { aggregateBattingCounts, calculateStats, type BattingCounts, type CalculatedStats } from "./stats";
-import { generateDefaultPlayerTag } from "./playerTag";
+import { generateDefaultPlayerTag, generateLockedPlayerTag } from "./playerTag";
 import { getTeamJoinContext, type TeamJoinContext } from "./claimRepository";
 import { playerDisplayName } from "./playerRepository";
+
+const ZERO_COUNTS: BattingCounts = { ab: 0, h: 0, singles: 0, doubles: 0, triples: 0, hr: 0, rbi: 0, bb: 0, hbp: 0, sf: 0 };
 
 function toCounts(row: any): BattingCounts {
   return {
@@ -19,36 +21,45 @@ function toCounts(row: any): BattingCounts {
   };
 }
 
-function initialsFor(player: { first_name: string | null; last_name: string | null }, uniformNumber: number): string {
-  const initials = [player.first_name?.[0], player.last_name?.[0]].filter(Boolean).join("").toUpperCase();
-  return initials || `#${uniformNumber}`;
-}
-
-// Display identity per spec Section 7: real name only when the parent has
-// explicitly revealed it, otherwise the PlayerTag. An unclaimed spot (or a
-// Private player whose row RLS filtered out for this viewer) gets the same
-// default-format tag a claim would start with, computed from team context.
-// A coach's per-team display-mode setting (Team Settings) overrides this
-// entirely for uniform-only/initials modes -- name/PlayerTag reveal rules
-// don't apply in those modes since the coach is choosing a stricter format
-// for the whole team, not the parent's own per-player choice.
+// Display identity. A locked (coach-fallback, unclaimed) player shows only
+// "[TeamName] Player [UniformNumber]" to anyone who isn't coaching staff on
+// that team -- COPPA-driven: name/uniform stay hidden from the general
+// public until a parent actually claims the player. Coaching staff on the
+// team see the real name (it came straight from an imported roster CSV, no
+// pseudonym-worthy ambiguity there). Once claimed, the parent's own
+// display_mode choice applies to everyone. A Private player whose row RLS
+// filtered out entirely for this viewer (player is null) falls back to the
+// same default-format tag a claim would start with, computed from team
+// context.
 function displayNameFor(
-  player: { player_tag: string; first_name: string | null; last_name: string | null; reveal_full_name: boolean } | null | undefined,
+  player:
+    | {
+        player_tag: string;
+        first_name: string | null;
+        last_name: string | null;
+        display_mode: "uniform" | "tag" | "real_name";
+        is_coach_fallback: boolean;
+      }
+    | null
+    | undefined,
   uniformNumber: number,
-  context: Pick<TeamJoinContext, "divisionName" | "teamName" | "season" | "year" | "leagueInitials" | "playerDisplayMode">
+  context: Pick<TeamJoinContext, "divisionName" | "teamName" | "season" | "year" | "leagueInitials">,
+  viewerIsCoach: boolean
 ): string {
-  if (context.playerDisplayMode === "uniform_only") {
-    return `#${uniformNumber}`;
-  }
-  if (context.playerDisplayMode === "initials") {
-    return player ? initialsFor(player, uniformNumber) : `#${uniformNumber}`;
-  }
   if (player) {
+    if (player.is_coach_fallback) {
+      if (viewerIsCoach) {
+        const realName = [player.first_name, player.last_name].filter(Boolean).join(" ").trim();
+        return realName || player.player_tag;
+      }
+      return generateLockedPlayerTag({ teamName: context.teamName, uniformNumber });
+    }
     return playerDisplayName({
       playerTag: player.player_tag,
       firstName: player.first_name,
       lastName: player.last_name,
-      revealFullName: player.reveal_full_name,
+      displayMode: player.display_mode,
+      uniformNumber,
     });
   }
   return generateDefaultPlayerTag({
@@ -61,12 +72,21 @@ function displayNameFor(
   });
 }
 
+// Locked players show blank (zeroed) stats to anyone but coaching staff on
+// their team, regardless of what actually happened in the games.
+function countsFor(player: { is_coach_fallback: boolean } | null | undefined, viewerIsCoach: boolean, counts: BattingCounts): BattingCounts {
+  if (player?.is_coach_fallback && !viewerIsCoach) return ZERO_COUNTS;
+  return counts;
+}
+
 export interface RosterSeasonStats {
   rosterEntryId: string;
   playerId: string | null;
   uniformNumber: number;
   displayName: string;
   visibilityScope: "public" | "private" | null;
+  leaderboardOptOutTeam: boolean;
+  isCoachFallback: boolean;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -75,14 +95,15 @@ export interface RosterSeasonStats {
 // season-scoped, spec Section 2, so no date-range filtering is needed).
 export async function getTeamRosterWithSeasonStats(
   supabase: SupabaseClient,
-  teamId: string
+  teamId: string,
+  viewerIsCoach: boolean
 ): Promise<RosterSeasonStats[]> {
   const context = await getTeamJoinContext(supabase, teamId);
 
   const { data: rosterRows, error: rosterError } = await supabase
     .from("roster_entry")
     .select(
-      "id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name, visibility_scope)"
+      "id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, display_mode, is_coach_fallback, visibility_scope, leaderboard_opt_out_team)"
     )
     .eq("team_id", teamId)
     .order("uniform_number");
@@ -107,7 +128,8 @@ export async function getTeamRosterWithSeasonStats(
   }
 
   return (rosterRows ?? []).map((re: any) => {
-    const counts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
+    const rawCounts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
+    const counts = countsFor(re.player, viewerIsCoach, rawCounts);
     return {
       rosterEntryId: re.id,
       // player_id is only non-null here if the viewer can actually see the
@@ -115,8 +137,10 @@ export async function getTeamRosterWithSeasonStats(
       // profile is gated the same way the identity is.
       playerId: re.player ? re.player_id : null,
       uniformNumber: re.uniform_number,
-      displayName: displayNameFor(re.player, re.uniform_number, context),
+      displayName: displayNameFor(re.player, re.uniform_number, context, viewerIsCoach),
       visibilityScope: re.player?.visibility_scope ?? null,
+      leaderboardOptOutTeam: re.player?.leaderboard_opt_out_team ?? false,
+      isCoachFallback: re.player?.is_coach_fallback ?? false,
       counts,
       stats: calculateStats(counts),
     };
@@ -130,6 +154,7 @@ export interface DivisionLeaderboardEntry {
   uniformNumber: number;
   displayName: string;
   visibilityScope: "public" | "private" | null;
+  leaderboardOptOutLeague: boolean;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -167,10 +192,11 @@ export async function getDivisionLeaderboard(
 
   const { data: teams, error: teamsError } = await supabase
     .from("team")
-    .select("id, name, season, year, player_display_mode, division:division_id(name, league:league_id(name, initials))")
+    .select("id, name, season, year, division:division_id(name, league:league_id(name, initials))")
     .eq("division_id", thisTeam.division_id)
     .eq("season", thisTeam.season)
-    .eq("year", thisTeam.year);
+    .eq("year", thisTeam.year)
+    .eq("is_active", true);
   if (teamsError) throw teamsError;
   if (!teams || teams.length === 0) {
     return { header: { leagueName: "", divisionName: "", season: "", year: 0 }, entries: [] };
@@ -189,7 +215,7 @@ export async function getDivisionLeaderboard(
   const { data: rosterRows, error: rosterError } = await supabase
     .from("roster_entry")
     .select(
-      "id, team_id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name, visibility_scope)"
+      "id, team_id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, display_mode, is_coach_fallback, visibility_scope, leaderboard_opt_out_league)"
     )
     .in("team_id", teamIds);
   if (rosterError) throw rosterError;
@@ -212,30 +238,35 @@ export async function getDivisionLeaderboard(
     }
   }
 
-  const entries = (rosterRows ?? []).map((re: any) => {
-    const team = teamById.get(re.team_id);
-    const division = team?.division;
-    const league = division?.league;
-    const context = {
-      divisionName: division?.name ?? "",
-      teamName: team?.name ?? "",
-      season: team?.season ?? "",
-      year: team?.year ?? 0,
-      leagueInitials: league?.initials ?? "",
-      playerDisplayMode: team?.player_display_mode ?? "all",
-    };
-    const counts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
-    return {
-      rosterEntryId: re.id,
-      playerId: re.player ? re.player_id : null,
-      teamName: team?.name ?? "",
-      uniformNumber: re.uniform_number,
-      displayName: displayNameFor(re.player, re.uniform_number, context),
-      visibilityScope: re.player?.visibility_scope ?? null,
-      counts,
-      stats: calculateStats(counts),
-    };
-  });
+  // Locked (coach-fallback, unclaimed) players never appear on any
+  // leaderboard, for anyone -- not even coaching staff, who can still see
+  // them on the Roster/Box Score instead.
+  const entries = (rosterRows ?? [])
+    .filter((re: any) => !re.player?.is_coach_fallback)
+    .map((re: any) => {
+      const team = teamById.get(re.team_id);
+      const division = team?.division;
+      const league = division?.league;
+      const context = {
+        divisionName: division?.name ?? "",
+        teamName: team?.name ?? "",
+        season: team?.season ?? "",
+        year: team?.year ?? 0,
+        leagueInitials: league?.initials ?? "",
+      };
+      const counts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
+      return {
+        rosterEntryId: re.id,
+        playerId: re.player ? re.player_id : null,
+        teamName: team?.name ?? "",
+        uniformNumber: re.uniform_number,
+        displayName: displayNameFor(re.player, re.uniform_number, context, false),
+        visibilityScope: re.player?.visibility_scope ?? null,
+        leaderboardOptOutLeague: re.player?.leaderboard_opt_out_league ?? false,
+        counts,
+        stats: calculateStats(counts),
+      };
+    });
 
   return { header, entries };
 }
@@ -273,7 +304,8 @@ export async function listGamesForTeam(supabase: SupabaseClient, teamId: string)
 
 export async function getGameBoxScore(
   supabase: SupabaseClient,
-  gameId: string
+  gameId: string,
+  viewerIsCoach: boolean
 ): Promise<{ game: GameSummary; teamId: string; lines: BoxScoreLine[] }> {
   const { data: game, error: gameError } = await supabase
     .from("game")
@@ -287,19 +319,19 @@ export async function getGameBoxScore(
   const { data: statRows, error: statError } = await supabase
     .from("game_batting_stat")
     .select(
-      "roster_entry_id, jersey_number, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf, roster_entry:roster_entry_id(uniform_number, player_id, player:player_id(player_tag, first_name, last_name, reveal_full_name))"
+      "roster_entry_id, jersey_number, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf, roster_entry:roster_entry_id(uniform_number, player_id, player:player_id(player_tag, first_name, last_name, display_mode, is_coach_fallback))"
     )
     .eq("game_id", gameId);
   if (statError) throw statError;
 
   const lines: BoxScoreLine[] = (statRows ?? []).map((row: any) => {
     const uniformNumber = row.roster_entry?.uniform_number ?? row.jersey_number ?? 0;
-    const counts = toCounts(row);
+    const counts = countsFor(row.roster_entry?.player, viewerIsCoach, toCounts(row));
     return {
       rosterEntryId: row.roster_entry_id,
       playerId: row.roster_entry?.player ? row.roster_entry.player_id : null,
       jerseyNumber: row.jersey_number,
-      displayName: displayNameFor(row.roster_entry?.player, uniformNumber, context),
+      displayName: displayNameFor(row.roster_entry?.player, uniformNumber, context, viewerIsCoach),
       counts,
       stats: calculateStats(counts),
     };

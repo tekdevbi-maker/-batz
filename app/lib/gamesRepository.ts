@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ImportedBattingLine } from "./gameChangerImport";
 import { aggregateBattingCounts, type BattingCounts } from "./stats";
 import { calculateStarTiers } from "./starTiers";
-import { generateDefaultPlayerTag } from "./playerTag";
+import { generateLockedPlayerTag } from "./playerTag";
 import { getTeamJoinContext } from "./claimRepository";
 
 export interface ExistingGameSummary {
@@ -139,9 +139,9 @@ function namesMatch(stored: string | null, imported: string): boolean {
 async function findFreePlayerTag(
   supabase: SupabaseClient,
   uniformNumber: number,
-  tagContext: Omit<Parameters<typeof generateDefaultPlayerTag>[0], "uniformNumber">
+  tagContext: Omit<Parameters<typeof generateLockedPlayerTag>[0], "uniformNumber">
 ): Promise<string> {
-  let candidate = generateDefaultPlayerTag({ ...tagContext, uniformNumber });
+  let candidate = generateLockedPlayerTag({ ...tagContext, uniformNumber });
   let n = 0;
   // Safety cap -- should never realistically be hit, but guarantees this
   // loop terminates instead of hammering the DB indefinitely.
@@ -154,7 +154,7 @@ async function findFreePlayerTag(
     if (error) throw error;
     if (!data) return candidate;
     n += 1;
-    candidate = generateDefaultPlayerTag({ ...tagContext, uniformNumber: `0_${n}` });
+    candidate = generateLockedPlayerTag({ ...tagContext, uniformNumber: `0_${n}` });
   }
   throw new Error(`Could not find a free PlayerTag after ${n} attempts for uniform number ${uniformNumber}`);
 }
@@ -165,7 +165,7 @@ async function claimUnderHeadCoach(
   uniformNumber: number,
   firstName: string,
   lastName: string,
-  tagContext: Omit<Parameters<typeof generateDefaultPlayerTag>[0], "uniformNumber">
+  tagContext: Omit<Parameters<typeof generateLockedPlayerTag>[0], "uniformNumber">
 ): Promise<void> {
   const playerTag = await findFreePlayerTag(supabase, uniformNumber, tagContext);
   const { error } = await supabase.rpc("auto_claim_roster_entry", {
@@ -196,13 +196,7 @@ export async function matchOrCreateRosterEntries(
   if (error) throw error;
 
   const context = await getTeamJoinContext(supabase, teamId);
-  const tagContext = {
-    division: context.divisionName,
-    teamName: context.teamName,
-    season: context.season,
-    year: context.year,
-    leagueInitials: context.leagueInitials,
-  };
+  const tagContext = { teamName: context.teamName };
 
   const rosterEntries = (existing ?? []) as RosterEntryRow[];
   // Indexed to match `lines` 1:1 -- jersey number is not a safe correlation

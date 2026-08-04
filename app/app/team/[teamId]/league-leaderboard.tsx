@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
@@ -64,16 +64,27 @@ export default function LeagueLeaderboardScreen() {
   const [header, setHeader] = useState<DivisionLeaderboardHeader | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [categoryKey, setCategoryKey] = useState<(typeof CATEGORIES)[number]["key"]>("hits");
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!teamId || !session) return;
-    getDivisionLeaderboard(supabase, teamId)
+    await getDivisionLeaderboard(supabase, teamId)
       .then((result) => {
-        setEntries(result.entries);
+        setEntries(result.entries.filter((e) => !e.leaderboardOptOutLeague));
         setHeader(result.header);
       })
       .catch((err) => setError(errorMessage(err)));
   }, [teamId, session]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   const category = CATEGORIES.find((c) => c.key === categoryKey)!;
   const sorted = useMemo(
@@ -86,7 +97,11 @@ export default function LeagueLeaderboardScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+      >
         {header && (
           <Text style={styles.title}>
             {header.leagueName} | {header.divisionName} | {header.season} {header.year}
@@ -127,10 +142,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
-  title: { fontSize: 18, fontWeight: "700", color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14, marginBottom: 8 },
-  error: { color: colors.error, fontSize: 14 },
-  categoryDescription: { fontSize: 12, color: colors.textMuted, marginBottom: 10 },
+  title: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 8 },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  categoryDescription: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textMuted, marginBottom: 10 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -139,9 +154,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 8,
   },
-  rank: { width: 24, color: colors.textSecondary, fontSize: 14 },
-  uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14 },
-  name: { flex: 2, fontSize: 15, color: colors.textPrimary },
-  teamName: { flex: 0.8, fontSize: 13, color: colors.textSecondary },
-  value: { fontWeight: "600", fontSize: 15, color: colors.textPrimary },
+  rank: { width: 24, color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  uniformNumber: { width: 40, color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  name: { flex: 2, fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
+  teamName: { flex: 0.8, fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
+  value: { fontFamily: "Montserrat_600SemiBold", fontSize: 15, color: colors.textPrimary },
 });

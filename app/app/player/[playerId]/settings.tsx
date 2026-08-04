@@ -12,10 +12,16 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { getPlayerProfile, updatePlayerSettings, type BatsThrows } from "../../../lib/playerRepository";
+import { getPlayerProfile, updatePlayerSettings, type BatsThrows, type PlayerDisplayMode } from "../../../lib/playerRepository";
 import { colors } from "../../../lib/theme";
 
 const BATS_THROWS_OPTIONS: BatsThrows[] = ["Right", "Left", "Switch"];
+
+const DISPLAY_MODE_OPTIONS: { key: PlayerDisplayMode; label: string }[] = [
+  { key: "uniform", label: "Uniform #" },
+  { key: "tag", label: "Alias" },
+  { key: "real_name", label: "Real Name" },
+];
 
 function parseOptionalInt(text: string): number | null {
   const trimmed = text.trim();
@@ -37,9 +43,13 @@ export default function PlayerSettingsScreen() {
 
   const [loaded, setLoaded] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [isCoachFallback, setIsCoachFallback] = useState(false);
+  const [realName, setRealName] = useState<string | null>(null);
   const [playerTag, setPlayerTag] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
-  const [revealFullName, setRevealFullName] = useState(false);
+  const [displayMode, setDisplayMode] = useState<PlayerDisplayMode>("uniform");
+  const [leaderboardOptOutTeam, setLeaderboardOptOutTeam] = useState(false);
+  const [leaderboardOptOutLeague, setLeaderboardOptOutLeague] = useState(false);
   const [heightFeet, setHeightFeet] = useState("");
   const [heightInches, setHeightInches] = useState("");
   const [weightLbs, setWeightLbs] = useState("");
@@ -56,9 +66,13 @@ export default function PlayerSettingsScreen() {
       .then((p) => {
         if (p) {
           setIsOwner(p.isOwner);
+          setIsCoachFallback(p.isCoachFallback);
+          setRealName(p.realName);
           setPlayerTag(p.playerTag);
           setVisibility(p.visibilityScope);
-          setRevealFullName(p.revealFullName);
+          setDisplayMode(p.displayMode);
+          setLeaderboardOptOutTeam(p.leaderboardOptOutTeam);
+          setLeaderboardOptOutLeague(p.leaderboardOptOutLeague);
           setHeightFeet(p.heightFeet != null ? String(p.heightFeet) : "");
           setHeightInches(p.heightInches != null ? String(p.heightInches) : "");
           setWeightLbs(p.weightLbs != null ? String(p.weightLbs) : "");
@@ -82,7 +96,7 @@ export default function PlayerSettingsScreen() {
       await updatePlayerSettings(supabase, playerId, {
         playerTag: playerTag.trim(),
         visibilityScope: visibility,
-        revealFullName,
+        ...(isCoachFallback ? {} : { displayMode, leaderboardOptOutTeam, leaderboardOptOutLeague }),
         heightFeet: parseOptionalInt(heightFeet),
         heightInches: parseOptionalInt(heightInches),
         weightLbs: parseOptionalInt(weightLbs),
@@ -115,9 +129,14 @@ export default function PlayerSettingsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.realNameBox}>
+        <Text style={styles.realNameLabel}>Real Name (on file, not shown publicly)</Text>
+        <Text style={styles.realNameValue}>{realName ?? "Not yet provided"}</Text>
+      </View>
+
       <Text style={styles.label}>PlayerTag</Text>
       <TextInput style={styles.input} value={playerTag} onChangeText={setPlayerTag} autoCapitalize="none" />
-      <Text style={styles.hint}>The name shown everywhere in the app. Must be unique.</Text>
+      <Text style={styles.hint}>Usable as a custom alias below. Must be unique.</Text>
 
       <Text style={styles.label}>Visibility</Text>
       <View style={styles.chipRow}>
@@ -133,10 +152,51 @@ export default function PlayerSettingsScreen() {
           : "Stats visible only to coaches and parents in this player's league/division for the current season."}
       </Text>
 
-      <View style={styles.switchRow}>
-        <Text style={styles.label}>Show real name instead of PlayerTag</Text>
-        <Switch value={revealFullName} onValueChange={setRevealFullName} />
-      </View>
+      {isCoachFallback ? (
+        <Text style={styles.hint}>
+          Display name and leaderboard settings unlock once a parent claims this player.
+        </Text>
+      ) : (
+        <>
+          <Text style={styles.label}>Display As</Text>
+          <View style={styles.chipRow}>
+            {DISPLAY_MODE_OPTIONS.map((option) => (
+              <Pressable
+                key={option.key}
+                style={[styles.chip, displayMode === option.key && styles.chipSelected]}
+                onPress={() => setDisplayMode(option.key)}
+              >
+                <Text style={styles.chipText}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.hint}>
+            {displayMode === "uniform"
+              ? "Shown app-wide as the player's uniform number."
+              : displayMode === "tag"
+                ? "Shown app-wide as the PlayerTag above."
+                : "Shown app-wide as the real name on file."}
+          </Text>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.label}>Exclude from Team Leaderboard</Text>
+            <Switch value={leaderboardOptOutTeam} onValueChange={setLeaderboardOptOutTeam} />
+          </View>
+          <Text style={styles.hint}>
+            Keeps this player on the Roster and their own Career Profile, just off of this team's Leaderboard
+            rankings.
+          </Text>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.label}>Exclude from League Leaderboard</Text>
+            <Switch value={leaderboardOptOutLeague} onValueChange={setLeaderboardOptOutLeague} />
+          </View>
+          <Text style={styles.hint}>
+            Keeps this player off the League/Division-wide Leaderboard rankings, independent of the Team
+            Leaderboard setting above.
+          </Text>
+        </>
+      )}
 
       <Text style={styles.label}>Height</Text>
       <View style={styles.heightRow}>
@@ -215,17 +275,26 @@ export default function PlayerSettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 8, backgroundColor: colors.background },
-  label: { fontSize: 15, fontWeight: "600", marginTop: 12, flexShrink: 1, color: colors.textPrimary },
-  hint: { color: colors.textSecondary, fontSize: 14 },
-  error: { color: colors.error, fontSize: 14 },
-  success: { color: colors.success, fontSize: 15, fontWeight: "600" },
-  plainText: { color: colors.textPrimary },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, flexShrink: 1, color: colors.textPrimary },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  success: { color: colors.success, fontSize: 15, fontFamily: "Montserrat_600SemiBold" },
+  plainText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
+  realNameBox: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  realNameLabel: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textMuted },
+  realNameValue: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textSecondary, marginTop: 2 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    fontSize: 18,
+    fontSize: 18, fontFamily: "Montserrat_400Regular",
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
@@ -240,12 +309,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: colors.surface,
   },
-  chipText: { color: colors.textPrimary },
+  chipText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontWeight: "600", fontSize: 18 },
+  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   secondaryButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, alignItems: "center" },
-  secondaryButtonText: { color: colors.textPrimary },
+  secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
 });

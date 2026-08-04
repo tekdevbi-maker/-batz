@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateDefaultPlayerTag } from "./playerTag";
 
+// Coach Register's first page ("Continue to Team Registration") needs to
+// confirm an email isn't already taken WITHOUT creating an account --
+// signUp() itself is the only thing that ever creates one, and it only
+// runs on page 2's "Complete Registration". Callable with no session.
+export async function isEmailAvailable(supabase: SupabaseClient, email: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("email_is_available", { p_email: email });
+  if (error) throw error;
+  return !!data;
+}
+
 export interface TeamJoinContext {
   teamId: string;
   teamName: string;
@@ -11,7 +21,6 @@ export interface TeamJoinContext {
   leagueInitials: string;
   coachFirstName: string | null;
   coachLastName: string | null;
-  playerDisplayMode: "uniform_only" | "initials" | "all";
 }
 
 // Pre-fill info for the parent join screen (spec Section 4 step 3:
@@ -23,7 +32,7 @@ export async function getTeamJoinContext(
 ): Promise<TeamJoinContext> {
   const { data: team, error: teamError } = await supabase
     .from("team")
-    .select("name, season, year, player_display_mode, division:division_id(name, league:league_id(name, initials))")
+    .select("name, season, year, division:division_id(name, league:league_id(name, initials))")
     .eq("id", teamId)
     .single();
   if (teamError) throw teamError;
@@ -48,7 +57,6 @@ export async function getTeamJoinContext(
     leagueInitials: league?.initials ?? "",
     coachFirstName: coach?.first_name ?? null,
     coachLastName: coach?.last_name ?? null,
-    playerDisplayMode: team.player_display_mode,
   };
 }
 
@@ -143,15 +151,17 @@ export async function joinTeamAsFollower(
   }
 }
 
-// Coach-only: direct reassignment to an existing team member -- no
-// link/token, replaces the old create_player_transfer/claim_player_transfer
-// flow. The target must already appear on the team's member list.
-export async function transferPlayerToMember(
+// Coach-only: OFFERS a roster spot to an existing team member -- the
+// target must agree via respondToTransferOffer before ownership actually
+// changes (COPPA-driven parental consent, replaces the old instant
+// transfer_player_to_member). The target must already appear on the
+// team's member list.
+export async function offerPlayerTransfer(
   supabase: SupabaseClient,
   rosterEntryId: string,
   targetUserId: string
-): Promise<void> {
-  const { error } = await supabase.rpc("transfer_player_to_member", {
+): Promise<string> {
+  const { data, error } = await supabase.rpc("offer_player_transfer", {
     p_roster_entry_id: rosterEntryId,
     p_target_user_id: targetUserId,
   });
@@ -161,6 +171,53 @@ export async function transferPlayerToMember(
     }
     throw error;
   }
+  return data as string;
+}
+
+export interface PendingTransferOffer {
+  requestId: string;
+  playerId: string;
+  displayName: string;
+  teamName: string;
+  playerName: string;
+  coachName: string | null;
+}
+
+// Follower-facing: my own pending coach-initiated offers, across every
+// team -- drives the consent popup, either surfaced from a Home
+// notification or directly on the player's own card.
+export async function listMyPendingTransferOffers(supabase: SupabaseClient): Promise<PendingTransferOffer[]> {
+  const { data, error } = await supabase.rpc("list_my_pending_transfer_offers");
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    requestId: r.request_id,
+    playerId: r.player_id,
+    displayName: r.display_name,
+    teamName: r.team_name,
+    playerName: [r.player_first_name, r.player_last_name].filter(Boolean).join(" ").trim() || r.display_name,
+    coachName: [r.coach_first_name, r.coach_last_name].filter(Boolean).join(" ").trim() || null,
+  }));
+}
+
+// The target's response to a coach-initiated offer -- agreeing is the one
+// place a coach-offered transfer actually changes ownership.
+export async function respondToTransferOffer(supabase: SupabaseClient, requestId: string, agree: boolean): Promise<void> {
+  const { error } = await supabase.rpc("respond_to_transfer_offer", { p_request_id: requestId, p_agree: agree });
+  if (error) {
+    if (error.message?.includes("team_at_capacity")) {
+      throw new TeamAtCapacityError("This team's 100-member limit has been reached.");
+    }
+    throw error;
+  }
+}
+
+// Reverts a claimed player back to locked/coach-fallback status. Callable
+// by the player's own current parent (self-service -- offered right in the
+// same consent popup that unlocked them) or that team's Head Coach
+// (unilateral).
+export async function unlinkPlayer(supabase: SupabaseClient, playerId: string): Promise<void> {
+  const { error } = await supabase.rpc("unlink_player", { p_player_id: playerId });
+  if (error) throw error;
 }
 
 // "I am the parent for this player": logs the attestation and unlocks
@@ -173,22 +230,115 @@ export async function attestPlayerParent(supabase: SupabaseClient, playerId: str
 
 export class AlreadyClaimedByParentError extends Error {}
 
-// Self-service: any signed-in user can claim a roster spot themselves,
-// without coach approval -- but only while the current owner is a coach
-// on that team (auto-claimed-at-import default), never a real parent.
-// Auto-joins the team (same as register_player) and clears any prior
-// coach attestation, since the new owner hasn't attested.
-export async function claimPlayerAsParent(supabase: SupabaseClient, rosterEntryId: string): Promise<void> {
-  const { error } = await supabase.rpc("parent_claim_player", { p_roster_entry_id: rosterEntryId });
+// Self-service: any signed-in user can REQUEST to claim a roster spot
+// themselves -- but only while the current owner is a coach on that team
+// (auto-claimed-at-import default), never a real parent. Unlike the old
+// immediate claim, this only records a pending request; the team's coach
+// must approve it (approveClaimRequest) before ownership actually
+// transfers and the roster spot's real name unlocks for this parent.
+export async function requestPlayerClaim(supabase: SupabaseClient, rosterEntryId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("request_player_claim", { p_roster_entry_id: rosterEntryId });
   if (error) {
     if (error.message?.includes("already_claimed_by_a_parent")) {
       throw new AlreadyClaimedByParentError(
         "This player has already been claimed by a parent. Ask that team's coach if this was a mistake."
       );
     }
+    throw error;
+  }
+  return data as string | null;
+}
+
+// "pending" | "approved" | "denied" | null (never requested, or the
+// player was reassigned since -- e.g. season-end fallback reset).
+export async function getMyClaimRequestStatus(supabase: SupabaseClient, rosterEntryId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_my_claim_request_status", { p_roster_entry_id: rosterEntryId });
+  if (error) throw error;
+  return (data as string | null) ?? null;
+}
+
+export interface PendingClaimRequest {
+  requestId: string;
+  rosterEntryId: string;
+  playerId: string;
+  uniformNumber: number;
+  playerName: string;
+  requestedBy: string;
+  requesterEmail: string;
+  requesterName: string;
+  createdAt: string;
+}
+
+// Coach-facing approval queue for the Team Members screen.
+export async function listPendingClaimRequests(supabase: SupabaseClient, teamId: string): Promise<PendingClaimRequest[]> {
+  const { data, error } = await supabase.rpc("list_pending_claim_requests_for_team", { p_team_id: teamId });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    requestId: r.request_id,
+    rosterEntryId: r.roster_entry_id,
+    playerId: r.player_id,
+    uniformNumber: r.uniform_number,
+    playerName: r.player_name,
+    requestedBy: r.requested_by,
+    requesterEmail: r.requester_email,
+    requesterName: r.requester_name,
+    createdAt: r.created_at,
+  }));
+}
+
+// Approving is where ownership actually transfers to the requesting parent.
+export async function approveClaimRequest(supabase: SupabaseClient, requestId: string): Promise<void> {
+  const { error } = await supabase.rpc("approve_player_claim_request", { p_request_id: requestId });
+  if (error) {
     if (error.message?.includes("team_at_capacity")) {
       throw new TeamAtCapacityError("This team's 100-member limit has been reached.");
     }
     throw error;
   }
+}
+
+export async function denyClaimRequest(supabase: SupabaseClient, requestId: string): Promise<void> {
+  const { error } = await supabase.rpc("deny_player_claim_request", { p_request_id: requestId });
+  if (error) throw error;
+}
+
+// Badge count for the Team Home "Team Members" tile.
+export async function countPendingClaimRequests(supabase: SupabaseClient, teamId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("count_pending_claim_requests_for_team", { p_team_id: teamId });
+  if (error) throw error;
+  return (data as number) ?? 0;
+}
+
+// Badge counts for every team the caller coaches, in one call -- used on
+// Home's "Teams You Coach" rows.
+export async function listPendingClaimRequestCountsForCoach(
+  supabase: SupabaseClient
+): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("list_pending_claim_request_counts_for_coach");
+  if (error) throw error;
+  const result: Record<string, number> = {};
+  for (const row of (data ?? []) as any[]) {
+    result[row.team_id] = Number(row.pending_count);
+  }
+  return result;
+}
+
+export interface NewlyAssignedPlayer {
+  playerId: string;
+  displayName: string;
+}
+
+// Home-facing: players newly transferred/approved to me that I haven't
+// seen yet -- there's no push/email notification system in this app, so
+// this in-app banner (cleared via acknowledgeNewPlayers) is the only way
+// a parent finds out a coach handed them a player.
+export async function listNewlyAssignedPlayers(supabase: SupabaseClient): Promise<NewlyAssignedPlayer[]> {
+  const { data, error } = await supabase.rpc("list_newly_assigned_players");
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({ playerId: r.player_id, displayName: r.display_name }));
+}
+
+export async function acknowledgeNewPlayers(supabase: SupabaseClient): Promise<void> {
+  const { error } = await supabase.rpc("acknowledge_new_players");
+  if (error) throw error;
 }

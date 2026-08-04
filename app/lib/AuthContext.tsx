@@ -10,7 +10,11 @@ interface AuthContextValue {
   isAdmin: boolean;
   isPasswordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, metadata?: { firstName: string; lastName: string }) => Promise<string>;
+  signUp: (
+    email: string,
+    password: string,
+    metadata?: { firstName: string; lastName: string }
+  ) => Promise<string>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (newPassword: string) => Promise<void>;
@@ -67,10 +71,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     metadata?: { firstName: string; lastName: string }
   ): Promise<string> {
+    // signUp() is only ever called after the caller has already shown
+    // AgeAttestationGate and the user confirmed -- stamping it here (rather
+    // than trusting each call site) guarantees every account, regardless of
+    // entry point, carries the same attestation record.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: metadata ? { data: { first_name: metadata.firstName, last_name: metadata.lastName } } : undefined,
+      options: {
+        data: {
+          ...(metadata ? { first_name: metadata.firstName, last_name: metadata.lastName } : {}),
+          age_attested_at: new Date().toISOString(),
+        },
+      },
     });
     if (error) throw error;
     if (!data.user) throw new Error("Sign up did not return a user.");
