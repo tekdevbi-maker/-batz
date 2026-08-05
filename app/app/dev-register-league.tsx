@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { listLeagues, type League } from "../lib/leaguesRepository";
@@ -9,26 +9,27 @@ import SafeTopSpacer from "../components/SafeTopSpacer";
 import FadeIn from "../components/FadeIn";
 import WizardNav from "../components/WizardNav";
 
-// Page 3 of 11: "Which league are you affiliated with?" -- an autosuggest
-// text field doubles as the free-entry box (formerly the separate "I don't
-// see it listed..." dropdown option): typing a name that matches an
-// existing League selects it, and typing anything else is treated as a
-// brand-new League once the user pauses (the "new league" hint is delayed
-// so it doesn't flash on every keystroke while still-matching text is
-// typed).
-const NEW_LEAGUE_HINT_DELAY_MS = 600;
-
+// Page 3 of 11: "Which league are you affiliated with?" -- two separate
+// fields now: an autosuggest search restricted to existing (already
+// verified) leagues, and a distinct "Or...Make Your Own League" field for
+// starting a brand-new one. The two are mutually exclusive -- picking a
+// suggestion clears the new-league text and vice versa. New leagues no
+// longer sit in an admin-verification queue (see
+// 20260805270000_self_serve_leagues_no_longer_need_approval.sql), so
+// picking "Make Your Own" instead just warns the coach, via a one-time
+// popup, that League/Division selection is what buckets every team
+// together correctly.
 export default function DevRegisterLeagueScreen() {
   const router = useRouter();
   const saved = getDevWizardState();
 
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [query, setQuery] = useState(saved.leagueName ?? "");
+  const [query, setQuery] = useState(saved.isNewLeague ? "" : saved.leagueName ?? "");
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
+  const [newLeagueName, setNewLeagueName] = useState(saved.isNewLeague ? saved.leagueName ?? "" : "");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showNewLeagueHint, setShowNewLeagueHint] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showNewLeaguePopup, setShowNewLeaguePopup] = useState(false);
 
   useEffect(() => {
     listLeagues(supabase).then((all) => {
@@ -43,46 +44,52 @@ export default function DevRegisterLeagueScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const exactMatch = leagues.find((l) => l.name.toLowerCase() === query.trim().toLowerCase()) ?? null;
-  const isNewLeague = query.trim().length > 0 && !exactMatch;
-  const canProceed = query.trim().length > 0;
+  const canProceed = !!selectedLeague || newLeagueName.trim().length > 0;
 
   const suggestions = (() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return leagues.filter((l) => l.name.toLowerCase().includes(q) && l.name.toLowerCase() !== q).slice(0, 8);
+    return leagues.filter((l) => l.name.toLowerCase().includes(q)).slice(0, 8);
   })();
 
-  function handleChangeText(text: string) {
+  function handleChangeQuery(text: string) {
     setQuery(text);
+    setSelectedLeague(null);
     setShowSuggestions(true);
-    setShowNewLeagueHint(false);
-    if (hintTimer.current) clearTimeout(hintTimer.current);
-    hintTimer.current = setTimeout(() => setShowNewLeagueHint(true), NEW_LEAGUE_HINT_DELAY_MS);
+    if (text.trim().length > 0) setNewLeagueName("");
   }
 
   function selectSuggestion(league: League) {
     setQuery(league.name);
     setSelectedLeague(league);
     setShowSuggestions(false);
-    setShowNewLeagueHint(false);
-    if (hintTimer.current) clearTimeout(hintTimer.current);
+    setNewLeagueName("");
   }
 
-  useEffect(() => {
-    return () => {
-      if (hintTimer.current) clearTimeout(hintTimer.current);
-    };
-  }, []);
+  function handleChangeNewLeagueName(text: string) {
+    setNewLeagueName(text);
+    if (text.trim().length > 0) {
+      setQuery("");
+      setSelectedLeague(null);
+      setShowSuggestions(false);
+    }
+  }
 
-  function handleNext() {
-    const trimmed = query.trim();
-    if (exactMatch) {
-      updateDevWizardState({ isNewLeague: false, leagueId: exactMatch.id, leagueName: exactMatch.name });
+  function proceed() {
+    if (selectedLeague) {
+      updateDevWizardState({ isNewLeague: false, leagueId: selectedLeague.id, leagueName: selectedLeague.name });
     } else {
-      updateDevWizardState({ isNewLeague: true, leagueId: null, leagueName: trimmed });
+      updateDevWizardState({ isNewLeague: true, leagueId: null, leagueName: newLeagueName.trim() });
     }
     router.push("/dev-register-sport");
+  }
+
+  function handleNext() {
+    if (!selectedLeague && newLeagueName.trim().length > 0) {
+      setShowNewLeaguePopup(true);
+      return;
+    }
+    proceed();
   }
 
   return (
@@ -93,11 +100,11 @@ export default function DevRegisterLeagueScreen() {
         <Text style={styles.intro}>Now, let's get your team set up!</Text>
         <Text style={styles.title}>What league do you represent?</Text>
 
-        <Text style={styles.label}>League Name</Text>
+        <Text style={styles.label}>Choose a Verified League Name</Text>
         <TextInput
           style={styles.input}
           value={query}
-          onChangeText={handleChangeText}
+          onChangeText={handleChangeQuery}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="Start typing your league's name"
@@ -108,10 +115,7 @@ export default function DevRegisterLeagueScreen() {
           <View style={styles.suggestionList}>
             {suggestions.map((l) => (
               <Pressable key={l.id} style={styles.suggestionRow} onPress={() => selectSuggestion(l)}>
-                <Text style={styles.suggestionText}>
-                  {l.name}
-                  {l.verificationStatus === "pending" ? " (pending)" : ""}
-                </Text>
+                <Text style={styles.suggestionText}>{l.name}</Text>
               </Pressable>
             ))}
           </View>
@@ -121,22 +125,47 @@ export default function DevRegisterLeagueScreen() {
           <Text style={styles.hint}>Couldn't load leagues: {loadError}. Pull down to retry or check your connection.</Text>
         )}
 
-        {isNewLeague && showNewLeagueHint && (
-          <Text style={styles.hint}>New leagues are held for admin verification before they're public.</Text>
-        )}
+        <Text style={styles.label}>Or...Make Your Own League</Text>
+        <TextInput
+          style={styles.input}
+          value={newLeagueName}
+          onChangeText={handleChangeNewLeagueName}
+          placeholder="Enter a new league name"
+          placeholderTextColor={colors.textSecondary}
+        />
 
         <WizardNav onBack={() => router.back()} onNext={handleNext} nextDisabled={!canProceed} />
       </ScrollView>
+
+      <Modal visible={showNewLeaguePopup} transparent animationType="fade" onRequestClose={() => setShowNewLeaguePopup(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalText}>
+              League selection is so ALL the teams in your League/Division are bucketed appropriately. If you want to
+              start your own league, make sure other teams in your League/Division know about it too!
+            </Text>
+            <Pressable
+              style={styles.modalButton}
+              onPress={() => {
+                setShowNewLeaguePopup(false);
+                proceed();
+              }}
+            >
+              <Text style={styles.modalButtonText}>Got It</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
       </FadeIn>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, justifyContent: "center" },
+  container: { flexGrow: 1, padding: 24, paddingTop: 48 },
   intro: { fontSize: 18, fontFamily: "Montserrat_600SemiBold", marginBottom: 4, color: colors.textSecondary, textAlign: "center" },
   title: { fontSize: 22, fontFamily: "Montserrat_700Bold", marginBottom: 16, color: colors.textPrimary, textAlign: "center" },
-  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary, marginBottom: 4 },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary, marginBottom: 4, marginTop: 16 },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginTop: 4 },
   input: {
     borderWidth: 1,
@@ -161,4 +190,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   suggestionText: { color: colors.textPrimary, fontSize: 15, fontFamily: "Montserrat_400Regular" },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 20, gap: 16, width: "100%", maxWidth: 400 },
+  modalText: { color: colors.textPrimary, fontSize: 16, fontFamily: "Montserrat_400Regular", lineHeight: 22 },
+  modalButton: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 12, alignItems: "center" },
+  modalButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
 });

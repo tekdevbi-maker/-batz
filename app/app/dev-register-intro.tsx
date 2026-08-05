@@ -32,7 +32,7 @@ export default function DevRegisterIntroScreen() {
           <Image source={require("../assets/favicon.png")} style={styles.inlineThumb} resizeMode="contain" />.
         </Text>
         <View style={styles.navSpacer}>
-          <WizardNav onBack={() => router.back()} onNext={() => router.push("/dev-register-league")} />
+          <WizardNav onBack={() => router.back()} onNext={() => router.push("/dev-register-bucketing")} />
         </View>
       </ScrollView>
       </FadeIn>

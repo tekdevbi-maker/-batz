@@ -107,6 +107,7 @@ export default function RootLayout() {
           <Stack.Screen name="sign-up" options={{ headerShown: false }} />
           <Stack.Screen name="dev-register" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
           <Stack.Screen name="dev-register-intro" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register-bucketing" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
           <Stack.Screen name="dev-register-league" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
           <Stack.Screen name="dev-register-sport" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
           <Stack.Screen name="dev-register-recball" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />

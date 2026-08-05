@@ -30,7 +30,9 @@ export default function AgeAttestationGate({
         {confirming ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.confirmButtonText}>I attest I am at least 13 years old. Create my account</Text>
+          <Text style={styles.confirmButtonText}>
+            I attest I am at least 13 years old.{"\n\n"}Create My Account
+          </Text>
         )}
       </Pressable>
       <Pressable style={styles.cancelButton} disabled={confirming} onPress={onCancel}>
@@ -41,13 +43,13 @@ export default function AgeAttestationGate({
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 12 },
-  title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
-  body: { fontSize: 16, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, lineHeight: 22 },
-  error: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.error },
-  confirmButton: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
+  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", alignItems: "center" },
+  title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
+  body: { fontSize: 16, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, lineHeight: 22, textAlign: "center" },
+  error: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.error, textAlign: "center" },
+  confirmButton: { width: "100%", maxWidth: 400, backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   confirmButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "center" },
-  cancelButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 14, alignItems: "center" },
+  cancelButton: { width: "100%", maxWidth: 400, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 14, alignItems: "center" },
   cancelButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
 });
