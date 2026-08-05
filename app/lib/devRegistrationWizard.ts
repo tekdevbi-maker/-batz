@@ -12,6 +12,12 @@ export interface DevWizardState {
   email: string;
   password: string;
 
+  // True when entered via "Add a Team I Coach" (an already-signed-in
+  // coach registering a second, separate team) rather than brand-new
+  // account creation -- dev-register-confirm.tsx skips signUp() and uses
+  // the existing session instead when this is set.
+  skipAccountCreation: boolean;
+
   leagueId: string | null;
   leagueName: string | null;
   isNewLeague: boolean;
@@ -38,6 +44,7 @@ function initialState(): DevWizardState {
     lastName: "",
     email: "",
     password: "",
+    skipAccountCreation: false,
     leagueId: null,
     leagueName: null,
     isNewLeague: false,

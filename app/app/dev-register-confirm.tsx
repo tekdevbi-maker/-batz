@@ -28,7 +28,7 @@ function errorMessage(err: unknown): string {
 // point was just collecting answers in memory.
 export default function DevRegisterConfirmScreen() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, session } = useAuth();
   const state = getDevWizardState();
 
   const [submitting, setSubmitting] = useState(false);
@@ -38,10 +38,16 @@ export default function DevRegisterConfirmScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      const userId = await signUp(state.email, state.password, {
-        firstName: state.firstName,
-        lastName: state.lastName,
-      });
+      // "Add a Team I Coach" (an already-signed-in coach adding a second
+      // team) skips account creation entirely and reuses the existing
+      // session -- signUp() is only ever for brand-new registration.
+      const userId =
+        state.skipAccountCreation && session
+          ? session.user.id
+          : await signUp(state.email, state.password, {
+              firstName: state.firstName,
+              lastName: state.lastName,
+            });
 
       let leagueId: string;
       if (state.isNewLeague) {
