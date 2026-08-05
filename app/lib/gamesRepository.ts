@@ -187,7 +187,8 @@ async function claimUnderHeadCoach(
 export async function matchOrCreateRosterEntries(
   supabase: SupabaseClient,
   teamId: string,
-  lines: ImportedBattingLine[]
+  lines: ImportedBattingLine[],
+  gameId: string
 ): Promise<string[]> {
   const { data: existing, error } = await supabase
     .from("roster_entry")
@@ -241,6 +242,7 @@ export async function matchOrCreateRosterEntries(
         uniform_number: importedNumber,
         first_name: line.firstName,
         last_name: line.lastName,
+        created_by_game_id: gameId,
       })
       .select("id")
       .single();
@@ -274,8 +276,11 @@ export async function importGame(
   supabase: SupabaseClient,
   input: ImportGameInput
 ): Promise<{ gameId: string }> {
-  const rosterEntryIds = await matchOrCreateRosterEntries(supabase, input.teamId, input.lines);
-
+  // Game created first (not after roster matching, as before) so any
+  // roster_entry this import creates can be stamped with created_by_game_id
+  // -- what lets deleteGame() clean up an accidental wrong-team import's
+  // leftover player cards instead of orphaning them. If roster matching
+  // fails partway, the empty game row is removed rather than left behind.
   const { data: game, error: gameError } = await supabase
     .from("game")
     .insert({
@@ -288,6 +293,14 @@ export async function importGame(
     .select("id")
     .single();
   if (gameError) throw gameError;
+
+  let rosterEntryIds: string[];
+  try {
+    rosterEntryIds = await matchOrCreateRosterEntries(supabase, input.teamId, input.lines, game.id);
+  } catch (err) {
+    await supabase.from("game").delete().eq("id", game.id);
+    throw err;
+  }
 
   const statRows = input.lines.map((line, i) => ({
     game_id: game.id,
@@ -411,10 +424,12 @@ async function detectAndRecordMilestones(
 }
 
 // No partial edits (spec Section 3a) -- a coach who needs to fix a game
-// deletes it and re-imports. The FK from game_batting_stat to game cascades
-// (Sprint 1 schema), so this is the entire "recalculation" needed; no
-// audit log, by design.
+// deletes it and re-imports. Routed through a SECURITY DEFINER RPC (not a
+// plain client-side delete) so an accidental wrong-team import can also
+// clean up any roster spot IT auto-created that's still unclaimed and has
+// no stats left from any other game -- otherwise the player card would
+// survive the delete with nothing left pointing to it.
 export async function deleteGame(supabase: SupabaseClient, gameId: string): Promise<void> {
-  const { error } = await supabase.from("game").delete().eq("id", gameId);
+  const { error } = await supabase.rpc("delete_game_and_cleanup_roster", { p_game_id: gameId });
   if (error) throw error;
 }
