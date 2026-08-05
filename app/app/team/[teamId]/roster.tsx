@@ -74,7 +74,7 @@ export default function RosterScreen() {
               disabled={!r.playerId}
               onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
             >
-              <Text style={styles.cardNumber}>#{r.uniformNumber}</Text>
+              {!r.isCoachFallback && <Text style={styles.cardNumber}>#{r.uniformNumber}</Text>}
               <Text style={styles.cardName} numberOfLines={2}>
                 {r.playerId ? r.displayName : ""}
               </Text>

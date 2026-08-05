@@ -303,16 +303,16 @@ export default function PlayerProfileScreen() {
 
   const categoryRows = current
     ? [
-        { label: "Hits", value: String(current.counts.h), stars: stars(tiers!.hits) },
-        { label: "2B", value: String(current.counts.doubles), stars: stars(tiers!.doubles) },
-        { label: "3B", value: String(current.counts.triples), stars: stars(tiers!.triples) },
-        { label: "HR", value: String(current.counts.hr), stars: stars(tiers!.homeRuns) },
-        { label: "RBI", value: String(current.counts.rbi), stars: "" },
-        { label: "BB", value: String(current.counts.bb), stars: "" },
-        { label: "AVG", value: fmt(current.stats.avg), stars: "" },
-        { label: "OBP", value: fmt(current.stats.obp), stars: "" },
-        { label: "SLG", value: fmt(current.stats.slg), stars: "" },
-        { label: "OPS", value: fmt(current.stats.ops), stars: "" },
+        { label: "Hits", value: profile.isCoachFallback ? "*" : String(current.counts.h), stars: stars(tiers!.hits) },
+        { label: "2B", value: profile.isCoachFallback ? "*" : String(current.counts.doubles), stars: stars(tiers!.doubles) },
+        { label: "3B", value: profile.isCoachFallback ? "*" : String(current.counts.triples), stars: stars(tiers!.triples) },
+        { label: "HR", value: profile.isCoachFallback ? "*" : String(current.counts.hr), stars: stars(tiers!.homeRuns) },
+        { label: "RBI", value: profile.isCoachFallback ? "*" : String(current.counts.rbi), stars: "" },
+        { label: "BB", value: profile.isCoachFallback ? "*" : String(current.counts.bb), stars: "" },
+        { label: "AVG", value: profile.isCoachFallback ? "*" : fmt(current.stats.avg), stars: "" },
+        { label: "OBP", value: profile.isCoachFallback ? "*" : fmt(current.stats.obp), stars: "" },
+        { label: "SLG", value: profile.isCoachFallback ? "*" : fmt(current.stats.slg), stars: "" },
+        { label: "OPS", value: profile.isCoachFallback ? "*" : fmt(current.stats.ops), stars: "" },
       ]
     : [];
 
@@ -478,7 +478,7 @@ export default function PlayerProfileScreen() {
 
       <View style={styles.demographicsBlock}>
         <Text style={styles.title}>
-          {current ? `#${current.uniformNumber} - ${profile.displayName}` : profile.displayName}
+          {current && !profile.isCoachFallback ? `#${current.uniformNumber} - ${profile.displayName}` : profile.displayName}
         </Text>
         {current && <Text style={styles.teamName}>{current.teamName}</Text>}
         {demographics && <Text style={styles.hint}>{demographics}</Text>}
@@ -500,6 +500,9 @@ export default function PlayerProfileScreen() {
       {categoryRows.length > 0 && (
         <>
           <Text style={styles.label}>Current Season</Text>
+          {profile.isCoachFallback && (
+            <Text style={[styles.hint, styles.italicHint]}>*Stats will display after player is unlocked</Text>
+          )}
           <View style={styles.table}>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, styles.categoryCell]}>Category</Text>
@@ -517,7 +520,7 @@ export default function PlayerProfileScreen() {
         </>
       )}
 
-      {recentActivity.length > 0 && (
+      {recentActivity.length > 0 && !profile.isCoachFallback && (
         <>
           <Text style={styles.label}>Recent Activity</Text>
           {recentActivity.map((post) => (
@@ -543,7 +546,8 @@ export default function PlayerProfileScreen() {
         profile.seasons.map((s) => (
           <Pressable key={s.rosterEntryId} style={styles.seasonRow} onPress={() => router.push(`/team/${s.teamId}`)}>
             <Text style={styles.seasonTitle}>
-              {s.teamName} | {s.divisionName} | #{s.uniformNumber} | {s.season} {s.year}
+              {s.teamName} | {s.divisionName}
+              {!profile.isCoachFallback ? ` | #${s.uniformNumber}` : ""} | {s.season} {s.year}
               {s.seasonStatus === "ended" ? " (ended)" : ""}
             </Text>
             <Text style={styles.hint}>{s.leagueName}</Text>
@@ -559,6 +563,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
   teamName: { fontSize: 17, fontFamily: "Montserrat_600SemiBold", color: colors.textSecondary, marginTop: 2 },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  italicHint: { fontStyle: "italic" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 16, color: colors.textPrimary },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
