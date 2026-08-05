@@ -34,10 +34,25 @@ function toDivision(row: any): Division {
   return { id: row.id, leagueId: row.league_id, name: row.name };
 }
 
+// PostgREST caps an unbounded select at 1000 rows by default -- the seeded
+// national league list is ~3800 rows, so a plain select() silently drops
+// everything alphabetically past the cutoff (e.g. "Winter Park..." never
+// comes back). Page through in batches of 1000 to get the full catalog.
+const LEAGUE_PAGE_SIZE = 1000;
+
 export async function listLeagues(supabase: SupabaseClient): Promise<League[]> {
-  const { data, error } = await supabase.from("league").select("*").order("name");
-  if (error) throw error;
-  return (data ?? []).map(toLeague);
+  const all: League[] = [];
+  for (let from = 0; ; from += LEAGUE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("league")
+      .select("*")
+      .order("name")
+      .range(from, from + LEAGUE_PAGE_SIZE - 1);
+    if (error) throw error;
+    all.push(...(data ?? []).map(toLeague));
+    if (!data || data.length < LEAGUE_PAGE_SIZE) break;
+  }
+  return all;
 }
 
 export async function listDivisions(supabase: SupabaseClient, leagueId: string): Promise<Division[]> {

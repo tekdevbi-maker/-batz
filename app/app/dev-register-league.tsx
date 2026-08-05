@@ -27,15 +27,19 @@ export default function DevRegisterLeagueScreen() {
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showNewLeagueHint, setShowNewLeagueHint] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     listLeagues(supabase).then((all) => {
       setLeagues(all);
+      setLoadError(null);
       if (!saved.isNewLeague && saved.leagueId) {
         setSelectedLeague(all.find((l) => l.id === saved.leagueId) ?? null);
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      setLoadError(err instanceof Error ? err.message : "Failed to load leagues.");
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -111,6 +115,10 @@ export default function DevRegisterLeagueScreen() {
               </Pressable>
             ))}
           </View>
+        )}
+
+        {loadError && (
+          <Text style={styles.hint}>Couldn't load leagues: {loadError}. Pull down to retry or check your connection.</Text>
         )}
 
         {isNewLeague && showNewLeagueHint && (
