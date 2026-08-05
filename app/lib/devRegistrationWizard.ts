@@ -6,6 +6,8 @@
 // functional (real signUp, real league/division/team creation) -- "DEV
 // only" refers to how it's reached (a dev-only link), not to whether it
 // writes real data.
+export type TeamClassification = "recreation" | "competitive" | "high_school" | "college" | "adult_social";
+
 export interface DevWizardState {
   firstName: string;
   lastName: string;
@@ -23,7 +25,7 @@ export interface DevWizardState {
   isNewLeague: boolean;
 
   sport: "Baseball" | "Softball" | null;
-  competesRecBall: boolean | null;
+  classification: TeamClassification | null;
   division: string | null;
 
   usingDefaultSeason: boolean | null;
@@ -49,7 +51,7 @@ function initialState(): DevWizardState {
     leagueName: null,
     isNewLeague: false,
     sport: null,
-    competesRecBall: null,
+    classification: null,
     division: null,
     usingDefaultSeason: null,
     season: null,

@@ -145,6 +145,11 @@ export interface CreateTeamInput {
   // an Inactive team: excluded from leaderboards/counts, but still gets a
   // real Follow link. Defaults true (a normal, currently-competing team).
   isActive?: boolean;
+  // A historical registration's season has already wrapped up, so it
+  // belongs under Home's "Previous Teams" (season_status = 'ended') from
+  // the moment it's created, not the in-season "Teams I Coach" grid.
+  // Defaults to 'in_season' (a normal, currently-competing team).
+  seasonStatus?: "in_season" | "ended";
 }
 
 export async function createTeam(supabase: SupabaseClient, input: CreateTeamInput): Promise<{ id: string }> {
@@ -158,6 +163,7 @@ export async function createTeam(supabase: SupabaseClient, input: CreateTeamInpu
       year: input.year,
       logo_url: input.logoUrl ?? null,
       is_active: input.isActive ?? true,
+      season_status: input.seasonStatus ?? "in_season",
     })
     .select("id")
     .single();

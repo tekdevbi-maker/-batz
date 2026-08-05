@@ -7,7 +7,7 @@ import { getDevWizardState, updateDevWizardState } from "../lib/devRegistrationW
 import {
   assignPrimaryCoach,
   createDivision,
-  createPendingLeague,
+  createVerifiedLeague,
   createTeam,
   listDivisions,
   listSameGroupTeams,
@@ -16,6 +16,14 @@ import { colors } from "../lib/theme";
 import SafeTopSpacer from "../components/SafeTopSpacer";
 import FadeIn from "../components/FadeIn";
 import WizardNav from "../components/WizardNav";
+
+const CLASSIFICATION_LABELS: Record<string, string> = {
+  recreation: "Recreation",
+  competitive: "Competitive",
+  high_school: "High School",
+  college: "College",
+  adult_social: "Adult League",
+};
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -51,7 +59,7 @@ export default function DevRegisterConfirmScreen() {
 
       let leagueId: string;
       if (state.isNewLeague) {
-        const created = await createPendingLeague(supabase, { name: state.leagueName!.trim() });
+        const created = await createVerifiedLeague(supabase, { name: state.leagueName!.trim() });
         leagueId = created.id;
       } else {
         leagueId = state.leagueId!;
@@ -70,6 +78,7 @@ export default function DevRegisterConfirmScreen() {
         season: state.season!,
         year: state.year!,
         isActive: !state.isHistorical,
+        seasonStatus: state.isHistorical ? "ended" : "in_season",
       });
       await assignPrimaryCoach(supabase, {
         teamId: team.id,
@@ -100,7 +109,7 @@ export default function DevRegisterConfirmScreen() {
   const rows: [string, string][] = [
     ["League", state.leagueName ?? ""],
     ["Sport", state.sport ?? ""],
-    ["Classification", state.competesRecBall ? "Recreation" : "Competitive"],
+    ["Classification", CLASSIFICATION_LABELS[state.classification ?? "recreation"]],
     ["Division", state.division ?? ""],
     ["Season", `${state.season} ${state.year}`],
     ["Team Name", state.teamName],
