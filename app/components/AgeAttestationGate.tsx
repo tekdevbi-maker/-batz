@@ -30,9 +30,13 @@ export default function AgeAttestationGate({
         {confirming ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.confirmButtonText}>
-            I attest I am at least 13 years old.{"\n\n"}Create My Account
-          </Text>
+          <View style={styles.confirmButtonContent}>
+            <Text style={styles.confirmButtonTextLeft}>
+              I certify that I am 13 years of age or older, and I consent to the collection of my account
+              data in accordance with the Privacy Policy.
+            </Text>
+            <Text style={styles.confirmButtonTextCenter}>Create My Account</Text>
+          </View>
         )}
       </Pressable>
       <Pressable style={styles.cancelButton} disabled={confirming} onPress={onCancel}>
@@ -49,7 +53,9 @@ const styles = StyleSheet.create({
   error: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.error, textAlign: "center" },
   confirmButton: { width: "100%", maxWidth: 400, backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  confirmButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "center" },
+  confirmButtonContent: { width: "100%", gap: 12 },
+  confirmButtonTextLeft: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "left" },
+  confirmButtonTextCenter: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "center" },
   cancelButton: { width: "100%", maxWidth: 400, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 14, alignItems: "center" },
   cancelButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
 });
