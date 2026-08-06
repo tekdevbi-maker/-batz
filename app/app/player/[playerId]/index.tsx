@@ -11,6 +11,7 @@ import {
   listMyPendingTransferOffers,
   respondToTransferOffer,
   unlinkPlayer,
+  getTeamJoinContext,
   AlreadyClaimedByParentError,
   TeamAtCapacityError,
   type PendingTransferOffer,
@@ -84,6 +85,8 @@ export default function PlayerProfileScreen() {
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [claimSuccessOpen, setClaimSuccessOpen] = useState(false);
+  const [claimSentCoachName, setClaimSentCoachName] = useState<string | null>(null);
   const [myClaimStatus, setMyClaimStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isHeadCoachOnTeam, setIsHeadCoachOnTeam] = useState(false);
@@ -146,6 +149,11 @@ export default function PlayerProfileScreen() {
       await requestPlayerClaim(supabase, current.rosterEntryId);
       setClaimModalOpen(false);
       setMyClaimStatus("pending");
+      const coachName = await getTeamJoinContext(supabase, current.teamId)
+        .then((ctx) => [ctx.coachFirstName, ctx.coachLastName].filter(Boolean).join(" ").trim() || null)
+        .catch(() => null);
+      setClaimSentCoachName(coachName);
+      setClaimSuccessOpen(true);
     } catch (err) {
       setClaimError(
         err instanceof AlreadyClaimedByParentError || err instanceof TeamAtCapacityError
@@ -221,8 +229,13 @@ export default function PlayerProfileScreen() {
     setTransferOfferError(null);
     try {
       await respondToTransferOffer(supabase, transferOffer.requestId, agree);
+      const claimedPlayerId = transferOffer.playerId;
       setTransferOffer(null);
-      load();
+      if (agree) {
+        router.push(`/player/${claimedPlayerId}/settings`);
+      } else {
+        load();
+      }
     } catch (err) {
       setTransferOfferError(
         err instanceof TeamAtCapacityError ? err.message : errorMessage(err)
@@ -384,7 +397,7 @@ export default function PlayerProfileScreen() {
           )}
           {profile.isCoachFallback && myClaimStatus !== "pending" && myClaimStatus !== "coach_approved" && (
             <Pressable style={styles.secondaryButton} disabled={claimBusy} onPress={() => setClaimModalOpen(true)}>
-              <Text style={styles.secondaryButtonText}>I'm the Parent</Text>
+              <Text style={styles.secondaryButtonText}>Unlock this Player</Text>
             </Pressable>
           )}
         </View>
@@ -395,8 +408,8 @@ export default function PlayerProfileScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalText}>
-              You are requesting to be the Parent/Legal Guardian of "{profile.displayName}". The team's coach
-              will need to approve this before it takes effect. Would you like to continue?
+              Upon coach's review, this player will be added to your profile. Are you sure you want to
+              proceed?
             </Text>
             {claimError && <Text style={styles.error}>{claimError}</Text>}
             <View style={styles.modalButtonRow}>
@@ -415,15 +428,28 @@ export default function PlayerProfileScreen() {
         </View>
       </Modal>
 
+      <Modal visible={claimSuccessOpen} transparent animationType="fade" onRequestClose={() => setClaimSuccessOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalText}>
+              Your request has been sent to {claimSentCoachName ? `Coach ${claimSentCoachName}` : "the coach"}.
+            </Text>
+            <View style={styles.modalButtonRow}>
+              <Pressable style={styles.modalAgree} onPress={() => setClaimSuccessOpen(false)}>
+                <Text style={styles.modalAgreeText}>OK</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={!!transferOffer} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalText}>
-              Coach {transferOffer?.coachName ?? "on this team"} has identified you as the Parent/Legal Guardian
-              of {transferOffer?.playerName}.
-              {"\n\n"}
-              By choosing Agree below, you acknowledge the use of your player's name and stats throughout the
-              @Batz app.
+              I hereby attest that I am either the individual adult participant named on this roster, or the
+              parent/legal guardian with full legal authority to sign on behalf of the participant who is
+              under 18 years of age.
               {"\n\n"}
               As a parent, you will have full access to your player's settings and will be able to modify those
               privacy settings. You may unlink this player at any time, which will return {transferOffer?.playerName}{" "}
