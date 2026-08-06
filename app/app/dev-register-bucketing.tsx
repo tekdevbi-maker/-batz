@@ -22,7 +22,7 @@ export default function DevRegisterBucketingScreen() {
           League, Division, and Age Group. This ensures your league's leaderboard stays fair and precise for
           everyone.
         </Text>
-        <WizardNav onBack={() => router.back()} onNext={() => router.push("/dev-register-league")} />
+        <WizardNav onBack={() => router.back()} onNext={() => router.push("/dev-register-coppa")} />
       </ScrollView>
       </FadeIn>
     </>

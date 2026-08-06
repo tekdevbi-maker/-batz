@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Text, StyleSheet, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
+import { getDevWizardState } from "../lib/devRegistrationWizard";
 import { colors } from "../lib/theme";
 import SafeTopSpacer from "../components/SafeTopSpacer";
 import FadeIn from "../components/FadeIn";
@@ -10,6 +12,17 @@ import WizardNav from "../components/WizardNav";
 // Parent" button into the placeholder box below once available.
 export default function DevRegisterCompleteFollowersScreen() {
   const router = useRouter();
+  const { hasPlayersUnder13 } = getDevWizardState();
+  // Gated on the COPPA screen's answer, not division -- "Yes" (there ARE
+  // kids under 13) is what actually implies a coach-fallback roster spot
+  // needing a parent claim later; "No"/certified skips it.
+  const applies = hasPlayersUnder13 === true;
+
+  useEffect(() => {
+    if (!applies) router.replace("/dev-register-complete-multiteam");
+  }, [applies, router]);
+
+  if (!applies) return null;
 
   return (
     <>

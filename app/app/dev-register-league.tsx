@@ -97,7 +97,6 @@ export default function DevRegisterLeagueScreen() {
       <SafeTopSpacer />
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.intro}>Now, let's get your team set up!</Text>
         <Text style={styles.title}>What league do you represent?</Text>
 
         <Text style={styles.label}>Choose a Verified League Name</Text>
@@ -163,7 +162,6 @@ export default function DevRegisterLeagueScreen() {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 24, paddingTop: 48 },
-  intro: { fontSize: 18, fontFamily: "Montserrat_600SemiBold", marginBottom: 4, color: colors.textSecondary, textAlign: "center" },
   title: { fontSize: 22, fontFamily: "Montserrat_700Bold", marginBottom: 16, color: colors.textPrimary, textAlign: "center" },
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary, marginBottom: 4, marginTop: 16 },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginTop: 4 },

@@ -8,11 +8,11 @@ import { colors } from "../lib/theme";
 // "Add a Team I Coach" -- for a coach who already has an account (e.g.
 // one kid in Majors, another in Minors) and needs to become Head Coach of
 // a second, separate team. Reuses the exact same wizard as brand-new
-// registration (dev-register-league.tsx onward), just entered with
+// registration (dev-register-coppa.tsx onward), just entered with
 // skipAccountCreation set and identity pre-filled from the existing
 // session, so dev-register-confirm.tsx uses this session instead of
 // calling signUp() again. router.replace (not push) so this screen never
-// sits in the back stack -- "Back" from the league page goes straight to
+// sits in the back stack -- "Back" from the COPPA page goes straight to
 // Home, not back into a redirect loop here.
 export default function RegisterTeamScreen() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function RegisterTeamScreen() {
       lastName: (session.user.user_metadata?.last_name as string | undefined) ?? "",
       skipAccountCreation: true,
     });
-    router.replace("/dev-register-league");
+    router.replace("/dev-register-coppa");
   }, [session, router]);
 
   return (

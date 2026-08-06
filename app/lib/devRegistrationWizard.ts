@@ -20,6 +20,12 @@ export interface DevWizardState {
   // the existing session instead when this is set.
   skipAccountCreation: boolean;
 
+  // Answer to the COPPA screen's "Will there be any children under the
+  // age of 13 on your team?" -- true for "Yes", false for "No" (after
+  // certifying COPPA compliance in the popup). Drives whether the
+  // "Transfer to Parent" explainer shows later in the completion flow.
+  hasPlayersUnder13: boolean | null;
+
   leagueId: string | null;
   leagueName: string | null;
   isNewLeague: boolean;
@@ -47,6 +53,7 @@ function initialState(): DevWizardState {
     email: "",
     password: "",
     skipAccountCreation: false,
+    hasPlayersUnder13: null,
     leagueId: null,
     leagueName: null,
     isNewLeague: false,

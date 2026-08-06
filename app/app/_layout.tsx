@@ -105,22 +105,23 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-          <Stack.Screen name="dev-register" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-intro" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-bucketing" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-league" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-sport" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-recball" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-division" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-season" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-active-check" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-teamname" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-confirm" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-complete" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-complete-link" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-complete-followers" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-complete-multiteam" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
-          <Stack.Screen name="dev-register-complete-final" options={{ headerShown: false, animation: "fade", animationDuration: 1800 }} />
+          <Stack.Screen name="dev-register" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-intro" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-bucketing" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-coppa" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-league" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-sport" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-recball" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-division" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-season" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-active-check" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-teamname" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-confirm" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-complete" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-complete-link" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-complete-followers" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-complete-multiteam" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="dev-register-complete-final" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="register-team" options={{ title: "Register a New Team" }} />
           <Stack.Screen name="join-team" options={{ title: "Join a Team" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
