@@ -118,13 +118,6 @@ export default function TeamHomeScreen() {
             </View>
           </Pressable>
           {isCoach && (
-            <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/claim-player`)}>
-              <View style={styles.tileInner}>
-                <Text style={styles.tileText}>Claim a Player</Text>
-              </View>
-            </Pressable>
-          )}
-          {isCoach && (
             <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/settings`)}>
               <View style={styles.tileInner}>
                 <Text style={styles.tileText}>Team Settings</Text>

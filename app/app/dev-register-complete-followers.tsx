@@ -31,7 +31,7 @@ export default function DevRegisterCompleteFollowersScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.body}>
           Once you have your Followers, you can connect your Players to the rightful Parent in the Roster
-          screen. Simply click on the Player's Card and select the "Transfer to Parent" button at the top
+          screen. Simply click on the Player's Card and select the "Transfer to Follower" button at the top
           of the screen. Only 1 Player/Parent link is allowed to be able to update your Player's
           demographic... so choose wisely!
         </Text>

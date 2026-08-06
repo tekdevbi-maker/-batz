@@ -346,12 +346,12 @@ export default function PlayerProfileScreen() {
           )}
           {isCoachOwner && profile.isCoachFallback && (
             <Pressable style={styles.secondaryButton} onPress={handleGoToTransfer}>
-              <Text style={styles.secondaryButtonText}>Transfer to Parent</Text>
+              <Text style={styles.secondaryButtonText}>Transfer to Follower</Text>
             </Pressable>
           )}
           {isCoachOwner && profile.isCoachFallback && !isAttested && (
             <Pressable style={styles.secondaryButton} onPress={() => setAttestModalOpen(true)}>
-              <Text style={styles.secondaryButtonText}>I'm the Parent</Text>
+              <Text style={styles.secondaryButtonText}>Unlock this Player</Text>
             </Pressable>
           )}
         </View>
@@ -447,13 +447,8 @@ export default function PlayerProfileScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalText}>
-              I hereby attest that I am either the individual adult participant named on this roster, or the
-              parent/legal guardian with full legal authority to sign on behalf of the participant who is
-              under 18 years of age.
-              {"\n\n"}
-              As a parent, you will have full access to your player's settings and will be able to modify those
-              privacy settings. You may unlink this player at any time, which will return {transferOffer?.playerName}{" "}
-              to a locked state under the Head Coach's account.
+              Coach {transferOffer?.coachName ?? "on this team"} has approved your request to unlock{" "}
+              {transferOffer?.displayName}.
             </Text>
             {transferOfferError && <Text style={styles.error}>{transferOfferError}</Text>}
             <View style={styles.modalButtonRow}>
