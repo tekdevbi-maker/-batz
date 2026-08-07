@@ -87,6 +87,14 @@ export interface RosterSeasonStats {
   visibilityScope: "public" | "private" | null;
   leaderboardOptOutTeam: boolean;
   isCoachFallback: boolean;
+  photoUrl: string | null;
+  // Real name, separate from displayName (which honors the parent's
+  // display_mode choice) -- the baseball card's name banner always shows
+  // the real name regardless of that choice, same as FlipStatsCard already
+  // does on the Player Profile screen. Null for a locked player, same
+  // photoUrl guard.
+  firstName: string | null;
+  lastName: string | null;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -103,7 +111,7 @@ export async function getTeamRosterWithSeasonStats(
   const { data: rosterRows, error: rosterError } = await supabase
     .from("roster_entry")
     .select(
-      "id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, display_mode, is_coach_fallback, visibility_scope, leaderboard_opt_out_team)"
+      "id, uniform_number, player_id, player:player_id(player_tag, first_name, last_name, display_mode, is_coach_fallback, visibility_scope, leaderboard_opt_out_team, photo_url)"
     )
     .eq("team_id", teamId)
     .order("uniform_number");
@@ -141,6 +149,11 @@ export async function getTeamRosterWithSeasonStats(
       visibilityScope: re.player?.visibility_scope ?? null,
       leaderboardOptOutTeam: re.player?.leaderboard_opt_out_team ?? false,
       isCoachFallback: re.player?.is_coach_fallback ?? false,
+      // Same locked-player guard as playerRepository.getPlayerProfile: a
+      // fallback owner never has a real photo, regardless of what's stored.
+      photoUrl: re.player?.is_coach_fallback ? null : (re.player?.photo_url ?? null),
+      firstName: re.player?.is_coach_fallback ? null : (re.player?.first_name ?? null),
+      lastName: re.player?.is_coach_fallback ? null : (re.player?.last_name ?? null),
       counts,
       stats: calculateStats(counts),
     };

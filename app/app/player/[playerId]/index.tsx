@@ -30,6 +30,7 @@ import {
 // wanted again later.
 // import BlockReportButtons from "../../../components/BlockReportButtons";
 import StatColumns from "../../../components/StatColumns";
+import FlipStatsCard from "../../../components/FlipStatsCard";
 import { formatDateDisplay } from "../../../lib/dateFormat";
 import { colors } from "../../../lib/theme";
 
@@ -517,20 +518,31 @@ export default function PlayerProfileScreen() {
           {profile.isCoachFallback && (
             <Text style={[styles.hint, styles.italicHint]}>*Stats will display after player is unlocked</Text>
           )}
-          <View style={styles.table}>
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.tableHeaderCell, styles.categoryCell]}>Category</Text>
-              <Text style={[styles.tableHeaderCell, styles.valueCell]}>Season Stats</Text>
-              <Text style={[styles.tableHeaderCell, styles.starsCell]}>Star Rating</Text>
-            </View>
-            {categoryRows.map((row) => (
-              <View key={row.label} style={styles.tableRow}>
-                <Text style={[styles.tableCell, styles.categoryCell]}>{row.label}</Text>
-                <Text style={[styles.tableCell, styles.valueCell]}>{row.value}</Text>
-                <Text style={[styles.tableCell, styles.starsCell]}>{row.stars}</Text>
+          {!profile.isCoachFallback && (
+            <Text style={styles.hint}>Tap the card to flip it over</Text>
+          )}
+          <FlipStatsCard
+            flippable={!profile.isCoachFallback}
+            firstName={profile.realName?.split(" ")[0] ?? profile.displayName}
+            lastName={profile.realName?.split(" ").slice(1).join(" ") || ""}
+            photoUrl={profile.photoUrl}
+            frontContent={
+              <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderCell, styles.categoryCell]}>Category</Text>
+                  <Text style={[styles.tableHeaderCell, styles.valueCell]}>Season Stats</Text>
+                  <Text style={[styles.tableHeaderCell, styles.starsCell]}>Star Rating</Text>
+                </View>
+                {categoryRows.map((row) => (
+                  <View key={row.label} style={styles.tableRow}>
+                    <Text style={[styles.tableCell, styles.categoryCell]}>{row.label}</Text>
+                    <Text style={[styles.tableCell, styles.valueCell]}>{row.value}</Text>
+                    <Text style={[styles.tableCell, styles.starsCell]}>{row.stars}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            }
+          />
         </>
       )}
 

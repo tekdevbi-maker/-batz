@@ -2,3 +2,23 @@ node_modules/
 .env
 .env*.local
 .claude/settings.local.json
+
+# Real photo of a real person used as a local stand-in for the baseball
+# card feature's photo -- never committed. See FlipStatsCard.tsx. Includes
+# derived crops made from it during layout iteration.
+app/assets/example.jpg
+app/assets/example_144x193.jpg
+app/assets/example_centered_crop.jpg
+
+# Personal reference photo (a physical trading card) used only to identify
+# a font during design iteration -- not an app asset.
+app/assets/20260807_103233.jpg
+
+# Superseded template iterations from before card_template_final.png was
+# settled on, and the one-off composite mockup used to tune it -- none of
+# these are referenced by the app, see PlayerCard.tsx.
+app/assets/card_template.png
+app/assets/card_template2.png
+app/assets/card_template_no_logo.png
+app/assets/template_logo.png
+app/assets/card_composite.png

@@ -9,6 +9,7 @@ import {
   Montserrat_700Bold,
   Montserrat_800ExtraBold,
 } from "@expo-google-fonts/montserrat";
+import { Anton_400Regular } from "@expo-google-fonts/anton";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 import AdBanner from "../components/AdBanner";
@@ -80,6 +81,7 @@ export default function RootLayout() {
     Montserrat_600SemiBold,
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
+    Anton_400Regular,
   });
 
   if (!fontsLoaded) {

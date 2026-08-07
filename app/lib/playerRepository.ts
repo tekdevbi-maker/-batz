@@ -61,6 +61,7 @@ export interface PlayerProfile extends PlayerDemographics {
   parentUserId: string;
   displayName: string;
   realName: string | null;
+  photoUrl: string | null;
   playerTag: string;
   visibilityScope: "public" | "private";
   displayMode: PlayerDisplayMode;
@@ -102,7 +103,7 @@ export async function getPlayerProfile(
   const { data: player, error: playerError } = await supabase
     .from("player")
     .select(
-      "id, parent_user_id, first_name, last_name, display_mode, leaderboard_opt_out_team, leaderboard_opt_out_league, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws, parent_attested_at, is_coach_fallback"
+      "id, parent_user_id, first_name, last_name, display_mode, leaderboard_opt_out_team, leaderboard_opt_out_league, player_tag, visibility_scope, height_feet, height_inches, weight_lbs, bats, throws, parent_attested_at, is_coach_fallback, photo_url"
     )
     .eq("id", playerId)
     .maybeSingle();
@@ -200,6 +201,10 @@ export async function getPlayerProfile(
     parentUserId: player.parent_user_id,
     displayName,
     realName: locked ? null : realName,
+    // A locked player has no owning parent to have uploaded a photo yet
+    // (auto_claim_roster_entry never sets one), but guard here too since
+    // photos are as identity-revealing as the real name it's gated with.
+    photoUrl: locked ? null : player.photo_url,
     playerTag: player.player_tag,
     visibilityScope: player.visibility_scope,
     displayMode: effectiveDisplayMode,
@@ -396,4 +401,37 @@ export async function updatePlayerSettings(
   const { data, error } = await supabase.from("player").update(update).eq("id", playerId).select("id").maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Update was not applied -- you may not have permission to edit this player.");
+}
+
+// Uploads to the "player-photos" Storage bucket at "{playerId}/photo.<ext>"
+// (upsert: true, same reasoning as uploadTeamLogo: replaces the same object
+// rather than accumulating orphans) and points player.photo_url at the
+// public URL. RLS on storage.objects restricts the upload itself to the
+// owning parent (or an admin) -- see
+// supabase/migrations/20260807110000_player_photo_storage.sql.
+export async function uploadPlayerPhoto(
+  supabase: SupabaseClient,
+  playerId: string,
+  localUri: string,
+  contentType: string
+): Promise<string> {
+  const ext = contentType.split("/")[1] || "jpg";
+  const path = `${playerId}/photo.${ext}`;
+
+  const response = await fetch(localUri);
+  const arrayBuffer = await response.arrayBuffer();
+  const { error: uploadError } = await supabase.storage
+    .from("player-photos")
+    .upload(path, arrayBuffer, { contentType, upsert: true });
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from("player-photos").getPublicUrl(path);
+  // Cache-bust so a re-uploaded photo doesn't keep showing a stale cached
+  // image at the same URL (RN's Image cache keys purely off the URI).
+  const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
+
+  const { error: updateError } = await supabase.from("player").update({ photo_url: publicUrl }).eq("id", playerId);
+  if (updateError) throw updateError;
+
+  return publicUrl;
 }

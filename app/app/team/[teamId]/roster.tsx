@@ -8,6 +8,7 @@ import { getTeamJoinContext, type TeamJoinContext } from "../../../lib/claimRepo
 import { isCoachOnTeam } from "../../../lib/teamsRepository";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
+import PlayerCard from "../../../components/PlayerCard";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -67,19 +68,29 @@ export default function RosterScreen() {
         {roster.length === 0 && !error && <Text style={styles.hint}>No roster yet.</Text>}
 
         <View style={styles.grid}>
-          {roster.map((r) => (
-            <Pressable
-              key={r.rosterEntryId}
-              style={[styles.card, !r.playerId && styles.cardUnclaimed]}
-              disabled={!r.playerId}
-              onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
-            >
-              {!r.isCoachFallback && <Text style={styles.cardNumber}>#{r.uniformNumber}</Text>}
-              <Text style={styles.cardName} numberOfLines={2}>
-                {r.playerId ? r.displayName : ""}
-              </Text>
-            </Pressable>
-          ))}
+          {roster.map((r) =>
+            !r.isCoachFallback && r.photoUrl ? (
+              <Pressable
+                key={r.rosterEntryId}
+                style={styles.photoCard}
+                onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
+              >
+                <PlayerCard firstName={r.firstName ?? ""} lastName={r.lastName ?? ""} photoUrl={r.photoUrl} />
+              </Pressable>
+            ) : (
+              <Pressable
+                key={r.rosterEntryId}
+                style={[styles.card, !r.playerId && styles.cardUnclaimed]}
+                disabled={!r.playerId}
+                onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
+              >
+                {!r.isCoachFallback && <Text style={styles.cardNumber}>#{r.uniformNumber}</Text>}
+                <Text style={styles.cardName} numberOfLines={2}>
+                  {r.playerId ? r.displayName : ""}
+                </Text>
+              </Pressable>
+            )
+          )}
         </View>
       </ScrollView>
       <TeamTabBar teamId={teamId} active="roster" />
@@ -115,6 +126,12 @@ const styles = StyleSheet.create({
   cardUnclaimed: {
     borderColor: colors.border,
     opacity: 0.6,
+  },
+  photoCard: {
+    width: "31.5%",
+    borderRadius: 8,
+    overflow: "hidden",
+    marginBottom: 12,
   },
   cardNumber: { fontSize: 33, fontFamily: "Montserrat_800ExtraBold", color: colors.textPrimary },
   cardName: {

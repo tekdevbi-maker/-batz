@@ -8,11 +8,19 @@ import {
   ScrollView,
   ActivityIndicator,
   Switch,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { getPlayerProfile, updatePlayerSettings, type BatsThrows, type PlayerDisplayMode } from "../../../lib/playerRepository";
+import {
+  getPlayerProfile,
+  updatePlayerSettings,
+  uploadPlayerPhoto,
+  type BatsThrows,
+  type PlayerDisplayMode,
+} from "../../../lib/playerRepository";
 import { colors } from "../../../lib/theme";
 
 const BATS_THROWS_OPTIONS: BatsThrows[] = ["Right", "Left", "Switch"];
@@ -55,6 +63,8 @@ export default function PlayerSettingsScreen() {
   const [weightLbs, setWeightLbs] = useState("");
   const [bats, setBats] = useState<BatsThrows | null>(null);
   const [throwsHand, setThrowsHand] = useState<BatsThrows | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +88,7 @@ export default function PlayerSettingsScreen() {
           setWeightLbs(p.weightLbs != null ? String(p.weightLbs) : "");
           setBats(p.bats);
           setThrowsHand(p.throws);
+          setPhotoUrl(p.photoUrl);
         }
         setLoaded(true);
       })
@@ -111,6 +122,38 @@ export default function PlayerSettingsScreen() {
     }
   }
 
+  async function handlePickPhoto() {
+    if (!playerId) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setError("Photo library access is needed to choose a photo.");
+      return;
+    }
+    // Matches card_template_final.png's own canvas ratio (1440x1930) so the
+    // photo the parent picks lines up with the baseball card's photo layer
+    // without extra letterboxing -- see components/PlayerCard.tsx.
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1440, 1930],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const contentType = asset.mimeType ?? "image/jpeg";
+      const newUrl = await uploadPlayerPhoto(supabase, playerId, asset.uri, contentType);
+      setPhotoUrl(newUrl);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   if (!session || !playerId) return null;
   if (!loaded) {
     return (
@@ -133,6 +176,33 @@ export default function PlayerSettingsScreen() {
         <Text style={styles.realNameLabel}>Real Name (on file, not shown publicly)</Text>
         <Text style={styles.realNameValue}>{realName ?? "Not yet provided"}</Text>
       </View>
+
+      {!isCoachFallback && (
+        <>
+          <Text style={styles.label}>Player Photo</Text>
+          <Text style={styles.hint}>Used as the photo on this player's baseball card in the app.</Text>
+          <View style={styles.photoRow}>
+            {photoUrl ? (
+              <Image source={{ uri: photoUrl }} style={styles.photoPreview} resizeMode="cover" />
+            ) : (
+              <View style={[styles.photoPreview, styles.photoPreviewEmpty]}>
+                <Text style={styles.hint}>No photo yet</Text>
+              </View>
+            )}
+            <Pressable
+              style={[styles.secondaryButton, uploadingPhoto && styles.buttonDisabled]}
+              disabled={uploadingPhoto}
+              onPress={handlePickPhoto}
+            >
+              {uploadingPhoto ? (
+                <ActivityIndicator color={colors.textPrimary} />
+              ) : (
+                <Text style={styles.secondaryButtonText}>{photoUrl ? "Change Photo" : "Upload Photo"}</Text>
+              )}
+            </Pressable>
+          </View>
+        </>
+      )}
 
       <Text style={styles.label}>PlayerTag</Text>
       <TextInput style={styles.input} value={playerTag} onChangeText={setPlayerTag} autoCapitalize="none" />
@@ -289,6 +359,15 @@ const styles = StyleSheet.create({
   },
   realNameLabel: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textMuted },
   realNameValue: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textSecondary, marginTop: 2 },
+  photoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  photoPreview: { width: 70, height: 94, borderRadius: 6, backgroundColor: colors.surfaceAlt },
+  photoPreviewEmpty: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4,
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
