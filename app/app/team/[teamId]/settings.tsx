@@ -6,6 +6,7 @@ import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { updateTeamName, uploadTeamLogo, markSeasonEnded } from "../../../lib/teamsRepository";
 import { colors } from "../../../lib/theme";
+import CircleCropModal from "../../../components/CircleCropModal";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -28,6 +29,7 @@ export default function TeamSettingsScreen() {
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [cropImageUri, setCropImageUri] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -100,6 +102,9 @@ export default function TeamSettingsScreen() {
       setError("Photo library access is needed to choose a logo.");
       return;
     }
+    // Square crop here is just the source rect the circular-crop modal
+    // clips down further -- the actual circular masking happens there,
+    // since the OS picker has no circular-crop mode.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -107,14 +112,18 @@ export default function TeamSettingsScreen() {
       quality: 0.8,
     });
     if (result.canceled || !result.assets[0]) return;
+    setError(null);
+    setCropImageUri(result.assets[0].uri);
+  }
 
-    const asset = result.assets[0];
+  async function handleConfirmCrop(circleUri: string) {
+    if (!teamId) return;
     setUploadingLogo(true);
     setError(null);
     try {
-      const contentType = asset.mimeType ?? "image/jpeg";
-      const newUrl = await uploadTeamLogo(supabase, teamId, asset.uri, contentType);
+      const newUrl = await uploadTeamLogo(supabase, teamId, circleUri, "image/png");
       setLogoUrl(newUrl);
+      setCropImageUri(null);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -191,6 +200,14 @@ export default function TeamSettingsScreen() {
           </Pressable>
         </>
       )}
+
+      <CircleCropModal
+        visible={cropImageUri !== null}
+        imageUri={cropImageUri}
+        busy={uploadingLogo}
+        onCancel={() => setCropImageUri(null)}
+        onConfirm={handleConfirmCrop}
+      />
     </ScrollView>
   );
 }

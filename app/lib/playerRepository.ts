@@ -42,6 +42,7 @@ export interface PlayerSeasonLine {
   year: number;
   seasonStatus: string;
   uniformNumber: number;
+  teamLogoUrl: string | null;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -113,7 +114,7 @@ export async function getPlayerProfile(
   const { data: entries, error: entriesError } = await supabase
     .from("roster_entry")
     .select(
-      "id, uniform_number, team:team_id(id, name, season, year, season_status, division:division_id(name, league:league_id(name)))"
+      "id, uniform_number, team:team_id(id, name, season, year, season_status, logo_url, division:division_id(name, league:league_id(name)))"
     )
     .eq("player_id", playerId);
   if (entriesError) throw entriesError;
@@ -147,6 +148,7 @@ export async function getPlayerProfile(
         year: e.team?.year ?? 0,
         seasonStatus: e.team?.season_status ?? "",
         uniformNumber: e.uniform_number,
+        teamLogoUrl: e.team?.logo_url ?? null,
         counts,
         stats: calculateStats(counts),
       };
@@ -244,6 +246,7 @@ export interface MyPlayer {
   firstName: string | null;
   lastName: string | null;
   displayMode: PlayerDisplayMode;
+  teamLogoUrl: string | null;
 }
 
 export interface MyPlayersResult {
@@ -275,7 +278,8 @@ function toMyPlayer(
     visibility_scope: "public" | "private";
     photo_url: string | null;
   },
-  uniformNumber: number | null
+  uniformNumber: number | null,
+  teamLogoUrl: string | null
 ): MyPlayer {
   if (p.is_coach_fallback) {
     const realName = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
@@ -288,6 +292,7 @@ function toMyPlayer(
       firstName: null,
       lastName: null,
       displayMode: "uniform",
+      teamLogoUrl: null,
     };
   }
   return {
@@ -305,6 +310,7 @@ function toMyPlayer(
     firstName: p.first_name,
     lastName: p.last_name,
     displayMode: p.display_mode,
+    teamLogoUrl,
   };
 }
 
@@ -322,18 +328,21 @@ export async function listMyPlayers(supabase: SupabaseClient, userId: string): P
 
   const activeFallbackIds = new Set<string>();
   const uniformByPlayer = new Map<string, number>();
+  const teamLogoByPlayer = new Map<string, string | null>();
   if (playerIds.length > 0) {
     const { data: rosterRows, error: rosterError } = await supabase
       .from("roster_entry")
-      .select("player_id, uniform_number, team:team_id(season_status)")
+      .select("player_id, uniform_number, team:team_id(season_status, logo_url)")
       .in("player_id", playerIds);
     if (rosterError) throw rosterError;
     for (const row of (rosterRows ?? []) as any[]) {
       if (row.team?.season_status === "in_season") {
         activeFallbackIds.add(row.player_id);
         uniformByPlayer.set(row.player_id, row.uniform_number);
+        teamLogoByPlayer.set(row.player_id, row.team?.logo_url ?? null);
       } else if (!uniformByPlayer.has(row.player_id)) {
         uniformByPlayer.set(row.player_id, row.uniform_number);
+        teamLogoByPlayer.set(row.player_id, row.team?.logo_url ?? null);
       }
     }
   }
@@ -341,10 +350,10 @@ export async function listMyPlayers(supabase: SupabaseClient, userId: string): P
   return {
     myPlayers: players
       .filter((p: any) => !p.is_coach_fallback)
-      .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null)),
+      .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null, teamLogoByPlayer.get(p.id) ?? null)),
     myTeamPlayers: players
       .filter((p: any) => p.is_coach_fallback && activeFallbackIds.has(p.id))
-      .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null)),
+      .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null, teamLogoByPlayer.get(p.id) ?? null)),
   };
 }
 

@@ -27,6 +27,13 @@ const LAST_NAME_CENTER_Y = 1780;
 const BANNER_CENTER_X = (BANNER_LEFT + BANNER_RIGHT) / 2;
 const MAX_TEXT_W = BANNER_RIGHT - BANNER_LEFT - 40;
 
+// Layer 4: team logo, locked in from card_composite_with_team_logo.png --
+// already a circular, ring-framed PNG from CircleCropModal's own capture,
+// so it just needs to be placed, not masked again here.
+const TEAM_LOGO_CENTER_X = 1160;
+const TEAM_LOGO_CENTER_Y = 1600;
+const TEAM_LOGO_DIAMETER = 300;
+
 // Draws bordered white text by stacking the same string 8x, offset by
 // `stroke` in each direction in the border color, then once more on top in
 // the fill color -- RN's Text has no CSS text-stroke equivalent.
@@ -73,10 +80,12 @@ export default function PlayerCard({
   firstName,
   lastName,
   photoUrl,
+  teamLogoUrl,
 }: {
   firstName: string;
   lastName: string;
   photoUrl?: string | null;
+  teamLogoUrl?: string | null;
 }) {
   const [width, setWidth] = useState(0);
 
@@ -151,6 +160,20 @@ export default function PlayerCard({
               {lastName.toUpperCase()}
             </Text>
           </View>
+          {/* Layer 4: team logo, bottom-right, above/right of the first name */}
+          {teamLogoUrl && (
+            <Image
+              source={{ uri: teamLogoUrl }}
+              resizeMode="contain"
+              style={{
+                position: "absolute",
+                left: (TEAM_LOGO_CENTER_X - TEAM_LOGO_DIAMETER / 2) * scale,
+                top: (TEAM_LOGO_CENTER_Y - TEAM_LOGO_DIAMETER / 2) * scale,
+                width: TEAM_LOGO_DIAMETER * scale,
+                height: TEAM_LOGO_DIAMETER * scale,
+              }}
+            />
+          )}
         </>
       )}
     </View>

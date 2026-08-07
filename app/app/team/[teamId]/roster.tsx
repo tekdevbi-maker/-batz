@@ -83,6 +83,7 @@ export default function RosterScreen() {
                   firstName={r.displayMode === "real_name" ? (r.firstName ?? "") : ""}
                   lastName={r.displayMode === "real_name" ? (r.lastName ?? "") : r.displayName}
                   photoUrl={r.photoUrl}
+                  teamLogoUrl={context?.teamLogoUrl}
                 />
               </Pressable>
             ) : (

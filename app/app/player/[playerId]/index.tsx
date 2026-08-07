@@ -551,7 +551,13 @@ export default function PlayerProfileScreen() {
                   </View>
                 ))}
               </View>,
-              <PlayerCard key="photo" firstName={cardFirstName} lastName={cardLastName} photoUrl={profile.photoUrl} />,
+              <PlayerCard
+                key="photo"
+                firstName={cardFirstName}
+                lastName={cardLastName}
+                photoUrl={profile.photoUrl}
+                teamLogoUrl={current?.teamLogoUrl}
+              />,
               <PlayerCardStatsBack
                 key="statsback"
                 firstName={cardFirstName}

@@ -21,6 +21,7 @@ export interface TeamJoinContext {
   leagueInitials: string;
   coachFirstName: string | null;
   coachLastName: string | null;
+  teamLogoUrl: string | null;
 }
 
 // Pre-fill info for the parent join screen (spec Section 4 step 3:
@@ -32,7 +33,7 @@ export async function getTeamJoinContext(
 ): Promise<TeamJoinContext> {
   const { data: team, error: teamError } = await supabase
     .from("team")
-    .select("name, season, year, division:division_id(name, league:league_id(name, initials))")
+    .select("name, season, year, logo_url, division:division_id(name, league:league_id(name, initials))")
     .eq("id", teamId)
     .single();
   if (teamError) throw teamError;
@@ -57,6 +58,7 @@ export async function getTeamJoinContext(
     leagueInitials: league?.initials ?? "",
     coachFirstName: coach?.first_name ?? null,
     coachLastName: coach?.last_name ?? null,
+    teamLogoUrl: team.logo_url ?? null,
   };
 }
 

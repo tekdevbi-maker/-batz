@@ -169,6 +169,7 @@ export default function Home() {
                     firstName={p.displayMode === "real_name" ? (p.firstName ?? "") : ""}
                     lastName={p.displayMode === "real_name" ? (p.lastName ?? "") : p.displayName}
                     photoUrl={p.photoUrl}
+                    teamLogoUrl={p.teamLogoUrl}
                   />
                 </Pressable>
               ) : (
