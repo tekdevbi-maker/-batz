@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { aggregateBattingCounts, calculateStats, type BattingCounts, type CalculatedStats } from "./stats";
 import { generateDefaultPlayerTag, generateLockedPlayerTag } from "./playerTag";
 import { getTeamJoinContext, type TeamJoinContext } from "./claimRepository";
-import { playerDisplayName } from "./playerRepository";
+import { playerDisplayName, type PlayerDisplayMode } from "./playerRepository";
 
 const ZERO_COUNTS: BattingCounts = { ab: 0, h: 0, singles: 0, doubles: 0, triples: 0, hr: 0, rbi: 0, bb: 0, hbp: 0, sf: 0 };
 
@@ -88,13 +88,14 @@ export interface RosterSeasonStats {
   leaderboardOptOutTeam: boolean;
   isCoachFallback: boolean;
   photoUrl: string | null;
-  // Real name, separate from displayName (which honors the parent's
-  // display_mode choice) -- the baseball card's name banner always shows
-  // the real name regardless of that choice, same as FlipStatsCard already
-  // does on the Player Profile screen. Null for a locked player, same
-  // photoUrl guard.
+  // Raw real name and the parent's own display_mode choice -- the baseball
+  // card (PlayerCard.tsx) only shows the real first/last name when
+  // displayMode is "real_name" (same consent gate as everywhere else in
+  // the app), falling back to `displayName` otherwise. Null/"uniform" for
+  // a locked player, same photoUrl guard.
   firstName: string | null;
   lastName: string | null;
+  displayMode: PlayerDisplayMode;
   counts: BattingCounts;
   stats: CalculatedStats;
 }
@@ -154,6 +155,7 @@ export async function getTeamRosterWithSeasonStats(
       photoUrl: re.player?.is_coach_fallback ? null : (re.player?.photo_url ?? null),
       firstName: re.player?.is_coach_fallback ? null : (re.player?.first_name ?? null),
       lastName: re.player?.is_coach_fallback ? null : (re.player?.last_name ?? null),
+      displayMode: re.player?.is_coach_fallback ? "uniform" : (re.player?.display_mode ?? "uniform"),
       counts,
       stats: calculateStats(counts),
     };

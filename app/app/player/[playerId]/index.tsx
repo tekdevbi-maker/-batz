@@ -523,8 +523,15 @@ export default function PlayerProfileScreen() {
           )}
           <FlipStatsCard
             flippable={!profile.isCoachFallback}
-            firstName={profile.realName?.split(" ")[0] ?? profile.displayName}
-            lastName={profile.realName?.split(" ").slice(1).join(" ") || ""}
+            // Real name only when the parent opted into "Real Name" display
+            // -- otherwise the card falls back to displayName (the same
+            // alias/uniform tag shown everywhere else), never the real name.
+            firstName={profile.displayMode === "real_name" ? (profile.realName?.split(" ")[0] ?? "") : ""}
+            lastName={
+              profile.displayMode === "real_name"
+                ? profile.realName?.split(" ").slice(1).join(" ") || ""
+                : profile.displayName
+            }
             photoUrl={profile.photoUrl}
             frontContent={
               <View style={styles.table}>

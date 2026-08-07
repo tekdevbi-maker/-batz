@@ -75,7 +75,15 @@ export default function RosterScreen() {
                 style={styles.photoCard}
                 onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
               >
-                <PlayerCard firstName={r.firstName ?? ""} lastName={r.lastName ?? ""} photoUrl={r.photoUrl} />
+                <PlayerCard
+                  // Real name only when the parent opted into "Real Name"
+                  // display -- otherwise the card falls back to the same
+                  // alias/uniform tag shown everywhere else (displayName),
+                  // never the real name, matching the privacy setting.
+                  firstName={r.displayMode === "real_name" ? (r.firstName ?? "") : ""}
+                  lastName={r.displayMode === "real_name" ? (r.lastName ?? "") : r.displayName}
+                  photoUrl={r.photoUrl}
+                />
               </Pressable>
             ) : (
               <Pressable
