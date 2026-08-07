@@ -236,6 +236,14 @@ export interface MyPlayer {
   playerTag: string;
   displayName: string;
   visibilityScope: "public" | "private";
+  // For the Home screen's baseball-card thumbnail (see PlayerCard.tsx).
+  // Real name only when displayMode is "real_name" -- resolved by the
+  // caller, same gate as everywhere else the card renders. Always null on
+  // a locked (is_coach_fallback) entry, same as photoUrl elsewhere.
+  photoUrl: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  displayMode: PlayerDisplayMode;
 }
 
 export interface MyPlayersResult {
@@ -265,12 +273,22 @@ function toMyPlayer(
     display_mode: PlayerDisplayMode;
     is_coach_fallback: boolean;
     visibility_scope: "public" | "private";
+    photo_url: string | null;
   },
   uniformNumber: number | null
 ): MyPlayer {
   if (p.is_coach_fallback) {
     const realName = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
-    return { playerId: p.id, playerTag: p.player_tag, displayName: realName || p.player_tag, visibilityScope: p.visibility_scope };
+    return {
+      playerId: p.id,
+      playerTag: p.player_tag,
+      displayName: realName || p.player_tag,
+      visibilityScope: p.visibility_scope,
+      photoUrl: null,
+      firstName: null,
+      lastName: null,
+      displayMode: "uniform",
+    };
   }
   return {
     playerId: p.id,
@@ -283,13 +301,17 @@ function toMyPlayer(
       uniformNumber,
     }),
     visibilityScope: p.visibility_scope,
+    photoUrl: p.photo_url,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    displayMode: p.display_mode,
   };
 }
 
 export async function listMyPlayers(supabase: SupabaseClient, userId: string): Promise<MyPlayersResult> {
   const { data, error } = await supabase
     .from("player")
-    .select("id, player_tag, first_name, last_name, display_mode, visibility_scope, is_coach_fallback")
+    .select("id, player_tag, first_name, last_name, display_mode, visibility_scope, is_coach_fallback, photo_url")
     .eq("parent_user_id", userId)
     .order("created_at");
   if (error) throw error;

@@ -14,6 +14,7 @@ import {
   type PendingTransferOffer,
 } from "../lib/claimRepository";
 import TeamTileGrid from "../components/TeamTileGrid";
+import PlayerCard from "../components/PlayerCard";
 import { colors } from "../lib/theme";
 
 export default function Home() {
@@ -161,14 +162,24 @@ export default function Home() {
         <>
           <Text style={styles.label}>My Players</Text>
           <View style={styles.tileGrid}>
-            {myPlayers.map((p) => (
-              <Pressable key={p.playerId} style={styles.playerTile} onPress={() => router.push(`/player/${p.playerId}`)}>
-                <Text style={styles.playerTileName} numberOfLines={2}>
-                  {p.displayName}
-                </Text>
-                {p.visibilityScope === "private" && <Text style={styles.playerTilePrivate}>(private)</Text>}
-              </Pressable>
-            ))}
+            {myPlayers.map((p) =>
+              p.photoUrl ? (
+                <Pressable key={p.playerId} style={styles.playerPhotoTile} onPress={() => router.push(`/player/${p.playerId}`)}>
+                  <PlayerCard
+                    firstName={p.displayMode === "real_name" ? (p.firstName ?? "") : ""}
+                    lastName={p.displayMode === "real_name" ? (p.lastName ?? "") : p.displayName}
+                    photoUrl={p.photoUrl}
+                  />
+                </Pressable>
+              ) : (
+                <Pressable key={p.playerId} style={styles.playerTile} onPress={() => router.push(`/player/${p.playerId}`)}>
+                  <Text style={styles.playerTileName} numberOfLines={2}>
+                    {p.displayName}
+                  </Text>
+                  {p.visibilityScope === "private" && <Text style={styles.playerTilePrivate}>(private)</Text>}
+                </Pressable>
+              )
+            )}
           </View>
         </>
       )}
@@ -258,6 +269,7 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 12,
   },
+  playerPhotoTile: { width: "31.5%", borderRadius: 8, overflow: "hidden", marginBottom: 12 },
   playerTileName: { fontSize: 14, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
   playerTilePrivate: { fontSize: 10, fontFamily: "Montserrat_400Regular", color: colors.textMuted, textAlign: "center", marginTop: 4 },
   spacer: { flex: 1 },
