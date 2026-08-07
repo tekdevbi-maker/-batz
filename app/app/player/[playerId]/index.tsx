@@ -31,6 +31,8 @@ import {
 // import BlockReportButtons from "../../../components/BlockReportButtons";
 import StatColumns from "../../../components/StatColumns";
 import FlipStatsCard from "../../../components/FlipStatsCard";
+import PlayerCard from "../../../components/PlayerCard";
+import PlayerCardStatsBack from "../../../components/PlayerCardStatsBack";
 import { formatDateDisplay } from "../../../lib/dateFormat";
 import { colors } from "../../../lib/theme";
 
@@ -77,6 +79,9 @@ export default function PlayerProfileScreen() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followBusy, setFollowBusy] = useState(false);
   const [recentActivity, setRecentActivity] = useState<ActivityFeedPost[]>([]);
+  // Separate from recentActivity above (which is capped for the on-page
+  // list) -- the card's stats-back face shows every entry, per spec.
+  const [cardActivity, setCardActivity] = useState<ActivityFeedPost[]>([]);
   const [careerOpen, setCareerOpen] = useState(false);
   const [seasonsOpen, setSeasonsOpen] = useState(false);
   const [isCoachOnTeam, setIsCoachOnTeam] = useState(false);
@@ -108,6 +113,7 @@ export default function PlayerProfileScreen() {
       isFollowing(supabase, playerId, session.user.id).then(setFollowing).catch(() => {}),
       getFollowerCount(supabase, playerId).then(setFollowerCount).catch(() => {}),
       listPlayerActivity(supabase, playerId, session.user.id).then(setRecentActivity).catch(() => {}),
+      listPlayerActivity(supabase, playerId, session.user.id, 500).then(setCardActivity).catch(() => {}),
       listMyPendingTransferOffers(supabase)
         .then((offers) => setTransferOffer(offers.find((o) => o.playerId === playerId) ?? null))
         .catch(() => {}),
@@ -315,6 +321,13 @@ export default function PlayerProfileScreen() {
   const tiers = current ? calculateStarTiers(current.counts) : null;
   const demographics = formatDemographics(profile);
 
+  // Real name only when the parent opted into "Real Name" display -- otherwise
+  // both card faces fall back to displayName (the same alias/uniform tag
+  // shown everywhere else), never the real name.
+  const cardFirstName = profile.displayMode === "real_name" ? (profile.realName?.split(" ")[0] ?? "") : "";
+  const cardLastName =
+    profile.displayMode === "real_name" ? profile.realName?.split(" ").slice(1).join(" ") || "" : profile.displayName;
+
   const categoryRows = current
     ? [
         { label: "Hits", value: profile.isCoachFallback ? "*" : String(current.counts.h), stars: profile.isCoachFallback ? "*" : stars(tiers!.hits) },
@@ -519,22 +532,12 @@ export default function PlayerProfileScreen() {
             <Text style={[styles.hint, styles.italicHint]}>*Stats will display after player is unlocked</Text>
           )}
           {!profile.isCoachFallback && (
-            <Text style={styles.hint}>Tap the card to flip it over</Text>
+            <Text style={styles.hint}>Tap the card to flip through views</Text>
           )}
           <FlipStatsCard
             flippable={!profile.isCoachFallback}
-            // Real name only when the parent opted into "Real Name" display
-            // -- otherwise the card falls back to displayName (the same
-            // alias/uniform tag shown everywhere else), never the real name.
-            firstName={profile.displayMode === "real_name" ? (profile.realName?.split(" ")[0] ?? "") : ""}
-            lastName={
-              profile.displayMode === "real_name"
-                ? profile.realName?.split(" ").slice(1).join(" ") || ""
-                : profile.displayName
-            }
-            photoUrl={profile.photoUrl}
-            frontContent={
-              <View style={styles.table}>
+            faces={[
+              <View key="table" style={styles.table}>
                 <View style={styles.tableHeaderRow}>
                   <Text style={[styles.tableHeaderCell, styles.categoryCell]}>Category</Text>
                   <Text style={[styles.tableHeaderCell, styles.valueCell]}>Season Stats</Text>
@@ -547,8 +550,31 @@ export default function PlayerProfileScreen() {
                     <Text style={[styles.tableCell, styles.starsCell]}>{row.stars}</Text>
                   </View>
                 ))}
-              </View>
-            }
+              </View>,
+              <PlayerCard key="photo" firstName={cardFirstName} lastName={cardLastName} photoUrl={profile.photoUrl} />,
+              <PlayerCardStatsBack
+                key="statsback"
+                firstName={cardFirstName}
+                lastName={cardLastName}
+                leagueName={current?.leagueName ?? ""}
+                divisionName={current?.divisionName ?? ""}
+                teamName={current?.teamName ?? ""}
+                season={current?.season ?? ""}
+                year={current?.year ?? 0}
+                heightFeet={profile.heightFeet}
+                heightInches={profile.heightInches}
+                weightLbs={profile.weightLbs}
+                bats={profile.bats}
+                throws={profile.throws}
+                seasons={profile.seasons}
+                careerCounts={profile.careerCounts}
+                careerStats={profile.careerStats}
+                activity={cardActivity.map((post) => ({
+                  id: post.id,
+                  text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
+                }))}
+              />,
+            ]}
           />
         </>
       )}
