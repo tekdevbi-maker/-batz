@@ -68,7 +68,11 @@ export default function CircleCropModal({
                 resizeMode="cover"
               />
             )}
-            <Image source={RING} style={styles.ring} resizeMode="stretch" />
+            <Image
+              source={RING}
+              style={{ position: "absolute", top: 0, left: 0, width: PREVIEW_W, height: PREVIEW_H }}
+              resizeMode="stretch"
+            />
           </ViewShot>
 
           <View style={styles.buttonRow}>
@@ -93,7 +97,6 @@ const styles = StyleSheet.create({
   // No background set (stays transparent) so the captured PNG keeps
   // alpha=0 in the corners rather than flattening to an opaque backdrop.
   shotWrapper: { width: PREVIEW_W, height: PREVIEW_H },
-  ring: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
   buttonRow: { flexDirection: "row", gap: 12, marginTop: 20 },
   button: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
