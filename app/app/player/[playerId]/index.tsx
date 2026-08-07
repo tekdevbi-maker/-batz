@@ -316,10 +316,10 @@ export default function PlayerProfileScreen() {
 
   const categoryRows = current
     ? [
-        { label: "Hits", value: profile.isCoachFallback ? "*" : String(current.counts.h), stars: stars(tiers!.hits) },
-        { label: "2B", value: profile.isCoachFallback ? "*" : String(current.counts.doubles), stars: stars(tiers!.doubles) },
-        { label: "3B", value: profile.isCoachFallback ? "*" : String(current.counts.triples), stars: stars(tiers!.triples) },
-        { label: "HR", value: profile.isCoachFallback ? "*" : String(current.counts.hr), stars: stars(tiers!.homeRuns) },
+        { label: "Hits", value: profile.isCoachFallback ? "*" : String(current.counts.h), stars: profile.isCoachFallback ? "*" : stars(tiers!.hits) },
+        { label: "2B", value: profile.isCoachFallback ? "*" : String(current.counts.doubles), stars: profile.isCoachFallback ? "*" : stars(tiers!.doubles) },
+        { label: "3B", value: profile.isCoachFallback ? "*" : String(current.counts.triples), stars: profile.isCoachFallback ? "*" : stars(tiers!.triples) },
+        { label: "HR", value: profile.isCoachFallback ? "*" : String(current.counts.hr), stars: profile.isCoachFallback ? "*" : stars(tiers!.homeRuns) },
         { label: "RBI", value: profile.isCoachFallback ? "*" : String(current.counts.rbi), stars: "" },
         { label: "BB", value: profile.isCoachFallback ? "*" : String(current.counts.bb), stars: "" },
         { label: "AVG", value: profile.isCoachFallback ? "*" : fmt(current.stats.avg), stars: "" },
@@ -468,7 +468,7 @@ export default function PlayerProfileScreen() {
       </Modal>
 
       {!profile.isCoachFallback && (profile.isOwner || isHeadCoachOnTeam) && (
-        <Pressable style={styles.secondaryButton} onPress={() => setUnlinkModalOpen(true)}>
+        <Pressable style={[styles.secondaryButton, styles.unlinkButton]} onPress={() => setUnlinkModalOpen(true)}>
           <Text style={styles.secondaryButtonText}>Unlink Player</Text>
         </Pressable>
       )}
@@ -504,13 +504,6 @@ export default function PlayerProfileScreen() {
         {current && <Text style={styles.teamName}>{current.teamName}</Text>}
         {demographics && <Text style={styles.hint}>{demographics}</Text>}
       </View>
-
-      {(profile.isOwner || isCoachOnTeam) && (
-        <View style={styles.realNameBox}>
-          <Text style={styles.realNameLabel}>Real Name (on file, not shown publicly)</Text>
-          <Text style={styles.realNameValue}>{profile.realName ?? "Not yet provided"}</Text>
-        </View>
-      )}
 
       {/* Block/Report disabled for now -- see the commented-out import above.
       {session && !profile.isOwner && (
@@ -591,17 +584,8 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 15, fontFamily: "Montserrat_400Regular", marginTop: 16, color: colors.textSecondary },
   statLine: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
   demographicsBlock: { marginTop: 8, gap: 2 },
-  realNameBox: {
-    marginTop: 8,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  realNameLabel: { fontSize: 12, fontFamily: "Montserrat_400Regular", color: colors.textMuted },
-  realNameValue: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textSecondary, marginTop: 2 },
   ownerRow: { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 8 },
+  unlinkButton: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 8, marginTop: 8 },
   publicBadge: { color: colors.success, fontFamily: "Montserrat_400Regular", backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
   privateBadge: { color: colors.warningText, fontFamily: "Montserrat_400Regular", backgroundColor: colors.warningBg, paddingHorizontal: 8, borderRadius: 4 },
   secondaryButton: {
