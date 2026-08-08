@@ -575,6 +575,8 @@ export default function PlayerProfileScreen() {
                 seasons={profile.seasons}
                 careerCounts={profile.careerCounts}
                 careerStats={profile.careerStats}
+                teamLogoUrl={current?.teamLogoUrl}
+                uniformNumber={current?.uniformNumber}
                 activity={cardActivity.map((post) => ({
                   id: post.id,
                   text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,

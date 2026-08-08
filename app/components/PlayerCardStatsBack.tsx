@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, type LayoutChangeEvent } from "react-nat
 import { colors } from "../lib/theme";
 import type { PlayerSeasonLine } from "../lib/playerRepository";
 import type { BattingCounts, CalculatedStats } from "../lib/stats";
+import { OutlinedText } from "./PlayerCard";
 
 const CARD_FRAME = require("../assets/card_template_back_final.png");
 // card_template_back_final.png's own pixel dimensions -- every position
@@ -23,11 +24,31 @@ const TABLE_MARGIN_RIGHT = 30;
 const ACTIVITY_LEFT = 135;
 const ACTIVITY_TOP = 1000;
 
-const BASE_COL_W = [90, 110, 150, 70, 60, 60, 60, 60, 70, 60, 90, 90, 90, 90];
-const HEADERS = ["Year", "Season", "Team", "AB", "H", "2B", "3B", "HR", "RBI", "BB", "AVG", "OBP", "SLG", "OPS"];
+// Team logo, top-left -- kept well inside the white content window (not
+// the canvas corner) so it never overlaps the red/dark-red border.
+const LOGO_CENTER_X = 220;
+const LOGO_CENTER_Y = 230;
+const LOGO_DIAMETER = 220;
+const NAME_STROKE_W = 4;
+
+// Uniform number, top-right -- mirrors the logo's inset from its edge so
+// both stay clear of the red/dark-red border the same amount.
+const NUMBER_CENTER_X = CONTENT_RIGHT - (LOGO_CENTER_X - CONTENT_LEFT);
+const NUMBER_CENTER_Y = LOGO_CENTER_Y;
+const NUMBER_DIAMETER = LOGO_DIAMETER;
+const NUMBER_RING_W = 8;
+
+// Yr/Season/Team squeezed tighter (Yr is only 2 digits now) to free up
+// width for the stat columns.
+const BASE_COL_W = [50, 90, 120, 80, 65, 65, 65, 65, 80, 65, 100, 100, 100, 100];
+const HEADERS = ["Yr", "Season", "Team", "AB", "H", "2B", "3B", "HR", "RBI", "BB", "AVG", "OBP", "SLG", "OPS"];
 
 function fmt(avg: number): string {
   return avg.toFixed(3).replace(/^0\./, ".");
+}
+
+function yy(year: number): string {
+  return year ? `'${String(year).slice(-2)}` : "";
 }
 
 function seasonRow(label: [string, string, string], counts: BattingCounts, stats: CalculatedStats): string[] {
@@ -74,6 +95,8 @@ export default function PlayerCardStatsBack({
   careerCounts,
   careerStats,
   activity,
+  teamLogoUrl,
+  uniformNumber,
 }: {
   firstName: string;
   lastName: string;
@@ -90,7 +113,9 @@ export default function PlayerCardStatsBack({
   seasons: PlayerSeasonLine[];
   careerCounts: BattingCounts;
   careerStats: CalculatedStats;
+  uniformNumber?: number | null;
   activity: CardBackActivityLine[];
+  teamLogoUrl?: string | null;
 }) {
   const [width, setWidth] = useState(0);
   const scale = width / CANVAS_W;
@@ -104,7 +129,7 @@ export default function PlayerCardStatsBack({
   const colW = BASE_COL_W.map((w) => Math.round((w * tableW) / baseTotal));
   colW[colW.length - 1] += tableW - colW.reduce((a, b) => a + b, 0);
 
-  const rows = seasons.map((s) => seasonRow([s.year ? String(s.year) : "", s.season, s.teamName], s.counts, s.stats));
+  const rows = seasons.map((s) => seasonRow([yy(s.year), s.season, s.teamName], s.counts, s.stats));
   const totals = seasonRow(["", "Totals", ""], careerCounts, careerStats);
 
   const heightText = heightFeet != null ? `${heightFeet}'${heightInches ?? 0}"` : "";
@@ -115,40 +140,112 @@ export default function PlayerCardStatsBack({
       <Image source={CARD_FRAME} style={styles.cardBg} resizeMode="contain" />
       {width > 0 && (
         <>
-          {/* Top-middle: name / league info / measurables */}
+          {/* Top-left: team logo, inset so it stays inside the white area */}
+          {teamLogoUrl && (
+            <Image
+              source={{ uri: teamLogoUrl }}
+              resizeMode="contain"
+              style={{
+                position: "absolute",
+                left: (LOGO_CENTER_X - LOGO_DIAMETER / 2) * scale,
+                top: (LOGO_CENTER_Y - LOGO_DIAMETER / 2) * scale,
+                width: LOGO_DIAMETER * scale,
+                height: LOGO_DIAMETER * scale,
+              }}
+            />
+          )}
+
+          {/* Top-right: uniform number in a black-outlined circle, mirroring
+              the logo's inset so it stays clear of the red border too */}
+          {uniformNumber != null && (
+            <View
+              style={{
+                position: "absolute",
+                left: (NUMBER_CENTER_X - NUMBER_DIAMETER / 2) * scale,
+                top: (NUMBER_CENTER_Y - NUMBER_DIAMETER / 2) * scale,
+                width: NUMBER_DIAMETER * scale,
+                height: NUMBER_DIAMETER * scale,
+                borderRadius: (NUMBER_DIAMETER / 2) * scale,
+                borderWidth: NUMBER_RING_W * scale,
+                borderColor: "#000",
+                backgroundColor: "#fff",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <OutlinedText
+                fontSize={NUMBER_DIAMETER * 0.5 * scale}
+                stroke={NAME_STROKE_W * scale}
+                style={{
+                  fontFamily: "Anton_400Regular",
+                  fontStyle: "normal",
+                  fontWeight: "bold",
+                }}
+              >
+                {String(uniformNumber)}
+              </OutlinedText>
+            </View>
+          )}
+
+          {/* Top-middle: name (same first/last fonts as the card front) / league info / measurables */}
           <View style={{ position: "absolute", left: CONTENT_LEFT * scale, top: (CONTENT_TOP + 8) * scale, width: (CONTENT_RIGHT - CONTENT_LEFT) * scale, alignItems: "center" }}>
-            <Text style={{ fontFamily: "Montserrat_800ExtraBold", fontSize: 44 * scale, color: colors.textPrimary }} numberOfLines={1}>
-              {`${firstName} ${lastName}`.trim().toUpperCase()}
-            </Text>
-            <Text style={{ fontFamily: "Montserrat_600SemiBold", fontSize: 22 * scale, color: colors.textSecondary, marginTop: 8 * scale }} numberOfLines={1}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <OutlinedText
+                fontSize={100 * scale}
+                stroke={NAME_STROKE_W * scale}
+                style={{
+                  fontFamily: "Anton_400Regular",
+                  fontStyle: "italic",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                {firstName.toUpperCase()}
+              </OutlinedText>
+              <Text
+                style={{
+                  fontFamily: "Montserrat_400Regular",
+                  fontSize: 100 * scale,
+                  color: colors.textPrimary,
+                  marginLeft: 16 * scale,
+                  textShadowColor: "rgba(0,0,0,0.55)",
+                  textShadowOffset: { width: 2 * scale, height: 2 * scale },
+                  textShadowRadius: 1,
+                }}
+                numberOfLines={1}
+              >
+                {lastName.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={{ fontFamily: "Montserrat_600SemiBold", fontSize: 36 * scale, color: colors.textSecondary, marginTop: 10 * scale }} numberOfLines={1}>
               {[leagueName, divisionName, teamName, `${season} ${year}`].filter(Boolean).join("  |  ")}
             </Text>
-            <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 20 * scale, color: colors.textSecondary, marginTop: 6 * scale }} numberOfLines={1}>
+            <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 32 * scale, color: colors.textSecondary, marginTop: 8 * scale }} numberOfLines={1}>
               {measurables}
             </Text>
           </View>
 
           {/* Middle-middle: season-by-season stat table + totals */}
           <View style={{ position: "absolute", left: TABLE_LEFT * scale, top: TABLE_TOP * scale, width: tableW * scale }}>
-            <View style={{ flexDirection: "row", backgroundColor: "#23305a", height: 38 * scale, alignItems: "center" }}>
+            <View style={{ flexDirection: "row", backgroundColor: "#23305a", height: 58 * scale, alignItems: "center" }}>
               {HEADERS.map((h, i) => (
-                <Text key={h} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_600SemiBold", fontSize: 16 * scale }}>
+                <Text key={h} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_600SemiBold", fontSize: 35 * scale }}>
                   {h}
                 </Text>
               ))}
             </View>
             {rows.map((row, ridx) => (
-              <View key={ridx} style={{ flexDirection: "row", height: 38 * scale, alignItems: "center", backgroundColor: ridx % 2 === 1 ? "#f4f5f8" : "transparent" }}>
+              <View key={ridx} style={{ flexDirection: "row", height: 58 * scale, alignItems: "center", backgroundColor: ridx % 2 === 1 ? "#f4f5f8" : "transparent" }}>
                 {row.map((val, i) => (
-                  <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 16 * scale }}>
+                  <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 35 * scale }}>
                     {val}
                   </Text>
                 ))}
               </View>
             ))}
-            <View style={{ flexDirection: "row", height: 38 * scale, alignItems: "center", backgroundColor: "#dc1e28" }}>
+            <View style={{ flexDirection: "row", height: 58 * scale, alignItems: "center", backgroundColor: "#dc1e28" }}>
               {totals.map((val, i) => (
-                <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_700Bold", fontSize: 16 * scale }}>
+                <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_700Bold", fontSize: 35 * scale }}>
                   {val}
                 </Text>
               ))}
@@ -157,16 +254,16 @@ export default function PlayerCardStatsBack({
 
           {/* Bottom-left: recent activity, all entries */}
           <View style={{ position: "absolute", left: ACTIVITY_LEFT * scale, top: ACTIVITY_TOP * scale, width: (CONTENT_RIGHT - ACTIVITY_LEFT - 20) * scale }}>
-            <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 20 * scale, color: colors.textPrimary, marginBottom: 6 * scale }}>
+            <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 50 * scale, color: colors.textPrimary, marginBottom: 12 * scale }}>
               Recent Activity
             </Text>
             {activity.length === 0 && (
-              <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 16 * scale, color: colors.textSecondary }}>None yet</Text>
+              <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary }}>None yet</Text>
             )}
             {activity.map((line) => (
               <Text
                 key={line.id}
-                style={{ fontFamily: "Montserrat_400Regular", fontSize: 16 * scale, color: colors.textSecondary, marginBottom: 3 * scale }}
+                style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary, marginBottom: 6 * scale }}
                 numberOfLines={1}
               >
                 {`•  ${line.text}`}
