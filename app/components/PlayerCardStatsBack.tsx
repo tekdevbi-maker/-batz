@@ -51,7 +51,10 @@ function yy(year: number): string {
   return year ? `'${String(year).slice(-2)}` : "";
 }
 
-function seasonRow(label: [string, string, string], counts: BattingCounts, stats: CalculatedStats): string[] {
+function seasonRow(label: [string, string, string], counts: BattingCounts, stats: CalculatedStats, locked: boolean): string[] {
+  if (locked) {
+    return [...label, "*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"];
+  }
   return [
     ...label,
     String(counts.ab),
@@ -97,6 +100,7 @@ export default function PlayerCardStatsBack({
   activity,
   teamLogoUrl,
   uniformNumber,
+  locked = false,
 }: {
   firstName: string;
   lastName: string;
@@ -116,6 +120,11 @@ export default function PlayerCardStatsBack({
   uniformNumber?: number | null;
   activity: CardBackActivityLine[];
   teamLogoUrl?: string | null;
+  // A locked (coach-fallback, unclaimed) player's stats show as "*" and no
+  // activity is shown, same reasoning as everywhere else that gates on
+  // is_coach_fallback -- name/team info is already reduced to just the
+  // default tag by the caller before this ever gets here.
+  locked?: boolean;
 }) {
   const [width, setWidth] = useState(0);
   const scale = width / CANVAS_W;
@@ -129,8 +138,8 @@ export default function PlayerCardStatsBack({
   const colW = BASE_COL_W.map((w) => Math.round((w * tableW) / baseTotal));
   colW[colW.length - 1] += tableW - colW.reduce((a, b) => a + b, 0);
 
-  const rows = seasons.map((s) => seasonRow([yy(s.year), s.season, s.teamName], s.counts, s.stats));
-  const totals = seasonRow(["", "Totals", ""], careerCounts, careerStats);
+  const rows = seasons.map((s) => seasonRow([yy(s.year), s.season, s.teamName], s.counts, s.stats, locked));
+  const totals = seasonRow(["", "Totals", ""], careerCounts, careerStats, locked);
 
   const heightText = heightFeet != null ? `${heightFeet}'${heightInches ?? 0}"` : "";
   const measurables = `HT: ${heightText}   |   WT: ${weightLbs != null ? `${weightLbs} lbs` : ""}   |   Bats: ${bats ?? ""}   |   Throws: ${throws ?? ""}`;
@@ -156,7 +165,9 @@ export default function PlayerCardStatsBack({
           )}
 
           {/* Top-right: uniform number in a black-outlined circle, mirroring
-              the logo's inset so it stays clear of the red border too */}
+              the logo's inset so it stays clear of the red border too --
+              the ring itself always shows once there's a number to show or
+              hide, blank inside when locked. */}
           {uniformNumber != null && (
             <View
               style={{
@@ -173,17 +184,19 @@ export default function PlayerCardStatsBack({
                 justifyContent: "center",
               }}
             >
-              <OutlinedText
-                fontSize={NUMBER_DIAMETER * 0.5 * scale}
-                stroke={NAME_STROKE_W * scale}
-                style={{
-                  fontFamily: "Anton_400Regular",
-                  fontStyle: "normal",
-                  fontWeight: "bold",
-                }}
-              >
-                {String(uniformNumber)}
-              </OutlinedText>
+              {!locked && (
+                <OutlinedText
+                  fontSize={NUMBER_DIAMETER * 0.5 * scale}
+                  stroke={NAME_STROKE_W * scale}
+                  style={{
+                    fontFamily: "Anton_400Regular",
+                    fontStyle: "normal",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {String(uniformNumber)}
+                </OutlinedText>
+              )}
             </View>
           )}
 
@@ -252,24 +265,26 @@ export default function PlayerCardStatsBack({
             </View>
           </View>
 
-          {/* Bottom-left: recent activity, all entries */}
-          <View style={{ position: "absolute", left: ACTIVITY_LEFT * scale, top: ACTIVITY_TOP * scale, width: (CONTENT_RIGHT - ACTIVITY_LEFT - 20) * scale }}>
-            <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 50 * scale, color: colors.textPrimary, marginBottom: 12 * scale }}>
-              Recent Activity
-            </Text>
-            {activity.length === 0 && (
-              <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary }}>None yet</Text>
-            )}
-            {activity.map((line) => (
-              <Text
-                key={line.id}
-                style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary, marginBottom: 6 * scale }}
-                numberOfLines={1}
-              >
-                {`•  ${line.text}`}
+          {/* Bottom-left: recent activity, all entries -- omitted entirely for a locked player */}
+          {!locked && (
+            <View style={{ position: "absolute", left: ACTIVITY_LEFT * scale, top: ACTIVITY_TOP * scale, width: (CONTENT_RIGHT - ACTIVITY_LEFT - 20) * scale }}>
+              <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 50 * scale, color: colors.textPrimary, marginBottom: 12 * scale }}>
+                Recent Activity
               </Text>
-            ))}
-          </View>
+              {activity.length === 0 && (
+                <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary }}>None yet</Text>
+              )}
+              {activity.map((line) => (
+                <Text
+                  key={line.id}
+                  style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary, marginBottom: 6 * scale }}
+                  numberOfLines={1}
+                >
+                  {`•  ${line.text}`}
+                </Text>
+              ))}
+            </View>
+          )}
         </>
       )}
     </View>

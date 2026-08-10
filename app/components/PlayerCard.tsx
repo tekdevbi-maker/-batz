@@ -97,8 +97,10 @@ export default function PlayerCard({
 
   return (
     <View style={styles.wrapper} onLayout={onLayout}>
-      {/* Layer 1: photo, uploaded by the parent */}
-      {photoUrl && <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />}
+      {/* Layer 1: photo, uploaded by the parent -- a locked player has none
+          (photoUrl is already guarded to null at the repo level), so the
+          window just shows plain white behind the frame instead. */}
+      {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" /> : <View style={styles.photo} />}
       {/* Layer 2: card frame -- borders, logo, and red banner all baked in */}
       <Image source={CARD_FRAME} style={styles.cardBg} resizeMode="contain" />
       {/* Layer 3: player name, italic bordered first name over a plain last name */}
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
   // was), so covering the whole canvas and letting the frame mask it is
   // the correct approach -- an inset rectangle here would just misalign
   // with where the frame's window actually is.
-  photo: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
+  photo: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "#fff" },
 });
 
 export { BANNER_CENTER_X, MAX_TEXT_W, OutlinedText };

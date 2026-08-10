@@ -16,7 +16,6 @@ import {
   TeamAtCapacityError,
   type PendingTransferOffer,
 } from "../../../lib/claimRepository";
-import { calculateStarTiers } from "../../../lib/starTiers";
 import {
   describeMilestone,
   followPlayer,
@@ -29,7 +28,6 @@ import {
 // Block/Report is disabled for now -- kept here, commented out, in case it's
 // wanted again later.
 // import BlockReportButtons from "../../../components/BlockReportButtons";
-import StatColumns from "../../../components/StatColumns";
 import FlipStatsCard from "../../../components/FlipStatsCard";
 import PlayerCard from "../../../components/PlayerCard";
 import PlayerCardStatsBack from "../../../components/PlayerCardStatsBack";
@@ -42,30 +40,11 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
-function fmt(avg: number): string {
-  return avg.toFixed(3).replace(/^0\./, ".");
-}
-
-function stars(n: number): string {
-  return n > 0 ? "⭐".repeat(n) : "";
-}
-
 // Appended to every consent popup that unlocks a player (attest, claim
 // request, transfer offer) -- the standing, self-service reversal a parent
 // always has, not just a one-time accept.
 const UNLINK_DISCLOSURE =
   " You may unlink this player at any time, which will return them to a locked state under the Head Coach's account.";
-
-// Voluntary fields (spec: parent fills these in via Player Settings) --
-// only render the parts that have actually been set.
-function formatDemographics(p: PlayerProfile): string | null {
-  const parts: string[] = [];
-  if (p.heightFeet != null) parts.push(`${p.heightFeet}'${p.heightInches ?? 0}"`);
-  if (p.weightLbs != null) parts.push(`${p.weightLbs} lbs`);
-  if (p.bats) parts.push(`Bats: ${p.bats}`);
-  if (p.throws) parts.push(`Throws: ${p.throws}`);
-  return parts.length > 0 ? parts.join("   ") : null;
-}
 
 export default function PlayerProfileScreen() {
   const { session } = useRequireAuth();
@@ -78,12 +57,8 @@ export default function PlayerProfileScreen() {
   const [following, setFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followBusy, setFollowBusy] = useState(false);
-  const [recentActivity, setRecentActivity] = useState<ActivityFeedPost[]>([]);
-  // Separate from recentActivity above (which is capped for the on-page
-  // list) -- the card's stats-back face shows every entry, per spec.
+  // The card's stats-back face shows every activity entry.
   const [cardActivity, setCardActivity] = useState<ActivityFeedPost[]>([]);
-  const [careerOpen, setCareerOpen] = useState(false);
-  const [seasonsOpen, setSeasonsOpen] = useState(false);
   const [isCoachOnTeam, setIsCoachOnTeam] = useState(false);
   const [attestModalOpen, setAttestModalOpen] = useState(false);
   const [attestBusy, setAttestBusy] = useState(false);
@@ -112,7 +87,6 @@ export default function PlayerProfileScreen() {
         .finally(() => setLoaded(true)),
       isFollowing(supabase, playerId, session.user.id).then(setFollowing).catch(() => {}),
       getFollowerCount(supabase, playerId).then(setFollowerCount).catch(() => {}),
-      listPlayerActivity(supabase, playerId, session.user.id).then(setRecentActivity).catch(() => {}),
       listPlayerActivity(supabase, playerId, session.user.id, 500).then(setCardActivity).catch(() => {}),
       listMyPendingTransferOffers(supabase)
         .then((offers) => setTransferOffer(offers.find((o) => o.playerId === playerId) ?? null))
@@ -315,33 +289,15 @@ export default function PlayerProfileScreen() {
   const isCoachOwner = profile.isOwner && isCoachOnTeam;
   const isAttested = !!profile.parentAttestedAt;
   const current = currentSeasonLine(profile);
-  // Star tiers reset each season (spec Section 9), so they're computed
-  // from the player's current in-season line, not the career aggregate --
-  // a player with no in-season team right now simply shows no stars.
-  const tiers = current ? calculateStarTiers(current.counts) : null;
-  const demographics = formatDemographics(profile);
 
   // Real name only when the parent opted into "Real Name" display -- otherwise
   // both card faces fall back to displayName (the same alias/uniform tag
-  // shown everywhere else), never the real name.
+  // shown everywhere else), never the real name. A locked player's
+  // displayMode is already forced to "uniform" upstream, so this naturally
+  // resolves to just the default tag with no first name for them too.
   const cardFirstName = profile.displayMode === "real_name" ? (profile.realName?.split(" ")[0] ?? "") : "";
   const cardLastName =
     profile.displayMode === "real_name" ? profile.realName?.split(" ").slice(1).join(" ") || "" : profile.displayName;
-
-  const categoryRows = current
-    ? [
-        { label: "Hits", value: profile.isCoachFallback ? "*" : String(current.counts.h), stars: profile.isCoachFallback ? "*" : stars(tiers!.hits) },
-        { label: "2B", value: profile.isCoachFallback ? "*" : String(current.counts.doubles), stars: profile.isCoachFallback ? "*" : stars(tiers!.doubles) },
-        { label: "3B", value: profile.isCoachFallback ? "*" : String(current.counts.triples), stars: profile.isCoachFallback ? "*" : stars(tiers!.triples) },
-        { label: "HR", value: profile.isCoachFallback ? "*" : String(current.counts.hr), stars: profile.isCoachFallback ? "*" : stars(tiers!.homeRuns) },
-        { label: "RBI", value: profile.isCoachFallback ? "*" : String(current.counts.rbi), stars: "" },
-        { label: "BB", value: profile.isCoachFallback ? "*" : String(current.counts.bb), stars: "" },
-        { label: "AVG", value: profile.isCoachFallback ? "*" : fmt(current.stats.avg), stars: "" },
-        { label: "OBP", value: profile.isCoachFallback ? "*" : fmt(current.stats.obp), stars: "" },
-        { label: "SLG", value: profile.isCoachFallback ? "*" : fmt(current.stats.slg), stars: "" },
-        { label: "OPS", value: profile.isCoachFallback ? "*" : fmt(current.stats.ops), stars: "" },
-      ]
-    : [];
 
   return (
     <ScrollView
@@ -511,116 +467,50 @@ export default function PlayerProfileScreen() {
         </View>
       </Modal>
 
-      <View style={styles.demographicsBlock}>
-        <Text style={styles.title}>
-          {current && !profile.isCoachFallback ? `#${current.uniformNumber} - ${profile.displayName}` : profile.displayName}
-        </Text>
-        {current && <Text style={styles.teamName}>{current.teamName}</Text>}
-        {demographics && <Text style={styles.hint}>{demographics}</Text>}
-      </View>
-
       {/* Block/Report disabled for now -- see the commented-out import above.
       {session && !profile.isOwner && (
         <BlockReportButtons myUserId={session.user.id} targetUserId={profile.parentUserId} />
       )}
       */}
 
-      {categoryRows.length > 0 && (
-        <>
-          <Text style={styles.label}>Current Season</Text>
-          {profile.isCoachFallback && (
-            <Text style={[styles.hint, styles.italicHint]}>*Stats will display after player is unlocked</Text>
-          )}
-          {!profile.isCoachFallback && (
-            <Text style={styles.hint}>Tap the card to flip through views</Text>
-          )}
-          <FlipStatsCard
-            flippable={!profile.isCoachFallback}
-            faces={[
-              <View key="table" style={styles.table}>
-                <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.tableHeaderCell, styles.categoryCell]}>Category</Text>
-                  <Text style={[styles.tableHeaderCell, styles.valueCell]}>Season Stats</Text>
-                  <Text style={[styles.tableHeaderCell, styles.starsCell]}>Star Rating</Text>
-                </View>
-                {categoryRows.map((row) => (
-                  <View key={row.label} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, styles.categoryCell]}>{row.label}</Text>
-                    <Text style={[styles.tableCell, styles.valueCell]}>{row.value}</Text>
-                    <Text style={[styles.tableCell, styles.starsCell]}>{row.stars}</Text>
-                  </View>
-                ))}
-              </View>,
-              <PlayerCard
-                key="photo"
-                firstName={cardFirstName}
-                lastName={cardLastName}
-                photoUrl={profile.photoUrl}
-                teamLogoUrl={current?.teamLogoUrl}
-              />,
-              <PlayerCardStatsBack
-                key="statsback"
-                firstName={cardFirstName}
-                lastName={cardLastName}
-                leagueName={current?.leagueName ?? ""}
-                divisionName={current?.divisionName ?? ""}
-                teamName={current?.teamName ?? ""}
-                season={current?.season ?? ""}
-                year={current?.year ?? 0}
-                heightFeet={profile.heightFeet}
-                heightInches={profile.heightInches}
-                weightLbs={profile.weightLbs}
-                bats={profile.bats}
-                throws={profile.throws}
-                seasons={profile.seasons}
-                careerCounts={profile.careerCounts}
-                careerStats={profile.careerStats}
-                teamLogoUrl={current?.teamLogoUrl}
-                uniformNumber={current?.uniformNumber}
-                activity={cardActivity.map((post) => ({
-                  id: post.id,
-                  text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
-                }))}
-              />,
-            ]}
-          />
-        </>
-      )}
-
-      {recentActivity.length > 0 && !profile.isCoachFallback && (
-        <>
-          <Text style={styles.label}>Recent Activity</Text>
-          {recentActivity.map((post) => (
-            <Text key={post.id} style={styles.statLine}>
-              Reached {describeMilestone(post)} on {formatDateDisplay(post.gameDate)} · 👍 {post.likeCount}
-            </Text>
-          ))}
-        </>
-      )}
-
-      <Pressable style={styles.sectionHeader} onPress={() => setCareerOpen((v) => !v)}>
-        <Text style={styles.label}>Career</Text>
-        <Text style={styles.chevron}>{careerOpen ? "▾" : "▸"}</Text>
-      </Pressable>
-      {careerOpen && <StatColumns counts={profile.careerCounts} stats={profile.careerStats} hideZero />}
-
-      <Pressable style={styles.sectionHeader} onPress={() => setSeasonsOpen((v) => !v)}>
-        <Text style={styles.label}>Seasons</Text>
-        <Text style={styles.chevron}>{seasonsOpen ? "▾" : "▸"}</Text>
-      </Pressable>
-      {seasonsOpen && profile.seasons.length === 0 && <Text style={styles.hint}>No seasons recorded yet.</Text>}
-      {seasonsOpen &&
-        profile.seasons.map((s) => (
-          <Pressable key={s.rosterEntryId} style={styles.seasonRow} onPress={() => router.push(`/team/${s.teamId}`)}>
-            <Text style={styles.seasonTitle}>
-              {s.teamName} | {s.divisionName}
-              {!profile.isCoachFallback ? ` | #${s.uniformNumber}` : ""} | {s.season} {s.year}
-              {s.seasonStatus === "ended" ? " (ended)" : ""}
-            </Text>
-            <Text style={styles.hint}>{s.leagueName}</Text>
-            <StatColumns counts={s.counts} stats={s.stats} hideZero />
-          </Pressable>
-        ))}
+      <Text style={styles.hint}>Tap the card to flip it over</Text>
+      <FlipStatsCard
+        flippable
+        faces={[
+          <PlayerCard
+            key="photo"
+            firstName={cardFirstName}
+            lastName={cardLastName}
+            photoUrl={profile.photoUrl}
+            teamLogoUrl={current?.teamLogoUrl}
+          />,
+          <PlayerCardStatsBack
+            key="statsback"
+            firstName={cardFirstName}
+            lastName={cardLastName}
+            leagueName={current?.leagueName ?? ""}
+            divisionName={current?.divisionName ?? ""}
+            teamName={current?.teamName ?? ""}
+            season={current?.season ?? ""}
+            year={current?.year ?? 0}
+            heightFeet={profile.heightFeet}
+            heightInches={profile.heightInches}
+            weightLbs={profile.weightLbs}
+            bats={profile.bats}
+            throws={profile.throws}
+            seasons={profile.seasons}
+            careerCounts={profile.careerCounts}
+            careerStats={profile.careerStats}
+            teamLogoUrl={current?.teamLogoUrl}
+            uniformNumber={current?.uniformNumber}
+            locked={profile.isCoachFallback}
+            activity={cardActivity.map((post) => ({
+              id: post.id,
+              text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
+            }))}
+          />,
+        ]}
+      />
     </ScrollView>
   );
 }
@@ -628,15 +518,8 @@ export default function PlayerProfileScreen() {
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 6, backgroundColor: colors.background },
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
-  teamName: { fontSize: 17, fontFamily: "Montserrat_600SemiBold", color: colors.textSecondary, marginTop: 2 },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
-  italicHint: { fontStyle: "italic" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
-  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 16, color: colors.textPrimary },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  chevron: { fontSize: 15, fontFamily: "Montserrat_400Regular", marginTop: 16, color: colors.textSecondary },
-  statLine: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
-  demographicsBlock: { marginTop: 8, gap: 2 },
   ownerRow: { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 8 },
   unlinkButton: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 8, marginTop: 8 },
   publicBadge: { color: colors.success, fontFamily: "Montserrat_400Regular", backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
@@ -662,44 +545,4 @@ const styles = StyleSheet.create({
   modalCancel: { paddingVertical: 10 },
   modalAgree: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
   modalAgreeText: { color: "white", fontFamily: "Montserrat_600SemiBold" },
-  code: {
-    fontFamily: "monospace",
-    backgroundColor: colors.surface,
-    color: colors.textPrimary,
-    padding: 10,
-    borderRadius: 6,
-    fontSize: 13,
-  },
-  seasonRow: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 2,
-  },
-  seasonTitle: { fontFamily: "Montserrat_600SemiBold", fontSize: 15, color: colors.textPrimary },
-  table: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  tableHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: colors.surfaceAlt,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  tableHeaderCell: { fontSize: 13, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  tableCell: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
-  categoryCell: { flex: 1, textAlign: "center" },
-  valueCell: { flex: 1, textAlign: "center" },
-  starsCell: { flex: 1, textAlign: "center" },
 });
