@@ -106,7 +106,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "@Batz needs access to your photo library so you can choose a team logo or player photo to upload."
+          "photosPermission": "@Batz needs access to your photo library so you can choose a team logo or player photo to upload.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [
