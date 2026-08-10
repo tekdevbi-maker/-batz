@@ -177,8 +177,7 @@ export default function TeamMembersScreen() {
       <Text style={styles.hint}>
         {transferRosterEntryId
           ? "Pick a member of this team to offer this player to. They'll need to agree before ownership changes."
-          : `Everyone who has joined via this team's link. Promote up to 3 to Assistant Coach -- ` +
-            "encourage the same coaches who help with GameChanger, since they can also import games."}
+          : "These are the list of followers who joined with your team's link. You may promote up to 3 assistant coaches."}
       </Text>
       {error && <Text style={styles.error}>{error}</Text>}
 

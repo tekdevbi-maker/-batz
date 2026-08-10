@@ -25,15 +25,15 @@ export default function TeamLayout() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Team" }} />
-      <Stack.Screen name="roster" options={{ title: "Roster" }} />
+      <Stack.Screen name="index" options={{ title: "" }} />
+      <Stack.Screen name="roster" options={{ title: "" }} />
       <Stack.Screen name="leaderboard" options={{ title: "Team Leaderboard" }} />
       <Stack.Screen name="league-leaderboard" options={{ title: "League Leaderboard" }} />
       <Stack.Screen name="games/index" options={{ title: "Game Log" }} />
       <Stack.Screen name="games/[gameId]" options={{ title: "Box Score" }} />
       <Stack.Screen name="claim-player" options={{ title: "Claim a Player" }} />
       <Stack.Screen name="settings" options={{ title: "Team Settings" }} />
-      <Stack.Screen name="members" options={{ title: "Team Members" }} />
+      <Stack.Screen name="members" options={{ title: "" }} />
     </Stack>
   );
 }

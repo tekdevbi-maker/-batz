@@ -131,10 +131,10 @@ export default function RootLayout() {
           <Stack.Screen name="admin" options={{ title: "League/Division Admin" }} />
           <Stack.Screen name="join/[teamId]" options={{ title: "Join Team" }} />
           <Stack.Screen name="team/[teamId]" options={{ headerShown: false }} />
-          <Stack.Screen name="player/[playerId]/index" options={{ title: "Player" }} />
+          <Stack.Screen name="player/[playerId]/index" options={{ title: "" }} />
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
-          <Stack.Screen name="activity" options={{ title: "Activity Feed" }} />
+          <Stack.Screen name="activity" options={{ title: "" }} />
           <Stack.Screen name="customer-care" options={{ title: "Customer Care" }} />
           <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />

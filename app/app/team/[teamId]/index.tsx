@@ -71,7 +71,7 @@ export default function TeamHomeScreen() {
           <>
             <Text style={styles.title}>{context.teamName}</Text>
             <Text style={styles.hint}>
-              {context.leagueName}, {context.divisionName} -- {context.season} {context.year}
+              {context.leagueName} | {context.divisionName} | {context.season} {context.year}
             </Text>
           </>
         )}

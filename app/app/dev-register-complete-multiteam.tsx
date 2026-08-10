@@ -18,8 +18,8 @@ export default function DevRegisterCompleteMultiTeamScreen() {
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.body}>
-          If you are a multi-team Head Coach and need to create another team, you may do so in the @Batz
-          Main Menu and select "I'm the Head Coach of another team."
+          If you are the Head Coach of another team, select "+ Another Team as Head Coach" in the @Batz
+          Main Menu.
         </Text>
 
         <View style={styles.screenshotPlaceholder}>

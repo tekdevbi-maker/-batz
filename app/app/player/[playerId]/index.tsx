@@ -360,10 +360,10 @@ export default function PlayerProfileScreen() {
             {followerCount} follower{followerCount === 1 ? "" : "s"}
           </Text>
           {profile.isCoachFallback && myClaimStatus === "pending" && (
-            <Text style={styles.hint}>Claim requested -- waiting for the coach to approve.</Text>
+            <Text style={styles.hint}>Pending Approval</Text>
           )}
           {profile.isCoachFallback && myClaimStatus === "coach_approved" && (
-            <Text style={styles.hint}>Coach approved -- check your notification to finish.</Text>
+            <Text style={styles.hint}>Approved</Text>
           )}
           {profile.isCoachFallback && myClaimStatus !== "pending" && myClaimStatus !== "coach_approved" && (
             <Pressable style={styles.secondaryButton} disabled={claimBusy} onPress={() => setClaimModalOpen(true)}>
@@ -504,7 +504,7 @@ export default function PlayerProfileScreen() {
             teamLogoUrl={current?.teamLogoUrl}
             uniformNumber={current?.uniformNumber}
             locked={profile.isCoachFallback}
-            activity={cardActivity.map((post) => ({
+            activity={cardActivity.slice(0, 3).map((post) => ({
               id: post.id,
               text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
             }))}

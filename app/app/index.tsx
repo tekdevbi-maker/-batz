@@ -122,30 +122,23 @@ export default function Home() {
 
       {coachedTeams.length > 0 && (
         <>
-          <View style={styles.teamsHeaderRow}>
-            <Text style={styles.label}>Teams I Coach</Text>
-            <Pressable onPress={() => router.push("/register-team")}>
-              <Text style={styles.addTeamLink}>Add a Team I Coach</Text>
-            </Pressable>
-          </View>
+          <Text style={styles.label}>My Teams</Text>
+          <Pressable onPress={() => router.push("/register-team")}>
+            <Text style={styles.addTeamLink}>+ Another Team as Head Coach</Text>
+          </Pressable>
           <TeamTileGrid teams={coachedTeams} pendingCounts={pendingCounts} />
         </>
       )}
       {coachedTeams.length === 0 && (
-        <View style={styles.teamsHeaderRow}>
-          <View />
-          <Pressable onPress={() => router.push("/register-team")}>
-            <Text style={styles.addTeamLink}>Add a Team I Coach</Text>
-          </Pressable>
-        </View>
+        <Pressable onPress={() => router.push("/register-team")}>
+          <Text style={styles.addTeamLink}>+ Another Team as Head Coach</Text>
+        </Pressable>
       )}
 
-      <View style={styles.teamsHeaderRow}>
-        <Text style={styles.label}>Teams I Follow</Text>
-        <Pressable onPress={() => router.push("/join-team")}>
-          <Text style={styles.addTeamLink}>Follow Another Team</Text>
-        </Pressable>
-      </View>
+      <Text style={styles.label}>Followed Teams</Text>
+      <Pressable onPress={() => router.push("/join-team")}>
+        <Text style={styles.addTeamLink}>Follow Another Team</Text>
+      </Pressable>
       {memberTeams.length > 0 ? (
         <TeamTileGrid teams={memberTeams} />
       ) : (
@@ -187,7 +180,7 @@ export default function Home() {
 
       {myTeamPlayers.length > 0 && (
         <>
-          <Text style={styles.label}>Players I Coach</Text>
+          <Text style={styles.label}>My Locked Players</Text>
           <Text style={styles.hint}>Unclaimed roster spots you're holding for a parent to claim.</Text>
           <View style={styles.tileGrid}>
             {myTeamPlayers.map((p) => (
@@ -226,9 +219,8 @@ const styles = StyleSheet.create({
   logo: { width: 220, height: 98, alignSelf: "center" },
   welcome: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "left" },
   hint: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular", textAlign: "center" },
-  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
-  teamsHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  addTeamLink: { color: colors.accent, fontFamily: "Montserrat_600SemiBold", fontSize: 14, marginTop: 12 },
+  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 4, color: colors.textPrimary },
+  addTeamLink: { color: colors.accent, fontFamily: "Montserrat_600SemiBold", fontSize: 14, marginTop: -6 },
   buttonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   secondaryButton: {
     borderWidth: 1,

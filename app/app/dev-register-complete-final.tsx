@@ -20,10 +20,6 @@ export default function DevRegisterCompleteFinalScreen() {
       <SafeTopSpacer />
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.body}>
-          Should you need to refer to this in the future, all of this info will be available in your Team
-          Settings under "Welcome Coach!"
-        </Text>
         <Text style={styles.body}>Good Luck this season! Go {state.teamName}!</Text>
 
         <View style={styles.spacer} />
