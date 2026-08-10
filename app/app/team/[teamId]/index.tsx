@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { useRequireAuth } from "../../../lib/AuthContext";
@@ -67,25 +67,27 @@ export default function TeamHomeScreen() {
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
       >
-        {context && (
-          <>
-            <Text style={styles.title}>{context.teamName}</Text>
-            <Text style={styles.hint}>
-              {context.leagueName} | {context.divisionName} | {context.season} {context.year}
-            </Text>
-          </>
-        )}
+        <View style={styles.headerRow}>
+          {context?.teamLogoUrl ? (
+            <Image source={{ uri: context.teamLogoUrl }} style={styles.teamLogo} resizeMode="contain" />
+          ) : (
+            <View />
+          )}
+          {context && (
+            <View style={styles.coachesBlock}>
+              <Text style={styles.hint}>{context.leagueName}</Text>
+              <Text style={styles.hint}>{context.divisionName}</Text>
+              <Text style={styles.hint}>
+                {context.season} {context.year}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {context && <Text style={styles.title}>{context.teamName}</Text>}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        {isCoach && (
-          <>
-            <Text style={styles.label}>Team Join Link</Text>
-            <CopyableLink value={Linking.createURL(`/join/${teamId}`)} />
-          </>
-        )}
-
-        <Text style={styles.label}>Coaches ({coaches.length}/4)</Text>
         {(() => {
           const headCoach = coaches.find((c) => c.role === "primary");
           const assistants = coaches.filter((c) => c.role === "assistant");
@@ -100,6 +102,13 @@ export default function TeamHomeScreen() {
             </>
           );
         })()}
+
+        {isCoach && (
+          <>
+            <Text style={styles.label}>Team Join Link</Text>
+            <CopyableLink value={Linking.createURL(`/join/${teamId}`)} />
+          </>
+        )}
 
         <View style={styles.tileGrid}>
           <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/games`)}>
@@ -148,6 +157,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 8 },
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  teamLogo: { width: 96, height: 96 },
+  coachesBlock: { alignItems: "flex-end" },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 8 },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 16, color: colors.textPrimary },

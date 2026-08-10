@@ -18,7 +18,7 @@ export default function DevRegisterCompleteMultiTeamScreen() {
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.body}>
-          If you are the Head Coach of another team, select "+ Another Team as Head Coach" in the @Batz
+          If you are the Head Coach of another team, select "Add a Team as Head Coach" in the @Batz
           Main Menu.
         </Text>
 

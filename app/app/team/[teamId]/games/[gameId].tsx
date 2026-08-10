@@ -77,6 +77,7 @@ export default function BoxScoreScreen() {
           {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
         </Text>
       )}
+      <Text style={styles.hint}>* stats will display after player is unlocked</Text>
       {error && <Text style={styles.error}>{error}</Text>}
 
       <View style={styles.table}>
@@ -96,12 +97,12 @@ export default function BoxScoreScreen() {
             <Text style={[styles.cell, styles.nameCell, { flex: COLUMNS[1].flex }]}>
               {line.playerId ? line.displayName : ""}
             </Text>
-            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[2].flex }]}>{line.counts.ab}</Text>
-            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[3].flex }]}>{line.counts.h}</Text>
-            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[4].flex }]}>{line.counts.doubles}</Text>
-            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[5].flex }]}>{line.counts.triples}</Text>
-            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[6].flex }]}>{line.counts.hr}</Text>
-            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[7].flex }]}>{line.counts.rbi}</Text>
+            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[2].flex }]}>{line.locked ? "*" : line.counts.ab}</Text>
+            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[3].flex }]}>{line.locked ? "*" : line.counts.h}</Text>
+            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[4].flex }]}>{line.locked ? "*" : line.counts.doubles}</Text>
+            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[5].flex }]}>{line.locked ? "*" : line.counts.triples}</Text>
+            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[6].flex }]}>{line.locked ? "*" : line.counts.hr}</Text>
+            <Text style={[styles.cell, styles.numCell, { flex: COLUMNS[7].flex }]}>{line.locked ? "*" : line.counts.rbi}</Text>
           </View>
         ))}
       </View>
@@ -114,6 +115,7 @@ const styles = StyleSheet.create({
   container: { padding: 20, gap: 8 },
   title: { fontSize: 20, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  hint: { color: colors.textSecondary, fontSize: 12, fontFamily: "Montserrat_400Regular", fontStyle: "italic", marginBottom: 4 },
   table: {
     borderWidth: 1,
     borderColor: colors.border,

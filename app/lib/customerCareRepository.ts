@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const CUSTOMER_CARE_CATEGORIES = [
-  { value: "coach_unreachable", label: "Coach is unreachable" },
   { value: "registration_issue", label: "Registration issue" },
-  { value: "account_issue", label: "Account issue" },
+  { value: "account_issue", label: "Account Issue" },
+  { value: "importing_issue", label: "Importing issue" },
+  { value: "uploading_issue", label: "Uploading issue" },
   { value: "other", label: "Other" },
 ] as const;
 export type CustomerCareCategory = (typeof CUSTOMER_CARE_CATEGORIES)[number]["value"];
@@ -11,6 +12,7 @@ export type CustomerCareCategory = (typeof CUSTOMER_CARE_CATEGORIES)[number]["va
 export interface CustomerCareRequest {
   id: string;
   requesterUserId: string;
+  requesterEmail?: string;
   teamId: string | null;
   category: CustomerCareCategory;
   description: string;
@@ -22,6 +24,7 @@ function toRequest(row: any): CustomerCareRequest {
   return {
     id: row.id,
     requesterUserId: row.requester_user_id,
+    requesterEmail: row.requester_email,
     teamId: row.team_id,
     category: row.category,
     description: row.description,
@@ -54,10 +57,11 @@ export async function listMyCustomerCareRequests(supabase: SupabaseClient, userI
 }
 
 // Admin triage view (spec Section 10: requests are "tracked ... for
-// follow-up") -- RLS restricts this to is_app_admin() regardless of what
-// the caller asks for.
+// follow-up") -- goes through an RPC (not a plain table select) since it
+// needs the requester's email, which lives in auth.users and PostgREST
+// can't join to directly; the RPC itself re-checks is_app_admin().
 export async function listAllCustomerCareRequests(supabase: SupabaseClient): Promise<CustomerCareRequest[]> {
-  const { data, error } = await supabase.from("customer_care_request").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("list_customer_care_requests_admin");
   if (error) throw error;
   return (data ?? []).map(toRequest);
 }

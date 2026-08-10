@@ -10,7 +10,7 @@ import {
   Alert,
   Platform,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import * as LegacyFileSystem from "expo-file-system/legacy";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useRequireAuth } from "../lib/AuthContext";
@@ -254,6 +254,8 @@ export default function ImportGameScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <Link href="/customer-care"><Text style={styles.legalLink}>Need Help?</Text></Link>
+
       {loadError && (
         <Text style={styles.error}>
           Couldn't load team data: {loadError}
@@ -283,7 +285,7 @@ export default function ImportGameScreen() {
       {lastGame && (
         <Text style={styles.hint}>
           Last game recorded was Game #{lastGame.gameNumber}
-          {lastGame.opponent ? ` against ${lastGame.opponent}` : ""} on {lastGame.gameDate}
+          {lastGame.opponent ? ` against ${lastGame.opponent}` : ""} on {formatDateDisplay(lastGame.gameDate)}
         </Text>
       )}
       <TextInput
@@ -357,14 +359,28 @@ export default function ImportGameScreen() {
           {duplicateFileWarning.gameDate}. Choose a different file.
         </Text>
       )}
-      {parseError && <Text style={styles.error}>{parseError}</Text>}
+      {parseError && (
+        <>
+          <Text style={styles.error}>{parseError}</Text>
+          <Text style={styles.hint}>
+            If you are experiencing technical issues importing, please reach out to us using the "Need Help?" link.
+          </Text>
+        </>
+      )}
       {parsedLines && (
         <Text style={styles.hint}>
           Parsed {parsedLines.length} batting lines from {fileName}.
         </Text>
       )}
 
-      {submitError && <Text style={styles.error}>{submitError}</Text>}
+      {submitError && (
+        <>
+          <Text style={styles.error}>{submitError}</Text>
+          <Text style={styles.hint}>
+            If you are experiencing technical issues importing, please reach out to us using the "Need Help?" link.
+          </Text>
+        </>
+      )}
       {submitSuccess && <Text style={styles.success}>Game imported.</Text>}
 
       <Pressable
@@ -388,7 +404,7 @@ export default function ImportGameScreen() {
             <View key={game.id} style={styles.gameRow}>
               <Text style={styles.gameRowText}>
                 Game #{game.gameNumber}
-                {game.opponent ? ` vs ${game.opponent}` : ""} -- {game.gameDate}
+                {game.opponent ? ` vs ${game.opponent}` : ""} | {formatDateDisplay(game.gameDate)}
               </Text>
               <Pressable
                 style={styles.deleteButton}
@@ -418,6 +434,7 @@ const styles = StyleSheet.create({
   warning: { color: colors.warningText, backgroundColor: colors.warningBg, padding: 8, borderRadius: 6, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   success: { color: colors.success, fontSize: 15, fontFamily: "Montserrat_600SemiBold" },
+  legalLink: { color: colors.accent, fontFamily: "Montserrat_400Regular" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

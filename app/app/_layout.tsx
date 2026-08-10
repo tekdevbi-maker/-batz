@@ -125,6 +125,7 @@ export default function RootLayout() {
           <Stack.Screen name="dev-register-complete-multiteam" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-complete-final" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="register-team" options={{ title: "Register a New Team" }} />
+          <Stack.Screen name="previous-teams" options={{ title: "" }} />
           <Stack.Screen name="join-team" options={{ title: "Join a Team" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
           <Stack.Screen name="shared-csv" options={{ title: "Import Game" }} />
@@ -135,7 +136,7 @@ export default function RootLayout() {
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="activity" options={{ title: "" }} />
-          <Stack.Screen name="customer-care" options={{ title: "Customer Care" }} />
+          <Stack.Screen name="customer-care" options={{ title: "" }} />
           <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />
           <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />

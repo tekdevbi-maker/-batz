@@ -20,7 +20,7 @@ export default function CustomerCareScreen() {
   const { session } = useRequireAuth();
   const router = useRouter();
 
-  const [category, setCategory] = useState<CustomerCareCategory>("coach_unreachable");
+  const [category, setCategory] = useState<CustomerCareCategory>("registration_issue");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -64,7 +64,7 @@ export default function CustomerCareScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Reach Out to Customer Care</Text>
-      <Text style={styles.hint}>Can't reach your team's coaches? Let us know what's going on.</Text>
+      <Text style={styles.hint}>Let us know what's going on.</Text>
 
       <Text style={styles.label}>What's this about?</Text>
       <View style={styles.chipRow}>

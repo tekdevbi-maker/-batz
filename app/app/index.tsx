@@ -124,14 +124,14 @@ export default function Home() {
         <>
           <Text style={styles.label}>My Teams</Text>
           <Pressable onPress={() => router.push("/register-team")}>
-            <Text style={styles.addTeamLink}>+ Another Team as Head Coach</Text>
+            <Text style={styles.addTeamLink}>Add a Team as Head Coach</Text>
           </Pressable>
           <TeamTileGrid teams={coachedTeams} pendingCounts={pendingCounts} />
         </>
       )}
       {coachedTeams.length === 0 && (
         <Pressable onPress={() => router.push("/register-team")}>
-          <Text style={styles.addTeamLink}>+ Another Team as Head Coach</Text>
+          <Text style={styles.addTeamLink}>Add a Team as Head Coach</Text>
         </Pressable>
       )}
 

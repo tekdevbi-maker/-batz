@@ -300,6 +300,7 @@ export interface BoxScoreLine {
   displayName: string;
   counts: BattingCounts;
   stats: CalculatedStats;
+  locked: boolean;
 }
 
 export async function listGamesForTeam(supabase: SupabaseClient, teamId: string): Promise<GameSummary[]> {
@@ -349,6 +350,7 @@ export async function getGameBoxScore(
       displayName: displayNameFor(row.roster_entry?.player, uniformNumber, context, viewerIsCoach),
       counts,
       stats: calculateStats(counts),
+      locked: row.roster_entry?.player?.is_coach_fallback ?? false,
     };
   });
 
