@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Image, Pressable, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Modal } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
@@ -45,6 +45,7 @@ export default function TeamHomeScreen() {
   const [cropImageUri, setCropImageUri] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityFeedPost[]>([]);
   const [activityLoaded, setActivityLoaded] = useState(false);
+  const [joinLinkVisible, setJoinLinkVisible] = useState(false);
 
   const load = useCallback(async () => {
     if (!teamId || !session) return;
@@ -218,13 +219,6 @@ export default function TeamHomeScreen() {
           );
         })()}
 
-        {isCoach && (
-          <>
-            <Text style={styles.label}>Team Join Link</Text>
-            <CopyableLink value={Linking.createURL(`/join/${teamId}`)} />
-          </>
-        )}
-
         <View style={styles.tileGrid}>
           {isCoach && (
             <Pressable style={styles.tile} onPress={() => router.push(`/team/${teamId}/settings`)}>
@@ -245,6 +239,13 @@ export default function TeamHomeScreen() {
               <Text style={styles.tileText}>Game Log</Text>
             </View>
           </Pressable>
+          {isCoach && (
+            <Pressable style={styles.tile} onPress={() => setJoinLinkVisible(true)}>
+              <View style={styles.tileInner}>
+                <Text style={styles.tileText}>Team Join Link</Text>
+              </View>
+            </Pressable>
+          )}
         </View>
 
         <Text style={styles.label}>Activity Feed</Text>
@@ -284,6 +285,18 @@ export default function TeamHomeScreen() {
         onCancel={() => setCropImageUri(null)}
         onConfirm={handleConfirmCrop}
       />
+
+      <Modal visible={joinLinkVisible} transparent animationType="fade">
+        <View style={styles.backdrop}>
+          <View style={styles.joinLinkCard}>
+            <Text style={styles.hint}>Click the link below to share with fans.</Text>
+            <CopyableLink value={Linking.createURL(`/join/${teamId}`)} />
+            <Pressable style={styles.gotItButton} onPress={() => setJoinLinkVisible(false)}>
+              <Text style={styles.gotItButtonText}>Got It</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -317,6 +330,10 @@ const styles = StyleSheet.create({
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 16, color: colors.textPrimary },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 24 },
+  joinLinkCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, alignItems: "center", width: "100%", maxWidth: 380, gap: 16 },
+  gotItButton: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 32, alignItems: "center" },
+  gotItButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
   tileGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginTop: 8, rowGap: 8 },
   tile: {
     width: "23%",
