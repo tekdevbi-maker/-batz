@@ -13,6 +13,7 @@ import { Anton_400Regular } from "@expo-google-fonts/anton";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 import AdBanner from "../components/AdBanner";
+import SlimHeader from "../components/SlimHeader";
 
 // NOTE: an app-wide default via Text.defaultProps/TextInput.defaultProps
 // was tried here and reverted -- it's an undocumented hack that isn't
@@ -98,9 +99,7 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: colors.surface },
-            headerTintColor: colors.textPrimary,
-            headerTitleStyle: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
+            header: (props) => <SlimHeader {...props} />,
             contentStyle: { backgroundColor: colors.background },
           }}
         >
@@ -135,7 +134,6 @@ export default function RootLayout() {
           <Stack.Screen name="player/[playerId]/index" options={{ title: "" }} />
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
-          <Stack.Screen name="activity" options={{ title: "" }} />
           <Stack.Screen name="customer-care" options={{ title: "" }} />
           <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />

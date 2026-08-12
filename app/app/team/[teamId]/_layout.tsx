@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { colors } from "../../../lib/theme";
+import SlimHeader from "../../../components/SlimHeader";
 
 // Home/Roster/Team Leaderboards/League Leaderboards are plain Stack
 // screens, each rendering a shared TeamTabBar (components/TeamTabBar.tsx)
@@ -19,9 +20,7 @@ export default function TeamLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.textPrimary,
-        headerTitleStyle: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
+        header: (props) => <SlimHeader {...props} />,
         contentStyle: { backgroundColor: colors.background },
       }}
     >

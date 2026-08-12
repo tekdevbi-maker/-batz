@@ -19,16 +19,15 @@ export default function DevRegisterIntroScreen() {
           Welcome to <Image source={require("../assets/wordmark-transparent.png")} style={styles.titleLogo} resizeMode="contain" />!
         </Text>
         <Text style={styles.body}>
-          @Batz is a free dashboard app built around the game data that you and your assistant coaches
-          will be collecting every game this season. You, your staff, parents, and players will all
-          benefit from the work you've already put in with tracking your players' hitting performance. Just
-          import your game stats, and we'll take care of the rest.
+          @Batz is a free dashboard app built around the game data provided by coaches. You and your
+          team will all benefit from the work you've already put in with tracking your players' hitting
+          performance. Just import your game stats, and we'll take care of the rest!
         </Text>
         <Text style={styles.emphasis}>
-          No fees. No subscriptions.{"\n"}For EVERYONE.
+          No Fees. No Subscriptions.
         </Text>
         <Text style={styles.bodyClosing}>
-          Keep the sport fun. Keep the players motivated. And watch them improve at every{" "}
+          Keep it fun. Keep your hitters motivated. And watch them improve at every{" "}
           <Image source={require("../assets/favicon.png")} style={styles.inlineThumb} resizeMode="contain" />.
         </Text>
         <View style={styles.navSpacer}>

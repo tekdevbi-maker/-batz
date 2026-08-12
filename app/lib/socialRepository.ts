@@ -32,19 +32,23 @@ export async function unfollowPlayer(supabase: SupabaseClient, playerId: string,
 
 export interface ActivityFeedPost {
   id: string;
-  playerId: string;
+  playerId: string | null;
   playerDisplayName: string;
   playerParentUserId: string;
   teamName: string;
-  category: "hits" | "doubles" | "triples" | "home_runs";
-  tier: number;
+  category: "hits" | "doubles" | "triples" | "home_runs" | "game_imported";
+  tier: number | null;
   gameDate: string;
+  gameNumber: number | null;
+  opponent: string | null;
   createdAt: string;
   likeCount: number;
   likedByMe: boolean;
 }
 
-const CATEGORY_LABELS: Record<ActivityFeedPost["category"], string> = {
+type MilestoneCategory = Exclude<ActivityFeedPost["category"], "game_imported">;
+
+const CATEGORY_LABELS: Record<MilestoneCategory, string> = {
   hits: "Hits",
   doubles: "Doubles",
   triples: "Triples",
@@ -52,7 +56,16 @@ const CATEGORY_LABELS: Record<ActivityFeedPost["category"], string> = {
 };
 
 export function describeMilestone(post: Pick<ActivityFeedPost, "category" | "tier">): string {
-  return `${"⭐".repeat(post.tier)} in ${CATEGORY_LABELS[post.category]}`;
+  if (post.category === "game_imported") return "";
+  return `${"⭐".repeat(post.tier ?? 0)} in ${CATEGORY_LABELS[post.category]}`;
+}
+
+export function describeGameImported(
+  post: Pick<ActivityFeedPost, "gameNumber" | "opponent">,
+  formattedGameDate: string
+): string {
+  const opponentText = post.opponent ? ` against the ${post.opponent}` : "";
+  return `A new game has been imported! Game ${post.gameNumber ?? "?"}${opponentText} on ${formattedGameDate} is now available for viewing.`;
 }
 
 async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): Promise<ActivityFeedPost[]> {
@@ -80,6 +93,8 @@ async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): P
     category: r.category,
     tier: r.tier,
     gameDate: r.game?.game_date ?? "",
+    gameNumber: r.game?.game_number ?? null,
+    opponent: r.game?.opponent ?? null,
     createdAt: r.created_at,
     likeCount: likeCounts.get(r.id) ?? 0,
     likedByMe: likedByMe.has(r.id),
@@ -98,8 +113,26 @@ export async function listFollowingFeed(supabase: SupabaseClient, userId: string
 
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date)")
+    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date, game_number, opponent)")
     .in("player_id", playerIds)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return toPosts(supabase, userId, data ?? []);
+}
+
+// All milestones for a team's own roster, regardless of who follows whom --
+// shown directly on Team Home instead of the personal "who I follow" feed.
+export async function listTeamActivityFeed(
+  supabase: SupabaseClient,
+  teamId: string,
+  userId: string,
+  limit = 20
+): Promise<ActivityFeedPost[]> {
+  const { data, error } = await supabase
+    .from("activity_feed_item")
+    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .eq("team_id", teamId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -115,7 +148,7 @@ export async function listPlayerActivity(
 ): Promise<ActivityFeedPost[]> {
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date)")
+    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date, game_number, opponent)")
     .eq("player_id", playerId)
     .order("created_at", { ascending: false })
     .limit(limit);

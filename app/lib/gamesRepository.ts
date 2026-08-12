@@ -330,6 +330,15 @@ export async function importGame(
     console.warn("Milestone detection failed (game import itself succeeded):", err);
   }
 
+  try {
+    const { error: importPostError } = await supabase
+      .from("activity_feed_item")
+      .insert({ team_id: input.teamId, game_id: game.id, category: "game_imported" });
+    if (importPostError) throw importPostError;
+  } catch (err) {
+    console.warn("Game-imported activity post failed (game import itself succeeded):", err);
+  }
+
   return { gameId: game.id };
 }
 

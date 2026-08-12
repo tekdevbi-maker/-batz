@@ -96,7 +96,7 @@ export default function DevRegisterLeagueScreen() {
     <>
       <SafeTopSpacer />
       <FadeIn>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>What league do you represent?</Text>
 
         <Text style={styles.label}>Choose a Verified League Name</Text>
@@ -133,6 +133,11 @@ export default function DevRegisterLeagueScreen() {
           placeholderTextColor={colors.textSecondary}
         />
 
+        <Text style={styles.adminNote}>
+          Are you an admin for your league? Reach out to us so we can provide administrative access!
+          Send an email to tekdevbi@gmail.com
+        </Text>
+
         <WizardNav onBack={() => router.back()} onNext={handleNext} nextDisabled={!canProceed} />
       </ScrollView>
 
@@ -165,6 +170,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontFamily: "Montserrat_700Bold", marginBottom: 16, color: colors.textPrimary, textAlign: "center" },
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary, marginBottom: 4, marginTop: 16 },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginTop: 4 },
+  adminNote: { color: colors.textMuted, fontSize: 13, fontFamily: "Montserrat_400Regular", fontStyle: "italic", marginTop: 20, textAlign: "left" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

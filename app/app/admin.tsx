@@ -86,7 +86,7 @@ export default function AdminScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Impersonate a User</Text>
       <Text style={styles.hint}>
         Sign in as this user to see exactly what they see while debugging a report. You'll get a "Return

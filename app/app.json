@@ -14,7 +14,7 @@
       "infoPlist": {
         "CFBundleDocumentTypes": [
           {
-            "CFBundleTypeName": "GameChanger Stats CSV",
+            "CFBundleTypeName": "Stats CSV",
             "LSItemContentTypes": [
               "public.comma-separated-values-text",
               "public.plain-text"
@@ -121,7 +121,8 @@
         }
       ],
       "./plugins/withSplashScreenNavBarFix.js",
-      "expo-font"
+      "expo-font",
+      "expo-sharing"
     ],
     "extra": {
       "router": {},

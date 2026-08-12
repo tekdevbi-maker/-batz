@@ -49,7 +49,7 @@ export function parseGameChangerBattingCsv(csvText: string): ImportedBattingLine
   // Row 1: the real column-name row - validated against expected positions, then discarded.
   if (rows.length < 2) {
     throw new GameChangerFormatError(
-      "CSV has too few rows to be a GameChanger stats export (expected a section-header row and a column-header row before any data)."
+      "CSV has too few rows to be a recognized stats export (expected a section-header row and a column-header row before any data)."
     );
   }
   const headerRow = rows[1];
@@ -58,7 +58,7 @@ export function parseGameChangerBattingCsv(csvText: string): ImportedBattingLine
     const actualName = headerRow[index];
     if (actualName !== expectedName) {
       throw new GameChangerFormatError(
-        `Expected column ${index} to be "${expectedName}" but found "${actualName}". GameChanger's export format may have changed.`
+        `Expected column ${index} to be "${expectedName}" but found "${actualName}". The export format may have changed.`
       );
     }
   }
@@ -112,9 +112,122 @@ export function parseGameChangerBattingCsv(csvText: string): ImportedBattingLine
 
   if (!sawSectionEndRow) {
     throw new GameChangerFormatError(
-      "No \"Totals\" or \"Team\" row found — this doesn't look like a complete GameChanger stats export."
+      "No \"Totals\" or \"Team\" row found — this doesn't look like a complete stats export."
     );
   }
 
   return lines;
+}
+
+// Fallback path for a CSV that doesn't match the known template: just the
+// raw grid, no position assumptions, so the coach can manually tell us
+// which column (and row range) holds each stat via ColumnMappingModal.
+export function parseRawCsvRows(csvText: string): string[][] {
+  const parsed = Papa.parse<string[]>(csvText.trim(), { skipEmptyLines: false });
+  if (parsed.errors.length > 0) {
+    throw new GameChangerFormatError(`Failed to parse CSV: ${parsed.errors[0].message}`);
+  }
+  return parsed.data;
+}
+
+export interface ColumnMapping {
+  jerseyNumber: number;
+  lastName: number;
+  firstName: number;
+  ab: number;
+  h: number;
+  singles: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  rbi: number;
+  bb: number;
+  hbp: number;
+  sf: number;
+}
+
+// Extracts batting lines using a coach-confirmed column mapping instead of
+// the fixed GameChanger positions above -- rows outside [startRow, endRow]
+// (both inclusive, 0-indexed against the raw grid) are ignored, and any
+// row with a blank jersey-number cell within that range is skipped rather
+// than treated as an end marker, since an arbitrary template has no
+// guaranteed "Totals"/"Team" row.
+export function extractWithColumnMapping(
+  rows: string[][],
+  mapping: ColumnMapping,
+  startRow: number,
+  endRow: number
+): ImportedBattingLine[] {
+  const lines: ImportedBattingLine[] = [];
+  for (let i = startRow; i <= endRow && i < rows.length; i++) {
+    const row = rows[i];
+    const jerseyNumber = row[mapping.jerseyNumber]?.trim() ?? "";
+    if (jerseyNumber === "") continue;
+
+    lines.push({
+      jerseyNumber,
+      lastName: row[mapping.lastName]?.trim() ?? "",
+      firstName: row[mapping.firstName]?.trim() ?? "",
+      ab: toInt(row[mapping.ab]),
+      h: toInt(row[mapping.h]),
+      singles: toInt(row[mapping.singles]),
+      doubles: toInt(row[mapping.doubles]),
+      triples: toInt(row[mapping.triples]),
+      hr: toInt(row[mapping.hr]),
+      rbi: toInt(row[mapping.rbi]),
+      bb: toInt(row[mapping.bb]),
+      hbp: toInt(row[mapping.hbp]),
+      sf: toInt(row[mapping.sf]),
+    });
+  }
+  return lines;
+}
+
+// The @Batz-provided blank template (see TEMPLATE_CSV_TEXT below): fixed
+// column order by design, so a coach who fills it out and uploads it gets
+// parsed instantly without the manual column-mapping step.
+export const TEMPLATE_HEADERS = [
+  "Jersey Number",
+  "Last Name",
+  "First Name",
+  "AB",
+  "H",
+  "1B",
+  "2B",
+  "3B",
+  "HR",
+  "RBI",
+  "BB",
+  "HBP",
+  "SF",
+];
+
+export const TEMPLATE_CSV_TEXT = TEMPLATE_HEADERS.join(",") + "\n";
+
+const TEMPLATE_MAPPING: ColumnMapping = {
+  jerseyNumber: 0,
+  lastName: 1,
+  firstName: 2,
+  ab: 3,
+  h: 4,
+  singles: 5,
+  doubles: 6,
+  triples: 7,
+  hr: 8,
+  rbi: 9,
+  bb: 10,
+  hbp: 11,
+  sf: 12,
+};
+
+// Returns null (not a throw) when the header row doesn't match the
+// template exactly -- callers fall back to manual column mapping instead
+// of treating a near-miss as a hard error.
+export function parseTemplateCsv(csvText: string): ImportedBattingLine[] | null {
+  const rows = parseRawCsvRows(csvText);
+  if (rows.length < 1) return null;
+  const header = (rows[0] ?? []).map((h) => h?.trim());
+  const isTemplate = TEMPLATE_HEADERS.every((expected, i) => header[i] === expected);
+  if (!isTemplate) return null;
+  return extractWithColumnMapping(rows, TEMPLATE_MAPPING, 1, rows.length - 1);
 }

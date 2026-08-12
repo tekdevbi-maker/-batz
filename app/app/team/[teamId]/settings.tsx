@@ -1,12 +1,10 @@
 import { useCallback, useState } from "react";
 import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { updateTeamName, uploadTeamLogo, markSeasonEnded } from "../../../lib/teamsRepository";
+import { updateTeamName, markSeasonEnded } from "../../../lib/teamsRepository";
 import { colors } from "../../../lib/theme";
-import CircleCropModal from "../../../components/CircleCropModal";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -28,8 +26,6 @@ export default function TeamSettingsScreen() {
 
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [cropImageUri, setCropImageUri] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,42 +91,6 @@ export default function TeamSettingsScreen() {
     }
   }
 
-  async function handlePickLogo() {
-    if (!teamId) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError("Photo library access is needed to choose a logo.");
-      return;
-    }
-    // Square crop here is just the source rect the circular-crop modal
-    // clips down further -- the actual circular masking happens there,
-    // since the OS picker has no circular-crop mode.
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    setError(null);
-    setCropImageUri(result.assets[0].uri);
-  }
-
-  async function handleConfirmCrop(circleUri: string) {
-    if (!teamId) return;
-    setUploadingLogo(true);
-    setError(null);
-    try {
-      const newUrl = await uploadTeamLogo(supabase, teamId, circleUri, "image/png");
-      setLogoUrl(newUrl);
-      setCropImageUri(null);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setUploadingLogo(false);
-    }
-  }
-
   if (!teamId) return null;
 
   if (!loaded) {
@@ -144,21 +104,13 @@ export default function TeamSettingsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.label}>Team Logo</Text>
-      <Pressable style={styles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
+      <View style={styles.logoPicker}>
         {logoUrl ? (
           <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="cover" />
         ) : (
-          <Text style={styles.logoPlaceholderText}>No logo yet</Text>
+          <Text style={styles.logoPlaceholderText}>No logo yet -- upload one from Team Home</Text>
         )}
-        {uploadingLogo && (
-          <View style={styles.logoOverlay}>
-            <ActivityIndicator color="white" />
-          </View>
-        )}
-      </Pressable>
-      <Pressable style={styles.secondaryButton} onPress={handlePickLogo} disabled={uploadingLogo}>
-        <Text style={styles.secondaryButtonText}>{logoUrl ? "Change Logo" : "Upload Logo"}</Text>
-      </Pressable>
+      </View>
 
       <Text style={styles.label}>Team Name</Text>
       <TextInput
@@ -200,14 +152,6 @@ export default function TeamSettingsScreen() {
           </Pressable>
         </>
       )}
-
-      <CircleCropModal
-        visible={cropImageUri !== null}
-        imageUri={cropImageUri}
-        busy={uploadingLogo}
-        onCancel={() => setCropImageUri(null)}
-        onConfirm={handleConfirmCrop}
-      />
     </ScrollView>
   );
 }
@@ -240,26 +184,8 @@ const styles = StyleSheet.create({
   },
   logoImage: { width: "100%", height: "100%" },
   logoPlaceholderText: { color: colors.textMuted, fontSize: 13, fontFamily: "Montserrat_400Regular", textAlign: "center", paddingHorizontal: 8 },
-  logoOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   dangerButton: { backgroundColor: colors.danger, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 8 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 10,
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    marginTop: 8,
-    alignSelf: "flex-start",
-    paddingHorizontal: 16,
-  },
-  secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold" },
 });
