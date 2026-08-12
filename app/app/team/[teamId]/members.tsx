@@ -18,6 +18,7 @@ import {
   approveClaimRequest,
   denyClaimRequest,
   TeamAtCapacityError,
+  getTeamJoinContext,
   type PendingClaimRequest,
 } from "../../../lib/claimRepository";
 import { colors } from "../../../lib/theme";
@@ -46,6 +47,7 @@ export default function TeamMembersScreen() {
   }>();
   const router = useRouter();
 
+  const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingClaimRequest[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -56,6 +58,9 @@ export default function TeamMembersScreen() {
 
   const load = useCallback(async () => {
     if (!teamId) return;
+    getTeamJoinContext(supabase, teamId)
+      .then((context) => setTeamName(context.teamName))
+      .catch(() => {});
     const membersPromise = getTeamMembers(supabase, teamId)
       .then((rows) => {
         setMembers(rows);
@@ -173,7 +178,7 @@ export default function TeamMembersScreen() {
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
     >
-      <Text style={styles.title}>{transferRosterEntryId ? "Transfer To..." : "Team Members"}</Text>
+      <Text style={styles.title}>{transferRosterEntryId ? "Transfer To..." : `${teamName} Fans`}</Text>
       <Text style={styles.hint}>
         {transferRosterEntryId
           ? "Pick a member of this team to offer this player to. They'll need to agree before ownership changes."

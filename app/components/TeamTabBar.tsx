@@ -11,7 +11,7 @@ import { colors } from "../lib/theme";
 // fine; it's specifically Tabs' web re-render path that's broken here).
 // router.replace() over plain Stack screens sidesteps it entirely, using
 // only navigation that's been reliable everywhere else in this app.
-export type TeamTab = "home" | "roster" | "leaderboard" | "league-leaderboard";
+export type TeamTab = "home" | "games" | "roster" | "leaderboard" | "league-leaderboard";
 
 const TABS: Array<{
   key: TeamTab;
@@ -21,6 +21,7 @@ const TABS: Array<{
   iconFilled: keyof typeof Ionicons.glyphMap;
 }> = [
   { key: "home", label: "Home", path: (teamId) => `/team/${teamId}`, iconOutline: "home-outline", iconFilled: "home" },
+  { key: "games", label: "Games", path: (teamId) => `/team/${teamId}/games`, iconOutline: "baseball-outline", iconFilled: "baseball" },
   { key: "roster", label: "Roster", path: (teamId) => `/team/${teamId}/roster`, iconOutline: "people-outline", iconFilled: "people" },
   { key: "leaderboard", label: "Team Leaders", path: (teamId) => `/team/${teamId}/leaderboard`, iconOutline: "trophy-outline", iconFilled: "trophy" },
   { key: "league-leaderboard", label: "League Leaders", path: (teamId) => `/team/${teamId}/league-leaderboard`, iconOutline: "globe-outline", iconFilled: "globe" },

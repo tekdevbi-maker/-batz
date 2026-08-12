@@ -124,14 +124,14 @@ export default function Home() {
         <>
           <Text style={styles.label}>My Teams</Text>
           <Pressable onPress={() => router.push("/register-team")}>
-            <Text style={styles.addTeamLink}>Add a Team as Head Coach</Text>
+            <Text style={styles.addTeamLink}>Start a New Team as Head Coach</Text>
           </Pressable>
           <TeamTileGrid teams={coachedTeams} pendingCounts={pendingCounts} />
         </>
       )}
       {coachedTeams.length === 0 && (
         <Pressable onPress={() => router.push("/register-team")}>
-          <Text style={styles.addTeamLink}>Add a Team as Head Coach</Text>
+          <Text style={styles.addTeamLink}>Start a New Team as Head Coach</Text>
         </Pressable>
       )}
 
@@ -155,25 +155,16 @@ export default function Home() {
         <>
           <Text style={styles.label}>My Players</Text>
           <View style={styles.tileGrid}>
-            {myPlayers.map((p) =>
-              p.photoUrl ? (
-                <Pressable key={p.playerId} style={styles.playerPhotoTile} onPress={() => router.push(`/player/${p.playerId}`)}>
-                  <PlayerCard
-                    firstName={p.displayMode === "real_name" ? (p.firstName ?? "") : ""}
-                    lastName={p.displayMode === "real_name" ? (p.lastName ?? "") : p.displayName}
-                    photoUrl={p.photoUrl}
-                    teamLogoUrl={p.teamLogoUrl}
-                  />
-                </Pressable>
-              ) : (
-                <Pressable key={p.playerId} style={styles.playerTile} onPress={() => router.push(`/player/${p.playerId}`)}>
-                  <Text style={styles.playerTileName} numberOfLines={2}>
-                    {p.displayName}
-                  </Text>
-                  {p.visibilityScope === "private" && <Text style={styles.playerTilePrivate}>(private)</Text>}
-                </Pressable>
-              )
-            )}
+            {myPlayers.map((p) => (
+              <Pressable key={p.playerId} style={styles.playerPhotoTile} onPress={() => router.push(`/player/${p.playerId}`)}>
+                <PlayerCard
+                  firstName={p.displayMode === "real_name" ? (p.firstName ?? "") : ""}
+                  lastName={p.displayMode === "real_name" ? (p.lastName ?? "") : p.displayName}
+                  photoUrl={p.photoUrl}
+                  teamLogoUrl={p.teamLogoUrl}
+                />
+              </Pressable>
+            ))}
           </View>
         </>
       )}

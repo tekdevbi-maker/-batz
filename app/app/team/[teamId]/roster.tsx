@@ -69,34 +69,29 @@ export default function RosterScreen() {
 
         <View style={styles.grid}>
           {roster.map((r) =>
-            !r.isCoachFallback && r.photoUrl ? (
+            r.playerId ? (
               <Pressable
                 key={r.rosterEntryId}
                 style={styles.photoCard}
-                onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
+                onPress={() => router.push(`/player/${r.playerId}`)}
               >
                 <PlayerCard
                   // Real name only when the parent opted into "Real Name"
                   // display -- otherwise the card falls back to the same
                   // alias/uniform tag shown everywhere else (displayName),
                   // never the real name, matching the privacy setting.
-                  firstName={r.displayMode === "real_name" ? (r.firstName ?? "") : ""}
-                  lastName={r.displayMode === "real_name" ? (r.lastName ?? "") : r.displayName}
+                  // A locked (coach-fallback) player has no real name on
+                  // file at all, so it always shows the roster alias.
+                  firstName={!r.isCoachFallback && r.displayMode === "real_name" ? (r.firstName ?? "") : ""}
+                  lastName={!r.isCoachFallback && r.displayMode === "real_name" ? (r.lastName ?? "") : r.displayName}
                   photoUrl={r.photoUrl}
                   teamLogoUrl={context?.teamLogoUrl}
                 />
               </Pressable>
             ) : (
-              <Pressable
-                key={r.rosterEntryId}
-                style={[styles.card, !r.playerId && styles.cardUnclaimed]}
-                disabled={!r.playerId}
-                onPress={() => r.playerId && router.push(`/player/${r.playerId}`)}
-              >
-                {!r.isCoachFallback && <Text style={styles.cardNumber}>#{r.uniformNumber}</Text>}
-                <Text style={styles.cardName} numberOfLines={2}>
-                  {r.playerId ? r.displayName : ""}
-                </Text>
+              <Pressable key={r.rosterEntryId} style={[styles.card, styles.cardUnclaimed]} disabled>
+                <Text style={styles.cardNumber}>#{r.uniformNumber}</Text>
+                <Text style={styles.cardName} numberOfLines={2} />
               </Pressable>
             )
           )}

@@ -6,6 +6,7 @@ import { supabase } from "../../../../lib/supabase";
 import { listGamesForTeam, type GameSummary } from "../../../../lib/statsRepository";
 import { formatDateDisplay } from "../../../../lib/dateFormat";
 import { colors } from "../../../../lib/theme";
+import TeamTabBar from "../../../../components/TeamTabBar";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -28,26 +29,30 @@ export default function GameLogScreen() {
   if (!session || !teamId) return null;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      {error && <Text style={styles.error}>{error}</Text>}
-      {games.length === 0 && !error && <Text style={styles.hint}>No games imported yet.</Text>}
-      {games.map((game) => (
-        <Pressable
-          key={game.id}
-          style={styles.gameRow}
-          onPress={() => router.push(`/team/${teamId}/games/${game.id}`)}
-        >
-          <Text style={styles.gameRowText}>
-            Game #{game.gameNumber}
-            {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
-          </Text>
-        </Pressable>
-      ))}
-    </ScrollView>
+    <View style={styles.root}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+        {error && <Text style={styles.error}>{error}</Text>}
+        {games.length === 0 && !error && <Text style={styles.hint}>No games imported yet.</Text>}
+        {games.map((game) => (
+          <Pressable
+            key={game.id}
+            style={styles.gameRow}
+            onPress={() => router.push(`/team/${teamId}/games/${game.id}`)}
+          >
+            <Text style={styles.gameRowText}>
+              Game #{game.gameNumber}
+              {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <TeamTabBar teamId={teamId} active="games" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 20, gap: 4 },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },

@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
-import { updateTeamName, markSeasonEnded } from "../../../lib/teamsRepository";
+import { markSeasonEnded, isHeadCoachOnTeam } from "../../../lib/teamsRepository";
 import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -13,7 +13,7 @@ function errorMessage(err: unknown): string {
 }
 
 export default function TeamSettingsScreen() {
-  useRequireAuth();
+  const { session } = useRequireAuth();
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
 
@@ -21,15 +21,13 @@ export default function TeamSettingsScreen() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [seasonStatus, setSeasonStatus] = useState<string>("in_season");
   const [endingSeason, setEndingSeason] = useState(false);
+  const [isHeadCoach, setIsHeadCoach] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [savingName, setSavingName] = useState(false);
-  const [nameSaved, setNameSaved] = useState(false);
-
   useFocusEffect(
     useCallback(() => {
-      if (!teamId) return;
+      if (!teamId || !session) return;
       supabase
         .from("team")
         .select("name, logo_url, season_status")
@@ -45,7 +43,8 @@ export default function TeamSettingsScreen() {
           }
           setLoaded(true);
         });
-    }, [teamId])
+      isHeadCoachOnTeam(supabase, teamId, session.user.id).then(setIsHeadCoach).catch(() => {});
+    }, [teamId, session])
   );
 
   function confirmEndSeason() {
@@ -76,21 +75,6 @@ export default function TeamSettingsScreen() {
     );
   }
 
-  async function handleSaveName() {
-    if (!teamId || !name.trim()) return;
-    setSavingName(true);
-    setError(null);
-    setNameSaved(false);
-    try {
-      await updateTeamName(supabase, teamId, name.trim());
-      setNameSaved(true);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setSavingName(false);
-    }
-  }
-
   if (!teamId) return null;
 
   if (!loaded) {
@@ -113,43 +97,33 @@ export default function TeamSettingsScreen() {
       </View>
 
       <Text style={styles.label}>Team Name</Text>
-      <TextInput
-        style={styles.input}
-        value={name}
-        onChangeText={(t) => {
-          setName(t);
-          setNameSaved(false);
-        }}
-      />
-      {error && <Text style={styles.error}>{error}</Text>}
-      {nameSaved && <Text style={styles.success}>Saved.</Text>}
-      <Pressable
-        style={[styles.button, (!name.trim() || savingName) && styles.buttonDisabled]}
-        disabled={!name.trim() || savingName}
-        onPress={handleSaveName}
-      >
-        {savingName ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Save Name</Text>}
-      </Pressable>
+      <Text style={styles.readOnlyValue}>{name}</Text>
 
-      <Text style={styles.label}>Season</Text>
-      {seasonStatus === "ended" ? (
-        <Text style={styles.hint}>This team's season is complete -- it's in Previous Teams on Home.</Text>
-      ) : (
+      {error && <Text style={styles.error}>{error}</Text>}
+
+      {isHeadCoach && (
         <>
-          <Text style={styles.hint}>
-            Once the season is over, mark it complete to move this team to Previous Teams on Home.
-          </Text>
-          <Pressable
-            style={[styles.dangerButton, endingSeason && styles.buttonDisabled]}
-            disabled={endingSeason}
-            onPress={confirmEndSeason}
-          >
-            {endingSeason ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>Mark Season Complete</Text>
-            )}
-          </Pressable>
+          <Text style={styles.label}>Season</Text>
+          {seasonStatus === "ended" ? (
+            <Text style={styles.hint}>This team's season is complete -- it's in Previous Teams on Home.</Text>
+          ) : (
+            <>
+              <Text style={styles.hint}>
+                Once the season is over, mark it complete to move this team to Previous Teams on Home.
+              </Text>
+              <Pressable
+                style={[styles.dangerButton, endingSeason && styles.buttonDisabled]}
+                disabled={endingSeason}
+                onPress={confirmEndSeason}
+              >
+                {endingSeason ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Mark Season Complete</Text>
+                )}
+              </Pressable>
+            </>
+          )}
         </>
       )}
     </ScrollView>
@@ -161,16 +135,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, color: colors.textPrimary },
   hint: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular", marginBottom: 4 },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
-  success: { color: colors.success, fontSize: 14, fontFamily: "Montserrat_400Regular" },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 18, fontFamily: "Montserrat_400Regular",
-    backgroundColor: colors.surface,
-    color: colors.textPrimary,
-  },
+  readOnlyValue: { fontSize: 18, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
   logoPicker: {
     width: 140,
     height: 140,
@@ -184,7 +149,6 @@ const styles = StyleSheet.create({
   },
   logoImage: { width: "100%", height: "100%" },
   logoPlaceholderText: { color: colors.textMuted, fontSize: 13, fontFamily: "Montserrat_400Regular", textAlign: "center", paddingHorizontal: 8 },
-  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   dangerButton: { backgroundColor: colors.danger, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 8 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },

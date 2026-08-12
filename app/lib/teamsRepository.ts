@@ -13,13 +13,30 @@ export async function isCoachOnTeam(supabase: SupabaseClient, teamId: string, us
   return !!data;
 }
 
+// Head-Coach-only actions (logo upload, Mark Season Complete) gate on this
+// instead of isCoachOnTeam -- an assistant coach is still "a coach" but not
+// the one who owns these team-level decisions.
+export async function isHeadCoachOnTeam(supabase: SupabaseClient, teamId: string, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("coach_assignment")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("user_id", userId)
+    .eq("role", "primary")
+    .maybeSingle();
+  return !!data;
+}
+
 export interface CoachedTeam {
   id: string;
   name: string;
   divisionName: string;
   season: string;
   year: number;
+  logoUrl: string | null;
 }
+
+const TEAM_COLUMNS = "id, name, season, year, season_status, logo_url, division:division_id(name)";
 
 function byStatus(rows: any[], status: "in_season" | "ended"): CoachedTeam[] {
   return rows
@@ -31,53 +48,89 @@ function byStatus(rows: any[], status: "in_season" | "ended"): CoachedTeam[] {
       divisionName: team.division?.name ?? "",
       season: team.season,
       year: team.year,
+      logoUrl: team.logo_url ?? null,
     }));
 }
 
-// Teams the signed-in user coaches. Only in-season teams surface here by
-// default (spec Section 6: "Only in-season teams appear on Home") --
-// listMyPreviousCoachedTeams below covers the ended ones (Previous Teams).
+function dedupeById(teams: CoachedTeam[]): CoachedTeam[] {
+  const seen = new Set<string>();
+  return teams.filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
+}
+
+// Teams the signed-in user is HEAD Coach of (role = 'primary' only -- an
+// assistant coach follows a team, they don't own it, so they show up under
+// "Followed Teams" alongside claimed-parent members instead). Only
+// in-season teams surface here by default (spec Section 6: "Only in-season
+// teams appear on Home") -- listMyPreviousCoachedTeams below covers the
+// ended ones (Previous Teams).
 export async function listMyCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
     .from("coach_assignment")
-    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
+    .select(`team:team_id(${TEAM_COLUMNS})`)
+    .eq("user_id", userId)
+    .eq("role", "primary");
+  if (error) throw error;
+  return byStatus(data ?? [], "in_season");
+}
+
+// Teams the signed-in user follows without being Head Coach: a claimed
+// parent (team_membership) or an assistant coach (coach_assignment with
+// role = 'assistant').
+export async function listMyMemberTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
+  const [memberships, assistantAssignments] = await Promise.all([
+    supabase.from("team_membership").select(`team:team_id(${TEAM_COLUMNS})`).eq("user_id", userId),
+    supabase.from("coach_assignment").select(`team:team_id(${TEAM_COLUMNS})`).eq("user_id", userId).eq("role", "assistant"),
+  ]);
+  if (memberships.error) throw memberships.error;
+  if (assistantAssignments.error) throw assistantAssignments.error;
+  return dedupeById(byStatus([...(memberships.data ?? []), ...(assistantAssignments.data ?? [])], "in_season"));
+}
+
+// Teams the signed-in user coaches in ANY role (head or assistant) --
+// unlike listMyCoachedTeams, used where the coaching duty itself matters
+// more than head-coach ownership (e.g. shared-csv.tsx's "which team is
+// this file for" picker: an assistant coach can import a game too).
+export async function listAllMyCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
+  const { data, error } = await supabase
+    .from("coach_assignment")
+    .select(`team:team_id(${TEAM_COLUMNS})`)
     .eq("user_id", userId);
   if (error) throw error;
   return byStatus(data ?? [], "in_season");
 }
 
-// Teams the signed-in user has claimed a player on (spec Section 6: "as
-// coach or as a claimed parent").
-export async function listMyMemberTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
+export async function listAllMyPreviousCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
-    .from("team_membership")
-    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
+    .from("coach_assignment")
+    .select(`team:team_id(${TEAM_COLUMNS})`)
     .eq("user_id", userId);
   if (error) throw error;
-  return byStatus(data ?? [], "in_season");
+  return byStatus(data ?? [], "ended");
 }
 
 // Ended-season counterparts, backing Home's "Previous Teams" section.
 export async function listMyPreviousCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
     .from("coach_assignment")
-    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
-    .eq("user_id", userId);
+    .select(`team:team_id(${TEAM_COLUMNS})`)
+    .eq("user_id", userId)
+    .eq("role", "primary");
   if (error) throw error;
   return byStatus(data ?? [], "ended");
 }
 
 export async function listMyPreviousMemberTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
-  const { data, error } = await supabase
-    .from("team_membership")
-    .select("team:team_id(id, name, season, year, season_status, division:division_id(name))")
-    .eq("user_id", userId);
-  if (error) throw error;
-  return byStatus(data ?? [], "ended");
+  const [memberships, assistantAssignments] = await Promise.all([
+    supabase.from("team_membership").select(`team:team_id(${TEAM_COLUMNS})`).eq("user_id", userId),
+    supabase.from("coach_assignment").select(`team:team_id(${TEAM_COLUMNS})`).eq("user_id", userId).eq("role", "assistant"),
+  ]);
+  if (memberships.error) throw memberships.error;
+  if (assistantAssignments.error) throw assistantAssignments.error;
+  return dedupeById(byStatus([...(memberships.data ?? []), ...(assistantAssignments.data ?? [])], "ended"));
 }
 
-// Coach-only (RLS: "team coaches can update their team"). One-way in the
-// UI (no "reopen" flow) -- ending a season is what moves a team from
+// Head-Coach-only (RLS: "head coach can update their team"). One-way in
+// the UI (no "reopen" flow) -- ending a season is what moves a team from
 // Home's Teams grid to Previous Teams and stops it counting toward the
 // "only in-season teams" visibility rules used elsewhere.
 export async function markSeasonEnded(supabase: SupabaseClient, teamId: string): Promise<void> {
@@ -85,9 +138,16 @@ export async function markSeasonEnded(supabase: SupabaseClient, teamId: string):
   if (error) throw error;
 }
 
-export async function updateTeamName(supabase: SupabaseClient, teamId: string, name: string): Promise<void> {
-  const { error } = await supabase.from("team").update({ name }).eq("id", teamId);
+// Non-coach Team Home's "Unfollow Team" -- removes the caller's own
+// team_membership row AND unlinks any player they own on that specific
+// team (handed back to the Head Coach as coach-fallback, same reset
+// unlink_player does), all in one atomic RPC. Only meaningful for a plain
+// follower/parent; coaches leave via a different flow entirely. Returns
+// how many players were unlinked so the UI can tell the Fan what happened.
+export async function leaveTeam(supabase: SupabaseClient, teamId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("leave_team_and_unlink_players", { p_team_id: teamId });
   if (error) throw error;
+  return data ?? 0;
 }
 
 export type TeamMemberRole = "head_coach" | "assistant_coach" | "parent" | "follower";

@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
-import { listMyCoachedTeams, listMyPreviousCoachedTeams, type CoachedTeam } from "../lib/teamsRepository";
+import { listAllMyCoachedTeams, listAllMyPreviousCoachedTeams, type CoachedTeam } from "../lib/teamsRepository";
 import { colors } from "../lib/theme";
 
 function byMostRecentFirst(teams: CoachedTeam[]): CoachedTeam[] {
@@ -30,8 +30,8 @@ export default function SharedCsvScreen() {
   useEffect(() => {
     if (!session) return;
     Promise.all([
-      listMyCoachedTeams(supabase, session.user.id),
-      listMyPreviousCoachedTeams(supabase, session.user.id),
+      listAllMyCoachedTeams(supabase, session.user.id),
+      listAllMyPreviousCoachedTeams(supabase, session.user.id),
     ])
       .then(([current, previous]) => {
         setCurrentTeams(byMostRecentFirst(current));

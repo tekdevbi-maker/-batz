@@ -1,4 +1,4 @@
-import { Pressable, Text, View, StyleSheet } from "react-native";
+import { Pressable, Text, View, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import type { CoachedTeam } from "../lib/teamsRepository";
 import { colors } from "../lib/theme";
@@ -21,6 +21,7 @@ export default function TeamTileGrid({
         const pending = pendingCounts?.[team.id] ?? 0;
         return (
           <Pressable key={team.id} style={styles.teamTile} onPress={() => router.push(`/team/${team.id}`)}>
+            {team.logoUrl && <Image source={{ uri: team.logoUrl }} style={styles.teamLogo} resizeMode="contain" />}
             <Text style={styles.teamName} numberOfLines={2}>
               {team.name}
             </Text>
@@ -55,8 +56,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     position: "relative",
   },
+  teamLogo: { width: "55%", aspectRatio: 1, marginBottom: 6 },
   teamName: { fontSize: 16, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
-  teamMeta: { fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, textAlign: "center", marginTop: 3 },
+  teamMeta: { fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, textAlign: "center", marginTop: 0 },
   badge: {
     position: "absolute",
     top: -6,

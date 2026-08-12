@@ -123,7 +123,7 @@ export default function RootLayout() {
           <Stack.Screen name="dev-register-complete-followers" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-complete-multiteam" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-complete-final" options={{ headerShown: false, animation: "none" }} />
-          <Stack.Screen name="register-team" options={{ title: "Register a New Team" }} />
+          <Stack.Screen name="register-team" options={{ title: "Start a New Team as Head Coach" }} />
           <Stack.Screen name="previous-teams" options={{ title: "" }} />
           <Stack.Screen name="join-team" options={{ title: "Join a Team" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />

@@ -32,7 +32,7 @@ export default function SlimHeader({ options, navigation }: NativeStackHeaderPro
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <View style={styles.side} />
+        <View style={styles.sideRight}>{options.headerRight?.({ canGoBack, tintColor: undefined })}</View>
       </View>
     </View>
   );
@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
   wrapper: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   bar: { height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingHorizontal: 4 },
   side: { width: 44, justifyContent: "center" },
+  sideRight: { minWidth: 44, justifyContent: "center", alignItems: "flex-end" },
   backButton: { paddingHorizontal: 8, paddingVertical: 4 },
   backArrow: { fontSize: 26, color: colors.textPrimary, lineHeight: 26 },
   title: {

@@ -38,6 +38,7 @@ export interface ActivityFeedPost {
   teamName: string;
   category: "hits" | "doubles" | "triples" | "home_runs" | "game_imported";
   tier: number | null;
+  gameId: string;
   gameDate: string;
   gameNumber: number | null;
   opponent: string | null;
@@ -60,12 +61,36 @@ export function describeMilestone(post: Pick<ActivityFeedPost, "category" | "tie
   return `${"⭐".repeat(post.tier ?? 0)} in ${CATEGORY_LABELS[post.category]}`;
 }
 
-export function describeGameImported(
+// Split into the pieces around "Game N" so the UI can render that piece as
+// a tappable link to the Box Score while keeping the rest as plain text.
+export function describeGameImportedParts(
   post: Pick<ActivityFeedPost, "gameNumber" | "opponent">,
   formattedGameDate: string
-): string {
+): { before: string; gameLabel: string; after: string } {
   const opponentText = post.opponent ? ` against the ${post.opponent}` : "";
-  return `A new game has been imported! Game ${post.gameNumber ?? "?"}${opponentText} on ${formattedGameDate} is now available for viewing.`;
+  return {
+    before: "A new game has been imported! ",
+    gameLabel: `Game ${post.gameNumber ?? "?"}`,
+    after: `${opponentText} on ${formattedGameDate} is now available for viewing.`,
+  };
+}
+
+// Once unlocked, a player's own "Display As" choice (Player Settings)
+// applies here too -- Real Name shows the parent-entered name, everything
+// else (including a still-locked/coach-fallback player) falls back to the
+// PlayerTag, same as the rest of the app.
+function playerDisplayNameFor(
+  player:
+    | { player_tag: string; first_name: string | null; last_name: string | null; display_mode: string; is_coach_fallback: boolean }
+    | null
+    | undefined
+): string {
+  if (!player) return "Unknown Player";
+  if (!player.is_coach_fallback && player.display_mode === "real_name") {
+    const name = [player.first_name, player.last_name].filter(Boolean).join(" ").trim();
+    if (name) return name;
+  }
+  return player.player_tag;
 }
 
 async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): Promise<ActivityFeedPost[]> {
@@ -87,11 +112,12 @@ async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): P
   return rows.map((r) => ({
     id: r.id,
     playerId: r.player_id,
-    playerDisplayName: r.player?.player_tag ?? "Unknown Player",
+    playerDisplayName: playerDisplayNameFor(r.player),
     playerParentUserId: r.player?.parent_user_id ?? "",
     teamName: r.team?.name ?? "",
     category: r.category,
     tier: r.tier,
+    gameId: r.game_id,
     gameDate: r.game?.game_date ?? "",
     gameNumber: r.game?.game_number ?? null,
     opponent: r.game?.opponent ?? null,
@@ -102,9 +128,7 @@ async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): P
 }
 
 // Following feed (spec Section 8: "Surfaces recent milestones ... to a
-// player's followers"). PlayerTag is used directly rather than the full
-// display-mode-aware helper -- deliberately simple for v1; a follower of
-// a player displaying under a different mode would still see the tag here.
+// player's followers").
 export async function listFollowingFeed(supabase: SupabaseClient, userId: string, limit = 50): Promise<ActivityFeedPost[]> {
   const { data: follows, error: followError } = await supabase.from("follow").select("player_id").eq("follower_user_id", userId);
   if (followError) throw followError;
@@ -113,7 +137,7 @@ export async function listFollowingFeed(supabase: SupabaseClient, userId: string
 
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .select("id, player_id, game_id, category, tier, created_at, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)")
     .in("player_id", playerIds)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -131,7 +155,7 @@ export async function listTeamActivityFeed(
 ): Promise<ActivityFeedPost[]> {
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .select("id, player_id, game_id, category, tier, created_at, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)")
     .eq("team_id", teamId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -148,7 +172,7 @@ export async function listPlayerActivity(
 ): Promise<ActivityFeedPost[]> {
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, category, tier, created_at, player:player_id(player_tag, parent_user_id), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .select("id, player_id, game_id, category, tier, created_at, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)")
     .eq("player_id", playerId)
     .order("created_at", { ascending: false })
     .limit(limit);

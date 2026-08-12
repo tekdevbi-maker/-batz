@@ -20,9 +20,9 @@ export default function DevRegisterCompleteLinkScreen() {
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.body}>
-          As Head Coach, make sure to send the link below to your team's distribution list so they can
-          follow your team's hitting performance throughout the season. You will be able to see all of
-          your followers in your Team's Home Page.
+          As a Head Coach, make sure to send the link below to your Fans so they can follow your team's
+          hitting performance throughout the season. You will be able to see all of your Fans in the{" "}
+          {state.teamName} Home Page.
         </Text>
         <CopyableLink value={joinLink} />
 

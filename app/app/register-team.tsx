@@ -5,7 +5,7 @@ import { useRequireAuth } from "../lib/AuthContext";
 import { resetDevWizardState, updateDevWizardState } from "../lib/devRegistrationWizard";
 import { colors } from "../lib/theme";
 
-// "Add a Team I Coach" -- for a coach who already has an account (e.g.
+// "Start a New Team as Head Coach" -- for a coach who already has an account (e.g.
 // one kid in Majors, another in Minors) and needs to become Head Coach of
 // a second, separate team. Reuses the exact same wizard as brand-new
 // registration (dev-register-league.tsx onward -- the COPPA screen is
