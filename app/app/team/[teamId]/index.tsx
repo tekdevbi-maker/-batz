@@ -39,6 +39,7 @@ export default function TeamHomeScreen() {
   const [pendingClaimCount, setPendingClaimCount] = useState(0);
   const [rosterCount, setRosterCount] = useState(0);
   const [memberCount, setMemberCount] = useState(0);
+  const [gamesPlayedCount, setGamesPlayedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -64,6 +65,14 @@ export default function TeamHomeScreen() {
         .eq("team_id", teamId)
         .then(
           ({ count }) => setRosterCount(count ?? 0),
+          () => {}
+        ),
+      supabase
+        .from("game")
+        .select("id", { count: "exact", head: true })
+        .eq("team_id", teamId)
+        .then(
+          ({ count }) => setGamesPlayedCount(count ?? 0),
           () => {}
         ),
       supabase
@@ -183,6 +192,10 @@ export default function TeamHomeScreen() {
               <View style={styles.statBlock}>
                 <Text style={styles.statNumber}>{memberCount}</Text>
                 <Text style={styles.statLabel}>Fans</Text>
+              </View>
+              <View style={styles.statBlock}>
+                <Text style={styles.statNumber}>{gamesPlayedCount}</Text>
+                <Text style={styles.statLabel}>Games Played</Text>
               </View>
               {pendingClaimCount > 0 && (
                 <View style={styles.badge}>
