@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../lib/AuthContext";
 import { isEmailAvailable } from "../lib/claimRepository";
 import { resetDevWizardState, updateDevWizardState } from "../lib/devRegistrationWizard";
 import { colors } from "../lib/theme";
@@ -20,6 +21,7 @@ function errorMessage(err: unknown): string {
 // same order as the plain Sign Up flow.
 export default function DevRegisterScreen() {
   const router = useRouter();
+  const { signUp } = useAuth();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -56,22 +58,46 @@ export default function DevRegisterScreen() {
     }
   }
 
-  function handleAttestConfirm() {
-    resetDevWizardState();
-    updateDevWizardState({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim(),
-      password,
-    });
-    router.push("/dev-register-intro");
+  // Account creation now happens right here -- immediately after age
+  // attestation, before any team-detail screens -- instead of waiting
+  // until the wizard's last page. Email confirmation is required, so
+  // this hands off to /verify-email; once confirmed, the coach lands
+  // back on the wizard's existing "Welcome to @Batz!" page
+  // (dev-register-intro.tsx) with a real session already in place, and
+  // continues through the rest of the wizard from there.
+  async function handleAttestConfirm() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      resetDevWizardState();
+      updateDevWizardState({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+      });
+      await signUp(email.trim(), password, { firstName: firstName.trim(), lastName: lastName.trim() });
+      router.push({
+        pathname: "/verify-email",
+        params: { email: email.trim(), next: "/dev-register-intro" },
+      });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (step === "attest") {
     return (
       <>
         <SafeTopSpacer />
-        <AgeAttestationGate onConfirm={handleAttestConfirm} onCancel={() => setStep("form")} />
+        <AgeAttestationGate
+          confirming={submitting}
+          error={error}
+          onConfirm={handleAttestConfirm}
+          onCancel={() => setStep("form")}
+        />
       </>
     );
   }

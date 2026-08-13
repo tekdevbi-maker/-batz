@@ -54,7 +54,7 @@ export default function PlayerSettingsScreen() {
   const [isCoachFallback, setIsCoachFallback] = useState(false);
   const [realName, setRealName] = useState<string | null>(null);
   const [playerTag, setPlayerTag] = useState("");
-  const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [visibility, setVisibility] = useState<"public" | "private" | "only_me">("public");
   const [displayMode, setDisplayMode] = useState<PlayerDisplayMode>("uniform");
   const [leaderboardOptOutTeam, setLeaderboardOptOutTeam] = useState(false);
   const [leaderboardOptOutLeague, setLeaderboardOptOutLeague] = useState(false);
@@ -210,16 +210,18 @@ export default function PlayerSettingsScreen() {
 
       <Text style={styles.label}>Visibility</Text>
       <View style={styles.chipRow}>
-        {(["public", "private"] as const).map((v) => (
+        {(["public", "private", "only_me"] as const).map((v) => (
           <Pressable key={v} style={[styles.chip, visibility === v && styles.chipSelected]} onPress={() => setVisibility(v)}>
-            <Text style={styles.chipText}>{v === "public" ? "Public" : "Private"}</Text>
+            <Text style={styles.chipText}>{v === "public" ? "Public" : v === "private" ? "Private" : "Only Me"}</Text>
           </Pressable>
         ))}
       </View>
       <Text style={styles.hint}>
         {visibility === "public"
           ? "Stats visible to any signed-in @Batz user."
-          : "Stats visible only to coaches and parents in this player's league/division for the current season."}
+          : visibility === "private"
+            ? "Stats visible only to coaches, fans, and players on this player's own team."
+            : "Your player's card is still visible to everyone, but stats show as * to everyone except you."}
       </Text>
 
       {isCoachFallback ? (

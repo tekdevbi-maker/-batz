@@ -32,31 +32,25 @@ function errorMessage(err: unknown): string {
 }
 
 // Page 10 of 11: "Please confirm all your selections below." This is where
-// the account and team actually get created -- everything before this
-// point was just collecting answers in memory.
+// the team actually gets created -- account creation now happens much
+// earlier (dev-register.tsx, right after age attestation + email
+// verification), so by the time a coach reaches this page a real session
+// already exists either way (brand-new registration or "Add a Team I
+// Coach" reusing an existing one).
 export default function DevRegisterConfirmScreen() {
   const router = useRouter();
-  const { signUp, session } = useAuth();
+  const { session } = useAuth();
   const state = getDevWizardState();
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleComplete() {
+    if (!session) return;
+    const userId = session.user.id;
     setSubmitting(true);
     setError(null);
     try {
-      // "Add a Team I Coach" (an already-signed-in coach adding a second
-      // team) skips account creation entirely and reuses the existing
-      // session -- signUp() is only ever for brand-new registration.
-      const userId =
-        state.skipAccountCreation && session
-          ? session.user.id
-          : await signUp(state.email, state.password, {
-              firstName: state.firstName,
-              lastName: state.lastName,
-            });
-
       let leagueId: string;
       if (state.isNewLeague) {
         const created = await createVerifiedLeague(supabase, { name: state.leagueName!.trim() });

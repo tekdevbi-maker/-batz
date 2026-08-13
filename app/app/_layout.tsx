@@ -106,6 +106,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+          <Stack.Screen name="verify-email" options={{ headerShown: false }} />
           <Stack.Screen name="dev-register" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-intro" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-bucketing" options={{ headerShown: false, animation: "none" }} />
@@ -123,9 +124,10 @@ export default function RootLayout() {
           <Stack.Screen name="dev-register-complete-followers" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-complete-multiteam" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-complete-final" options={{ headerShown: false, animation: "none" }} />
+          <Stack.Screen name="player-onboarding" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="register-team" options={{ title: "Start a New Team as Head Coach" }} />
           <Stack.Screen name="previous-teams" options={{ title: "" }} />
-          <Stack.Screen name="join-team" options={{ title: "Join a Team" }} />
+          <Stack.Screen name="join-team" options={{ title: "" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
           <Stack.Screen name="shared-csv" options={{ title: "Import Game" }} />
           <Stack.Screen name="admin" options={{ title: "League/Division Admin" }} />
@@ -134,6 +136,8 @@ export default function RootLayout() {
           <Stack.Screen name="player/[playerId]/index" options={{ title: "" }} />
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
+          <Stack.Screen name="user-settings" options={{ title: "User Settings" }} />
+          <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
           <Stack.Screen name="customer-care" options={{ title: "" }} />
           <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
           <Stack.Screen name="reset-password" options={{ title: "Reset Password" }} />

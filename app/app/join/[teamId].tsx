@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import type { Session } from "@supabase/supabase-js";
@@ -19,7 +19,12 @@ function errorMessage(err: unknown): string {
 // player is a separate, coach-initiated action (Team Members ->
 // Claim/Transfer), not something a new member does at sign-up time.
 export default function JoinTeamScreen() {
-  const { teamId } = useLocalSearchParams<{ teamId: string }>();
+  const { teamId, resume, firstName: resumeFirstName, lastName: resumeLastName } = useLocalSearchParams<{
+    teamId: string;
+    resume?: string;
+    firstName?: string;
+    lastName?: string;
+  }>();
   const router = useRouter();
   const { session: contextSession, signUp } = useAuth();
   // Confirmed via real device testing: this screen doesn't reliably see
@@ -34,9 +39,14 @@ export default function JoinTeamScreen() {
   const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [contextError, setContextError] = useState<string | null>(null);
 
-  // Account creation.
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  // Account creation. firstName/lastName default from the resume params --
+  // email confirmation is required now, so a fresh signUp() no longer
+  // returns a session; this screen hands off to /verify-email and, once
+  // confirmed, gets navigated straight back here with these round-tripped
+  // through the URL (local component state doesn't survive that
+  // navigate-away-and-back cycle).
+  const [firstName, setFirstName] = useState(resumeFirstName ?? "");
+  const [lastName, setLastName] = useState(resumeLastName ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
@@ -59,10 +69,18 @@ export default function JoinTeamScreen() {
     setAccountError(null);
     try {
       await signUp(email, password);
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      if (!data.session) throw new Error("Account created, but no session came back -- try signing in instead.");
-      setLocalSession(data.session);
+      // No active session yet -- email confirmation is required. Hand off
+      // to /verify-email, round-tripping first/last name through the URL
+      // since this screen unmounts (and its local state resets) in the
+      // meantime; once confirmed it comes straight back here with
+      // ?resume=1 and the effect below finishes joining automatically.
+      router.push({
+        pathname: "/verify-email",
+        params: {
+          email,
+          next: `/join/${teamId}?resume=1&firstName=${encodeURIComponent(firstName.trim())}&lastName=${encodeURIComponent(lastName.trim())}`,
+        },
+      });
     } catch (err) {
       setAccountError(errorMessage(err));
     } finally {
@@ -83,6 +101,15 @@ export default function JoinTeamScreen() {
       setSubmitting(false);
     }
   }
+
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resume === "1" && session && context && !followed && !resumedRef.current) {
+      resumedRef.current = true;
+      handleFollow();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resume, session, context]);
 
   if (!teamId) {
     return (

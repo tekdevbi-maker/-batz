@@ -176,6 +176,42 @@ export async function offerPlayerTransfer(
   return data as string;
 }
 
+export class UniformNumberTakenError extends Error {}
+
+// Coach-only: the "Verify" flow (Gap #1) -- creates a locked player tied
+// to a fan the coach has recognized in real life, and immediately offers
+// it to them in the same action, so no unclaimed/unmatched player record
+// is ever left sitting around waiting for someone to claim it (unlike
+// CSV import). From here it's the exact same offer/consent/onboarding
+// pipeline as offerPlayerTransfer -- the fan still has to agree via the
+// Verification Notice before ownership actually changes.
+export async function verifyNewPlayer(
+  supabase: SupabaseClient,
+  teamId: string,
+  targetUserId: string,
+  firstName: string,
+  lastName: string,
+  uniformNumber: number
+): Promise<string> {
+  const { data, error } = await supabase.rpc("coach_verify_new_player", {
+    p_team_id: teamId,
+    p_target_user_id: targetUserId,
+    p_first_name: firstName,
+    p_last_name: lastName,
+    p_uniform_number: uniformNumber,
+  });
+  if (error) {
+    if (error.message?.includes("not_a_coach_on_this_team")) {
+      throw new NotACoachError("Only a coach on this team can verify a player.");
+    }
+    if (error.message?.includes("uniform_number_taken")) {
+      throw new UniformNumberTakenError("That uniform number is already on this team's roster.");
+    }
+    throw error;
+  }
+  return data as string;
+}
+
 export interface PendingTransferOffer {
   requestId: string;
   playerId: string;
@@ -328,16 +364,29 @@ export async function listPendingClaimRequestCountsForCoach(
 export interface NewlyAssignedPlayer {
   playerId: string;
   displayName: string;
+  playerFirstName: string | null;
+  playerLastName: string | null;
+  coachName: string | null;
+  teamName: string | null;
 }
 
 // Home-facing: players newly transferred/approved to me that I haven't
 // seen yet -- there's no push/email notification system in this app, so
 // this in-app banner (cleared via acknowledgeNewPlayers) is the only way
-// a parent finds out a coach handed them a player.
+// a parent finds out a coach approved their claim request. coachName is
+// the coach who approved it (null if it can't be determined, e.g. an
+// assistant coach self-approving their own kid's request).
 export async function listNewlyAssignedPlayers(supabase: SupabaseClient): Promise<NewlyAssignedPlayer[]> {
   const { data, error } = await supabase.rpc("list_newly_assigned_players");
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ playerId: r.player_id, displayName: r.display_name }));
+  return (data ?? []).map((r: any) => ({
+    playerId: r.player_id,
+    displayName: r.display_name,
+    playerFirstName: r.player_first_name,
+    playerLastName: r.player_last_name,
+    coachName: [r.coach_first_name, r.coach_last_name].filter(Boolean).join(" ").trim() || null,
+    teamName: r.team_name,
+  }));
 }
 
 export async function acknowledgeNewPlayers(supabase: SupabaseClient): Promise<void> {

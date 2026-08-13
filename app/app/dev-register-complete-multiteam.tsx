@@ -18,8 +18,7 @@ export default function DevRegisterCompleteMultiTeamScreen() {
       <FadeIn>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.body}>
-          If you are the Head Coach of another team, select "Start a New Team as Head Coach" in the @Batz
-          Main Menu.
+          If you are the Head Coach of another team, click on "Head Coach? Start New Team!" in User Settings.
         </Text>
 
         <View style={styles.screenshotPlaceholder}>

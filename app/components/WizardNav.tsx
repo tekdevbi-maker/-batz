@@ -3,7 +3,10 @@ import { colors } from "../lib/theme";
 
 // Shared Back/Next footer for the DEV registration wizard's 11 screens.
 // onNext omitted entirely hides the Next button (pages where a tile
-// selection auto-advances instead of using an explicit Next tap).
+// selection auto-advances instead of using an explicit Next tap). onBack
+// omitted hides Back too -- for a page where going back doesn't make
+// sense (e.g. right after email verification, where "back" would just
+// land on the now-consumed code-entry screen).
 // `centered` opts into a middle-aligned row of auto-width buttons instead
 // of the default two-flex-1-buttons-spanning-the-row layout -- scoped per
 // screen rather than changed globally.
@@ -14,7 +17,7 @@ export default function WizardNav({
   nextLabel = "Next",
   centered = false,
 }: {
-  onBack: () => void;
+  onBack?: () => void;
   onNext?: () => void;
   nextDisabled?: boolean;
   nextLabel?: string;
@@ -22,9 +25,11 @@ export default function WizardNav({
 }) {
   return (
     <View style={[styles.row, centered && styles.rowCentered]}>
-      <Pressable style={[styles.backButton, centered && styles.buttonAutoWidth]} onPress={onBack}>
-        <Text style={styles.backText}>Back</Text>
-      </Pressable>
+      {onBack && (
+        <Pressable style={[styles.backButton, centered && styles.buttonAutoWidth]} onPress={onBack}>
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
+      )}
       {onNext && (
         <Pressable
           style={[styles.nextButton, centered && styles.buttonAutoWidth, nextDisabled && styles.nextDisabled]}

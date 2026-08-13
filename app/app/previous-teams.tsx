@@ -28,14 +28,14 @@ export default function PreviousTeamsScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Previous Teams</Text>
 
-      <Text style={styles.label}>Teams I Coached</Text>
+      <Text style={styles.label}>Coached Teams</Text>
       {coachedTeams.length > 0 ? (
         <TeamTileGrid teams={coachedTeams} />
       ) : (
         <Text style={styles.hint}>No previous coached teams.</Text>
       )}
 
-      <Text style={styles.label}>Teams I Followed</Text>
+      <Text style={styles.label}>Followed Teams</Text>
       {memberTeams.length > 0 ? (
         <TeamTileGrid teams={memberTeams} />
       ) : (

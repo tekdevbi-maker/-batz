@@ -15,6 +15,8 @@ interface AuthContextValue {
     password: string,
     metadata?: { firstName: string; lastName: string }
   ) => Promise<string>;
+  verifySignUpCode: (email: string, code: string) => Promise<void>;
+  resendSignUpCode: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (newPassword: string) => Promise<void>;
@@ -90,6 +92,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user.id;
   }
 
+  // Confirms the 6-digit code emailed at sign-up (Supabase Auth's built-in
+  // OTP, type "signup") -- success both marks the email verified AND
+  // returns a real session, so this is also what actually logs the user
+  // in for the first time (signUp() itself no longer does, now that email
+  // confirmation is required).
+  async function verifySignUpCode(email: string, code: string) {
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
+    if (error) throw error;
+  }
+
+  async function resendSignUpCode(email: string) {
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) throw error;
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -157,6 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isPasswordRecovery,
         signIn,
         signUp,
+        verifySignUpCode,
+        resendSignUpCode,
         signOut,
         requestPasswordReset,
         completePasswordReset,

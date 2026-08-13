@@ -64,7 +64,7 @@ export interface PlayerProfile extends PlayerDemographics {
   realName: string | null;
   photoUrl: string | null;
   playerTag: string;
-  visibilityScope: "public" | "private";
+  visibilityScope: "public" | "private" | "only_me";
   displayMode: PlayerDisplayMode;
   leaderboardOptOutTeam: boolean;
   leaderboardOptOutLeague: boolean;
@@ -237,7 +237,7 @@ export interface MyPlayer {
   playerId: string;
   playerTag: string;
   displayName: string;
-  visibilityScope: "public" | "private";
+  visibilityScope: "public" | "private" | "only_me";
   // For the Home screen's baseball-card thumbnail (see PlayerCard.tsx).
   // Real name only when displayMode is "real_name" -- resolved by the
   // caller, same gate as everywhere else the card renders. Always null on
@@ -275,7 +275,7 @@ function toMyPlayer(
     last_name: string | null;
     display_mode: PlayerDisplayMode;
     is_coach_fallback: boolean;
-    visibility_scope: "public" | "private";
+    visibility_scope: "public" | "private" | "only_me";
     photo_url: string | null;
   },
   uniformNumber: number | null,
@@ -317,7 +317,9 @@ function toMyPlayer(
 export async function listMyPlayers(supabase: SupabaseClient, userId: string): Promise<MyPlayersResult> {
   const { data, error } = await supabase
     .from("player")
-    .select("id, player_tag, first_name, last_name, display_mode, visibility_scope, is_coach_fallback, photo_url")
+    .select(
+      "id, player_tag, first_name, last_name, display_mode, visibility_scope, is_coach_fallback, photo_url, onboarding_completed_at"
+    )
     .eq("parent_user_id", userId)
     .order("created_at");
   if (error) throw error;
@@ -348,8 +350,14 @@ export async function listMyPlayers(supabase: SupabaseClient, userId: string): P
   }
 
   return {
+    // A player only shows here once the parent has fully completed the
+    // post-Agree onboarding wizard (onboarding_completed_at set) -- not
+    // merely the instant Agree is tapped (that only stamps
+    // parent_attested_at, the legal consent timestamp) or a coach approves
+    // a claim/transfer. See notifications.tsx's "Important Profile
+    // Verification Notice" popup and player-onboarding.tsx.
     myPlayers: players
-      .filter((p: any) => !p.is_coach_fallback)
+      .filter((p: any) => !p.is_coach_fallback && p.onboarding_completed_at)
       .map((p: any) => toMyPlayer(p, uniformByPlayer.get(p.id) ?? null, teamLogoByPlayer.get(p.id) ?? null)),
     myTeamPlayers: players
       .filter((p: any) => p.is_coach_fallback && activeFallbackIds.has(p.id))
@@ -396,7 +404,7 @@ export async function searchPlayers(supabase: SupabaseClient, query: string): Pr
 
 export interface PlayerSettingsInput {
   playerTag?: string;
-  visibilityScope?: "public" | "private";
+  visibilityScope?: "public" | "private" | "only_me";
   displayMode?: PlayerDisplayMode;
   leaderboardOptOutTeam?: boolean;
   leaderboardOptOutLeague?: boolean;

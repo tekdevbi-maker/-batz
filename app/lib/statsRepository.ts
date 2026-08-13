@@ -84,7 +84,7 @@ export interface RosterSeasonStats {
   playerId: string | null;
   uniformNumber: number;
   displayName: string;
-  visibilityScope: "public" | "private" | null;
+  visibilityScope: "public" | "private" | "only_me" | null;
   leaderboardOptOutTeam: boolean;
   isCoachFallback: boolean;
   photoUrl: string | null;
@@ -168,7 +168,7 @@ export interface DivisionLeaderboardEntry {
   teamName: string;
   uniformNumber: number;
   displayName: string;
-  visibilityScope: "public" | "private" | null;
+  visibilityScope: "public" | "private" | "only_me" | null;
   leaderboardOptOutLeague: boolean;
   counts: BattingCounts;
   stats: CalculatedStats;

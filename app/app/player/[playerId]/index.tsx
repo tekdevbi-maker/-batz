@@ -11,7 +11,6 @@ import {
   listMyPendingTransferOffers,
   respondToTransferOffer,
   unlinkPlayer,
-  getTeamJoinContext,
   AlreadyClaimedByParentError,
   TeamAtCapacityError,
   type PendingTransferOffer,
@@ -29,6 +28,7 @@ import {
 // wanted again later.
 // import BlockReportButtons from "../../../components/BlockReportButtons";
 import FlipStatsCard from "../../../components/FlipStatsCard";
+import VerificationNoticeModal from "../../../components/VerificationNoticeModal";
 import PlayerCard from "../../../components/PlayerCard";
 import PlayerCardStatsBack from "../../../components/PlayerCardStatsBack";
 import { formatDateDisplay } from "../../../lib/dateFormat";
@@ -39,12 +39,6 @@ function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) return String((err as { message: unknown }).message);
   return String(err);
 }
-
-// Appended to every consent popup that unlocks a player (attest, claim
-// request, transfer offer) -- the standing, self-service reversal a parent
-// always has, not just a one-time accept.
-const UNLINK_DISCLOSURE =
-  " You may unlink this player at any time, which will return them to a locked state under the Head Coach's account.";
 
 export default function PlayerProfileScreen() {
   const { session } = useRequireAuth();
@@ -67,7 +61,7 @@ export default function PlayerProfileScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
   const [claimSuccessOpen, setClaimSuccessOpen] = useState(false);
-  const [claimSentCoachName, setClaimSentCoachName] = useState<string | null>(null);
+  const [claimSentTeamName, setClaimSentTeamName] = useState<string | null>(null);
   const [myClaimStatus, setMyClaimStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isHeadCoachOnTeam, setIsHeadCoachOnTeam] = useState(false);
@@ -130,10 +124,7 @@ export default function PlayerProfileScreen() {
       await requestPlayerClaim(supabase, current.rosterEntryId);
       setClaimModalOpen(false);
       setMyClaimStatus("pending");
-      const coachName = await getTeamJoinContext(supabase, current.teamId)
-        .then((ctx) => [ctx.coachFirstName, ctx.coachLastName].filter(Boolean).join(" ").trim() || null)
-        .catch(() => null);
-      setClaimSentCoachName(coachName);
+      setClaimSentTeamName(current.teamName);
       setClaimSuccessOpen(true);
     } catch (err) {
       setClaimError(
@@ -204,6 +195,10 @@ export default function PlayerProfileScreen() {
     router.push(`/team/${current.teamId}/members?transferRosterEntryId=${current.rosterEntryId}`);
   }
 
+  // Agreeing to a coach's transfer offer is the same "becoming this
+  // player's verified Parent/Legal Guardian" consent as claiming or
+  // getting approved from Home -- same notice, same onboarding wizard
+  // hand-off afterward, instead of dropping straight onto Settings.
   async function handleTransferOfferResponse(agree: boolean) {
     if (!transferOffer) return;
     setTransferOfferBusy(true);
@@ -213,7 +208,7 @@ export default function PlayerProfileScreen() {
       const claimedPlayerId = transferOffer.playerId;
       setTransferOffer(null);
       if (agree) {
-        router.push(`/player/${claimedPlayerId}/settings`);
+        router.push({ pathname: "/player-onboarding", params: { playerIds: claimedPlayerId } });
       } else {
         load();
       }
@@ -241,6 +236,10 @@ export default function PlayerProfileScreen() {
     }
   }
 
+  // Same "Important Profile Verification Notice" consent flow as the
+  // parent-side Home banner (notifications.tsx) -- a Head Coach unlocking
+  // their own kid's fallback profile still has to read and agree to the
+  // notice, and Agree hands off to the same onboarding wizard afterward.
   async function handleAttest() {
     if (!profile) return;
     setAttestBusy(true);
@@ -248,7 +247,7 @@ export default function PlayerProfileScreen() {
     try {
       await attestPlayerParent(supabase, profile.playerId);
       setAttestModalOpen(false);
-      load();
+      router.push({ pathname: "/player-onboarding", params: { playerIds: profile.playerId } });
     } catch (err) {
       setAttestError(errorMessage(err));
     } finally {
@@ -290,14 +289,16 @@ export default function PlayerProfileScreen() {
   const isAttested = !!profile.parentAttestedAt;
   const current = currentSeasonLine(profile);
 
-  // Real name only when the parent opted into "Real Name" display -- otherwise
-  // both card faces fall back to displayName (the same alias/uniform tag
-  // shown everywhere else), never the real name. A locked player's
-  // displayMode is already forced to "uniform" upstream, so this naturally
-  // resolves to just the default tag with no first name for them too.
-  const cardFirstName = profile.displayMode === "real_name" ? (profile.realName?.split(" ")[0] ?? "") : "";
-  const cardLastName =
-    profile.displayMode === "real_name" ? profile.realName?.split(" ").slice(1).join(" ") || "" : profile.displayName;
+  // Real name when the parent opted into "Real Name" display, OR when the
+  // viewer is coaching staff on this locked player's team -- same
+  // exception the Roster screen already makes (statsRepository's
+  // displayNameFor), so a coach isn't shown a name on the roster list but
+  // then just a uniform number once they tap into the card. Otherwise
+  // both card faces fall back to displayName (the alias/uniform tag shown
+  // everywhere else).
+  const showRealNameOnCard = profile.displayMode === "real_name" || (profile.isCoachFallback && isCoachOnTeam);
+  const cardFirstName = showRealNameOnCard ? (profile.realName?.split(" ")[0] ?? "") : "";
+  const cardLastName = showRealNameOnCard ? profile.realName?.split(" ").slice(1).join(" ") || "" : profile.displayName;
 
   return (
     <ScrollView
@@ -305,71 +306,90 @@ export default function PlayerProfileScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
     >
       {profile.isOwner && (
-        <View style={styles.ownerRow}>
+        <View style={styles.ownerSection}>
           <Text style={profile.visibilityScope === "private" ? styles.privateBadge : styles.publicBadge}>
             {profile.visibilityScope}
           </Text>
-          {(!isCoachOwner || isAttested) && (
-            <Pressable style={styles.secondaryButton} onPress={() => router.push(`/player/${playerId}/settings`)}>
-              <Text style={styles.secondaryButtonText}>Settings</Text>
-            </Pressable>
-          )}
-          {isCoachOwner && profile.isCoachFallback && (
-            <Pressable style={styles.secondaryButton} onPress={handleGoToTransfer}>
-              <Text style={styles.secondaryButtonText}>Transfer to Follower</Text>
-            </Pressable>
-          )}
-          {isCoachOwner && profile.isCoachFallback && !isAttested && (
-            <Pressable style={styles.secondaryButton} onPress={() => setAttestModalOpen(true)}>
-              <Text style={styles.secondaryButtonText}>Unlock this Player</Text>
-            </Pressable>
-          )}
+          <View style={styles.ownerButtonRow}>
+            {(!isCoachOwner || isAttested) && (
+              <Pressable style={styles.tileButton} onPress={() => router.push(`/player/${playerId}/settings`)}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={1}>
+                  Settings
+                </Text>
+              </Pressable>
+            )}
+            {isCoachOwner && profile.isCoachFallback && (
+              <Pressable style={styles.tileButton} onPress={handleGoToTransfer}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
+                  {"Transfer\nPlayer"}
+                </Text>
+              </Pressable>
+            )}
+            {isCoachOwner && profile.isCoachFallback && !isAttested && (
+              <Pressable style={styles.tileButton} onPress={() => setAttestModalOpen(true)}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
+                  {"Unlock\nPlayer"}
+                </Text>
+              </Pressable>
+            )}
+            {!profile.isCoachFallback && (
+              <Pressable style={styles.tileButton} onPress={() => setUnlinkModalOpen(true)}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
+                  {"Unlink\nPlayer"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       )}
 
-      <Modal visible={attestModalOpen} transparent animationType="fade" onRequestClose={() => setAttestModalOpen(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalText}>
-              You are claiming to be the Parent/Legal Guardian of {profile.displayName}. Is this correct?
-              {UNLINK_DISCLOSURE}
-            </Text>
-            {attestError && <Text style={styles.error}>{attestError}</Text>}
-            <View style={styles.modalButtonRow}>
-              <Pressable
-                style={[styles.secondaryButton, styles.modalCancel]}
-                disabled={attestBusy}
-                onPress={() => setAttestModalOpen(false)}
-              >
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.modalAgree} disabled={attestBusy} onPress={handleAttest}>
-                {attestBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalAgreeText}>Agree</Text>}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <VerificationNoticeModal
+        visible={attestModalOpen}
+        playerNames={profile.realName ?? profile.displayName}
+        busy={attestBusy}
+        error={attestError}
+        onBack={() => setAttestModalOpen(false)}
+        onAgree={handleAttest}
+      />
 
       {!profile.isOwner && (
-        <View style={styles.ownerRow}>
-          <Pressable style={styles.secondaryButton} disabled={followBusy} onPress={toggleFollow}>
-            <Text style={styles.secondaryButtonText}>{following ? "Unfollow" : "Follow"}</Text>
-          </Pressable>
-          <Text style={styles.hint}>
-            {followerCount} follower{followerCount === 1 ? "" : "s"}
-          </Text>
-          {profile.isCoachFallback && myClaimStatus === "pending" && (
-            <Text style={styles.hint}>Pending Approval</Text>
-          )}
-          {profile.isCoachFallback && myClaimStatus === "coach_approved" && (
-            <Text style={styles.hint}>Approved</Text>
-          )}
-          {profile.isCoachFallback && myClaimStatus !== "pending" && myClaimStatus !== "coach_approved" && (
-            <Pressable style={styles.secondaryButton} disabled={claimBusy} onPress={() => setClaimModalOpen(true)}>
-              <Text style={styles.secondaryButtonText}>Unlock this Player</Text>
-            </Pressable>
-          )}
+        <View style={styles.ownerSection}>
+          <View style={styles.ownerRow}>
+            {profile.visibilityScope !== "only_me" && (
+              <Text style={styles.hint}>
+                {followerCount} follower{followerCount === 1 ? "" : "s"}
+              </Text>
+            )}
+            {profile.isCoachFallback && myClaimStatus === "pending" && (
+              <Text style={styles.hint}>Pending Approval</Text>
+            )}
+            {profile.isCoachFallback && myClaimStatus === "coach_approved" && (
+              <Text style={styles.hint}>Approved</Text>
+            )}
+          </View>
+          <View style={styles.ownerButtonRow}>
+            {profile.visibilityScope !== "only_me" && (
+              <Pressable style={styles.tileButton} disabled={followBusy} onPress={toggleFollow}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={1}>
+                  {following ? "Unfollow" : "Follow"}
+                </Text>
+              </Pressable>
+            )}
+            {profile.isCoachFallback && myClaimStatus !== "pending" && myClaimStatus !== "coach_approved" && (
+              <Pressable style={styles.tileButton} disabled={claimBusy} onPress={() => setClaimModalOpen(true)}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
+                  {"Unlock\nPlayer"}
+                </Text>
+              </Pressable>
+            )}
+            {!profile.isCoachFallback && isHeadCoachOnTeam && (
+              <Pressable style={styles.tileButton} onPress={() => setUnlinkModalOpen(true)}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
+                  {"Unlink\nPlayer"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       )}
       {claimError && <Text style={styles.error}>{claimError}</Text>}
@@ -402,7 +422,7 @@ export default function PlayerProfileScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalText}>
-              Your request has been sent to {claimSentCoachName ? `Coach ${claimSentCoachName}` : "the coach"}.
+              Your request has been sent to {claimSentTeamName ? `the ${claimSentTeamName} coaching staff` : "the coaching staff"}.
             </Text>
             <View style={styles.modalButtonRow}>
               <Pressable style={styles.modalAgree} onPress={() => setClaimSuccessOpen(false)}>
@@ -413,35 +433,15 @@ export default function PlayerProfileScreen() {
         </View>
       </Modal>
 
-      <Modal visible={!!transferOffer} transparent animationType="fade" onRequestClose={() => {}}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalText}>
-              Coach {transferOffer?.coachName ?? "on this team"} has approved your request to unlock{" "}
-              {transferOffer?.displayName}.
-            </Text>
-            {transferOfferError && <Text style={styles.error}>{transferOfferError}</Text>}
-            <View style={styles.modalButtonRow}>
-              <Pressable
-                style={[styles.secondaryButton, styles.modalCancel]}
-                disabled={transferOfferBusy}
-                onPress={() => handleTransferOfferResponse(false)}
-              >
-                <Text style={styles.secondaryButtonText}>Decline</Text>
-              </Pressable>
-              <Pressable style={styles.modalAgree} disabled={transferOfferBusy} onPress={() => handleTransferOfferResponse(true)}>
-                {transferOfferBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalAgreeText}>Agree</Text>}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {!profile.isCoachFallback && (profile.isOwner || isHeadCoachOnTeam) && (
-        <Pressable style={[styles.secondaryButton, styles.unlinkButton]} onPress={() => setUnlinkModalOpen(true)}>
-          <Text style={styles.secondaryButtonText}>Unlink Player</Text>
-        </Pressable>
-      )}
+      <VerificationNoticeModal
+        visible={!!transferOffer}
+        playerNames={transferOffer?.playerName ?? ""}
+        busy={transferOfferBusy}
+        error={transferOfferError}
+        backLabel="Decline"
+        onBack={() => handleTransferOfferResponse(false)}
+        onAgree={() => handleTransferOfferResponse(true)}
+      />
 
       <Modal visible={unlinkModalOpen} transparent animationType="fade" onRequestClose={() => setUnlinkModalOpen(false)}>
         <View style={styles.modalBackdrop}>
@@ -503,7 +503,7 @@ export default function PlayerProfileScreen() {
             careerStats={profile.careerStats}
             teamLogoUrl={current?.teamLogoUrl}
             uniformNumber={current?.uniformNumber}
-            locked={profile.isCoachFallback}
+            locked={profile.isCoachFallback || (profile.visibilityScope === "only_me" && !profile.isOwner)}
             activity={cardActivity.slice(0, 3).map((post) => ({
               id: post.id,
               text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
@@ -520,6 +520,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  ownerSection: { gap: 8, marginTop: 8, alignItems: "flex-start" },
+  // alignSelf: "stretch" is required here -- ownerSection uses alignItems:
+  // "flex-start" (so the privacy badge above doesn't stretch full-width),
+  // which otherwise leaves this row's own width undetermined and the
+  // tiles' percentage widths resolving against nothing, throwing off both
+  // their sizing and the text centering inside them.
+  ownerButtonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignSelf: "stretch" },
   ownerRow: { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 8 },
   unlinkButton: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 8, marginTop: 8 },
   publicBadge: { color: colors.success, fontFamily: "Montserrat_400Regular", backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, borderRadius: 4 },
@@ -532,6 +539,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
+  // Sized so exactly 4 fit per row inside the 20px screen padding with an
+  // 8px gap between each: (100% - 3 gaps) / 4 tiles.
+  tileButton: {
+    width: "23%",
+    aspectRatio: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 4,
+  },
+  tileButtonText: {
+    flex: 1,
+    width: "100%",
+    color: colors.textPrimary,
+    fontFamily: "Montserrat_400Regular",
+    fontSize: 12,
+    textAlign: "center",
+    verticalAlign: "middle",
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

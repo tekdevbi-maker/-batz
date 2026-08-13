@@ -76,9 +76,10 @@ export default function JoinTeamByLinkScreen() {
   if (joined) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>You're all set</Text>
+        <Text style={styles.title}>You're all set!</Text>
         <Text style={styles.hint}>
-          You're now following {context?.teamName} -- it'll show up on your Home screen.
+          You are now following the {context?.teamName}. Go to the @Batz Home Screen to access the{" "}
+          {context?.teamName} Home Page.
         </Text>
         <Pressable style={styles.button} onPress={() => router.replace("/")}>
           <Text style={styles.buttonText}>Go to @Batz</Text>
@@ -89,7 +90,7 @@ export default function JoinTeamByLinkScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Join a Team</Text>
+      <Text style={styles.title}>Follow a Team</Text>
       <Text style={styles.hint}>
         Paste the Team Join Link your coach shared with you to start following that team.
       </Text>
@@ -120,11 +121,16 @@ export default function JoinTeamByLinkScreen() {
       ) : (
         <>
           <Text style={styles.confirm}>
-            Invited by {context.coachFirstName || context.coachLastName
+            You have been invited by{" "}
+            {context.coachFirstName || context.coachLastName
               ? `Coach ${`${context.coachFirstName ?? ""} ${context.coachLastName ?? ""}`.trim()}`
               : "your coach"}{" "}
-            -- {context.teamName}, {context.leagueName}, {context.divisionName}, {context.season}{" "}
-            {context.year}
+            to follow the <Text style={styles.confirmBold}>{context.teamName}</Text>!
+          </Text>
+          <Text style={styles.confirmDetail}>
+            League: {context.leagueName}{"\n"}
+            Division: {context.divisionName}{"\n"}
+            Season: {context.season} {context.year}
           </Text>
           {joinError && <Text style={styles.error}>{joinError}</Text>}
           <Pressable style={[styles.button, joining && styles.buttonDisabled]} disabled={joining} onPress={handleJoin}>
@@ -143,6 +149,8 @@ const styles = StyleSheet.create({
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 8 },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   confirm: { color: colors.textPrimary, fontSize: 15, fontFamily: "Montserrat_400Regular", marginTop: 8, lineHeight: 21 },
+  confirmBold: { fontFamily: "Montserrat_700Bold" },
+  confirmDetail: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular", marginTop: 6, lineHeight: 19 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

@@ -245,7 +245,7 @@ export default function TeamHomeScreen() {
       />
       <View style={styles.frozenSection}>
         <View style={styles.headerRow}>
-          <Pressable onPress={handlePickLogo} disabled={!isHeadCoach || uploadingLogo}>
+          <Pressable style={styles.teamLogoContainer} onPress={handlePickLogo} disabled={!isHeadCoach || uploadingLogo}>
             {context?.teamLogoUrl ? (
               <Image source={{ uri: context.teamLogoUrl }} style={styles.teamLogo} resizeMode="contain" />
             ) : (
@@ -258,6 +258,11 @@ export default function TeamHomeScreen() {
             {uploadingLogo && (
               <View style={styles.teamLogoUploadOverlay}>
                 <ActivityIndicator color="white" />
+              </View>
+            )}
+            {isCoach && pendingClaimCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{pendingClaimCount}</Text>
               </View>
             )}
           </Pressable>
@@ -297,11 +302,6 @@ export default function TeamHomeScreen() {
               </OutlinedText>
               <Text style={[styles.statLabel, styles.statLabelRed]}>Avg</Text>
             </View>
-            {isCoach && pendingClaimCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{pendingClaimCount}</Text>
-              </View>
-            )}
           </Pressable>
         </View>
 
@@ -511,6 +511,7 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, gap: 8 },
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  teamLogoContainer: { position: "relative" },
   teamLogo: { width: 96, height: 96 },
   teamLogoPlaceholder: {
     width: 96,
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 20,
   },
-  menuItemText: { fontSize: 17, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary },
+  menuItemText: { fontSize: 14, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary },
   menuItemBadge: {
     minWidth: 22,
     height: 22,

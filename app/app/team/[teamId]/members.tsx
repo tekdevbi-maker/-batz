@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Modal } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
@@ -13,7 +13,9 @@ import {
 } from "../../../lib/teamsRepository";
 import {
   offerPlayerTransfer,
+  verifyNewPlayer,
   NotACoachError,
+  UniformNumberTakenError,
   listPendingClaimRequests,
   approveClaimRequest,
   denyClaimRequest,
@@ -55,6 +57,15 @@ export default function TeamMembersScreen() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [busyRequestId, setBusyRequestId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // "Verify" popup (Gap #1) -- coach recognizes which fan is a specific
+  // player's parent and creates + offers the player in one action.
+  const [verifyTarget, setVerifyTarget] = useState<TeamMember | null>(null);
+  const [verifyFirstName, setVerifyFirstName] = useState("");
+  const [verifyLastName, setVerifyLastName] = useState("");
+  const [verifyUniformNumber, setVerifyUniformNumber] = useState("");
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!teamId) return;
@@ -117,6 +128,40 @@ export default function TeamMembersScreen() {
       setError(err instanceof NotHeadCoachError ? err.message : errorMessage(err));
     } finally {
       setBusyUserId(null);
+    }
+  }
+
+  function openVerify(member: TeamMember) {
+    setVerifyTarget(member);
+    setVerifyFirstName("");
+    setVerifyLastName("");
+    setVerifyUniformNumber("");
+    setVerifyError(null);
+  }
+
+  async function handleSendVerification() {
+    if (!teamId || !verifyTarget) return;
+    const uniformNumber = Number.parseInt(verifyUniformNumber, 10);
+    if (!verifyFirstName.trim() || !verifyLastName.trim() || !uniformNumber) return;
+    setVerifyBusy(true);
+    setVerifyError(null);
+    try {
+      await verifyNewPlayer(
+        supabase,
+        teamId,
+        verifyTarget.userId,
+        verifyFirstName.trim(),
+        verifyLastName.trim(),
+        uniformNumber
+      );
+      setVerifyTarget(null);
+      load();
+    } catch (err) {
+      setVerifyError(
+        err instanceof NotACoachError || err instanceof UniformNumberTakenError ? err.message : errorMessage(err)
+      );
+    } finally {
+      setVerifyBusy(false);
     }
   }
 
@@ -249,7 +294,12 @@ export default function TeamMembersScreen() {
               )}
             </Pressable>
           ) : (
-            <>
+            <View style={styles.memberButtonRow}>
+              {member.role === "follower" && (
+                <Pressable style={styles.actionButton} onPress={() => openVerify(member)}>
+                  <Text style={styles.actionButtonText}>Verify</Text>
+                </Pressable>
+              )}
               {(member.role === "parent" || member.role === "follower") && assistantCount < 3 && (
                 <Pressable
                   style={styles.actionButton}
@@ -276,11 +326,56 @@ export default function TeamMembersScreen() {
                   )}
                 </Pressable>
               )}
-            </>
+            </View>
           )}
         </View>
       ))}
       {members.length === 0 && <Text style={styles.hint}>No one has joined this team yet.</Text>}
+
+      <Modal visible={!!verifyTarget} transparent animationType="fade" onRequestClose={() => setVerifyTarget(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Verify Player</Text>
+            <Text style={styles.hint}>
+              Enter the player's name and uniform number. {verifyTarget?.displayName} will be asked to confirm
+              they're the Parent/Legal Guardian before anything changes.
+            </Text>
+
+            <Text style={styles.label}>Player First Name</Text>
+            <TextInput style={styles.input} value={verifyFirstName} onChangeText={setVerifyFirstName} autoCapitalize="words" />
+
+            <Text style={styles.label}>Player Last Name</Text>
+            <TextInput style={styles.input} value={verifyLastName} onChangeText={setVerifyLastName} autoCapitalize="words" />
+
+            <Text style={styles.label}>Uniform Number</Text>
+            <TextInput
+              style={styles.input}
+              value={verifyUniformNumber}
+              onChangeText={setVerifyUniformNumber}
+              keyboardType="number-pad"
+            />
+
+            {verifyError && <Text style={styles.error}>{verifyError}</Text>}
+
+            <View style={styles.modalButtonRow}>
+              <Pressable style={styles.modalCancel} disabled={verifyBusy} onPress={() => setVerifyTarget(null)}>
+                <Text style={styles.actionButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalSend,
+                  (verifyBusy || !verifyFirstName.trim() || !verifyLastName.trim() || !verifyUniformNumber) &&
+                    styles.modalSendDisabled,
+                ]}
+                disabled={verifyBusy || !verifyFirstName.trim() || !verifyLastName.trim() || !verifyUniformNumber}
+                onPress={handleSendVerification}
+              >
+                {verifyBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalSendText}>Send Verification</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -315,4 +410,30 @@ const styles = StyleSheet.create({
   requestButtonRow: { flexDirection: "row", gap: 8 },
   approveButton: { backgroundColor: colors.accent, borderColor: colors.accent },
   approveButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold" },
+  memberButtonRow: { flexDirection: "row", gap: 8 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 20, gap: 4, width: "100%", maxWidth: 400 },
+  modalTitle: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, marginBottom: 4 },
+  label: { fontSize: 14, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary, marginTop: 8 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    fontFamily: "Montserrat_400Regular",
+    backgroundColor: colors.background,
+    color: colors.textPrimary,
+  },
+  modalButtonRow: { flexDirection: "row", gap: 12, justifyContent: "flex-end", marginTop: 16 },
+  modalCancel: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
+  modalSend: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
+  modalSendDisabled: { backgroundColor: colors.accentDisabled },
+  modalSendText: { color: "white", fontFamily: "Montserrat_600SemiBold" },
 });

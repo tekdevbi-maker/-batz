@@ -129,12 +129,15 @@ export async function listMyPreviousMemberTeams(supabase: SupabaseClient, userId
   return dedupeById(byStatus([...(memberships.data ?? []), ...(assistantAssignments.data ?? [])], "ended"));
 }
 
-// Head-Coach-only (RLS: "head coach can update their team"). One-way in
-// the UI (no "reopen" flow) -- ending a season is what moves a team from
-// Home's Teams grid to Previous Teams and stops it counting toward the
-// "only in-season teams" visibility rules used elsewhere.
+// Head-Coach-only (enforced inside the RPC itself, not just RLS). One-way
+// in the UI (no "reopen" flow) -- ending a season is what moves a team
+// from Home's Teams grid to Previous Teams and stops it counting toward
+// the "only in-season teams" visibility rules used elsewhere. Also the
+// COPPA data-retention trigger: any still-unclaimed player on this team
+// gets permanently anonymized (see mark_season_ended in
+// 20260814030000_season_end_anonymization.sql) as part of the same call.
 export async function markSeasonEnded(supabase: SupabaseClient, teamId: string): Promise<void> {
-  const { error } = await supabase.from("team").update({ season_status: "ended" }).eq("id", teamId);
+  const { error } = await supabase.rpc("mark_season_ended", { p_team_id: teamId });
   if (error) throw error;
 }
 

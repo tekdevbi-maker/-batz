@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, Image, RefreshControl } from "react-native";
-import { Link, useRouter, useFocusEffect } from "expo-router";
+import { View, Text, Pressable, StyleSheet, ScrollView, Image, RefreshControl, Modal } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
@@ -8,7 +9,6 @@ import { listMyPlayers, type MyPlayer } from "../lib/playerRepository";
 import {
   listPendingClaimRequestCountsForCoach,
   listNewlyAssignedPlayers,
-  acknowledgeNewPlayers,
   listMyPendingTransferOffers,
   type NewlyAssignedPlayer,
   type PendingTransferOffer,
@@ -28,6 +28,7 @@ export default function Home() {
   const [newlyAssigned, setNewlyAssigned] = useState<NewlyAssignedPlayer[]>([]);
   const [transferOffers, setTransferOffers] = useState<PendingTransferOffer[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [userMenuVisible, setUserMenuVisible] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -45,15 +46,6 @@ export default function Home() {
         .catch(() => {}),
     ]);
   }, [session]);
-
-  async function handleDismissNewlyAssigned() {
-    setNewlyAssigned([]);
-    try {
-      await acknowledgeNewPlayers(supabase);
-    } catch {
-      // Non-critical -- worst case the banner reappears next load.
-    }
-  }
 
   // useFocusEffect, not a plain useEffect keyed on session -- session
   // doesn't change when navigating back to an already-mounted Home screen
@@ -74,6 +66,8 @@ export default function Home() {
   if (!session) return null;
 
   const firstName: string | undefined = session.user.user_metadata?.first_name;
+  const hasNotifications =
+    newlyAssigned.length > 0 || transferOffers.length > 0 || Object.values(pendingCounts).some((c) => c > 0);
 
   return (
     <ScrollView
@@ -81,7 +75,16 @@ export default function Home() {
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
     >
-      <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
+      <View style={styles.headerRow}>
+        <View style={styles.headerSide} />
+        <Image source={require("../assets/wordmark-transparent.png")} style={styles.logo} resizeMode="contain" />
+        <Pressable hitSlop={12} style={[styles.menuButton, styles.headerSide]} onPress={() => setUserMenuVisible(true)}>
+          <View>
+            <Ionicons name="menu" size={24} color={colors.textPrimary} />
+            {hasNotifications && <View style={styles.menuIconDot} />}
+          </View>
+        </Pressable>
+      </View>
       {firstName && <Text style={styles.welcome}>Welcome {firstName}!</Text>}
 
       {isAdmin && (
@@ -90,20 +93,25 @@ export default function Home() {
         </Pressable>
       )}
 
-      {newlyAssigned.length > 0 && (
-        <View style={styles.newPlayerBanner}>
-          <Text style={styles.newPlayerBannerText}>
-            {newlyAssigned.length === 1
-              ? `🎉 ${newlyAssigned[0].displayName} has been added to your account!`
-              : `🎉 ${newlyAssigned.length} players have been added to your account: ${newlyAssigned
-                  .map((p) => p.displayName)
-                  .join(", ")}`}
-          </Text>
-          <Pressable style={styles.newPlayerBannerButton} onPress={handleDismissNewlyAssigned}>
-            <Text style={styles.newPlayerBannerButtonText}>Got it</Text>
+      {newlyAssigned.map((player) => {
+        const playerName = [player.playerFirstName, player.playerLastName].filter(Boolean).join(" ").trim() || player.displayName;
+        return (
+          <Pressable
+            key={player.playerId}
+            style={styles.newPlayerBanner}
+            onPress={() => router.push("/notifications")}
+          >
+            <Text style={styles.newPlayerBannerText}>
+              {player.teamName
+                ? `${player.teamName} coaching staff has approved your request to unlock ${playerName}.`
+                : `Your request to unlock ${playerName} has been approved.`}
+            </Text>
+            <View style={styles.newPlayerBannerButton}>
+              <Text style={styles.newPlayerBannerButtonText}>Review</Text>
+            </View>
           </Pressable>
-        </View>
-      )}
+        );
+      })}
 
       {transferOffers.map((offer) => (
         <Pressable
@@ -112,7 +120,7 @@ export default function Home() {
           onPress={() => router.push(`/player/${offer.playerId}`)}
         >
           <Text style={styles.newPlayerBannerText}>
-            {offer.teamName}'s coach is offering you {offer.displayName} to claim as the Parent/Legal Guardian.
+            {offer.teamName} coaching staff is offering you {offer.playerName} to unlock.
           </Text>
           <View style={styles.newPlayerBannerButton}>
             <Text style={styles.newPlayerBannerButtonText}>Review</Text>
@@ -123,22 +131,11 @@ export default function Home() {
       {coachedTeams.length > 0 && (
         <>
           <Text style={styles.label}>My Teams</Text>
-          <Pressable onPress={() => router.push("/register-team")}>
-            <Text style={styles.addTeamLink}>Start a New Team as Head Coach</Text>
-          </Pressable>
           <TeamTileGrid teams={coachedTeams} pendingCounts={pendingCounts} />
         </>
       )}
-      {coachedTeams.length === 0 && (
-        <Pressable onPress={() => router.push("/register-team")}>
-          <Text style={styles.addTeamLink}>Start a New Team as Head Coach</Text>
-        </Pressable>
-      )}
 
       <Text style={styles.label}>Followed Teams</Text>
-      <Pressable onPress={() => router.push("/join-team")}>
-        <Text style={styles.addTeamLink}>Follow Another Team</Text>
-      </Pressable>
       {memberTeams.length > 0 ? (
         <TeamTileGrid teams={memberTeams} />
       ) : (
@@ -189,17 +186,103 @@ export default function Home() {
       <View style={styles.spacer} />
 
       <Text style={styles.hint}>Signed in as {session?.user.email}</Text>
-      <Pressable style={styles.secondaryButton} onPress={() => signOut()}>
-        <Text style={styles.buttonText}>Sign Out</Text>
-      </Pressable>
 
-      <Text style={styles.footerLinks}>
-        <Link href="/terms-of-service"><Text style={styles.legalLink}>Terms of Service</Text></Link>
-        {"  ·  "}
-        <Link href="/privacy-policy"><Text style={styles.legalLink}>Privacy Policy</Text></Link>
-        {"  ·  "}
-        <Link href="/customer-care"><Text style={styles.legalLink}>Need Help?</Text></Link>
-      </Text>
+      <Modal visible={userMenuVisible} transparent animationType="fade" onRequestClose={() => setUserMenuVisible(false)}>
+        <Pressable style={styles.menuBackdrop} onPress={() => setUserMenuVisible(false)}>
+          <View style={styles.menuCard}>
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/register-team");
+              }}
+            >
+              <Text style={styles.menuItemText}>Head Coach? Start New Team!</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/join-team");
+              }}
+            >
+              <Text style={styles.menuItemText}>Follow Team</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/previous-teams");
+              }}
+            >
+              <Text style={styles.menuItemText}>Team History</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/user-settings");
+              }}
+            >
+              <Text style={styles.menuItemText}>User Settings</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItemRow}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/notifications");
+              }}
+            >
+              <Text style={styles.menuItemText}>Notifications</Text>
+              {hasNotifications && <View style={styles.menuItemDot} />}
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/privacy-policy");
+              }}
+            >
+              <Text style={styles.menuItemText}>Privacy Policy</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/terms-of-service");
+              }}
+            >
+              <Text style={styles.menuItemText}>Terms of Service</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/customer-care");
+              }}
+            >
+              <Text style={styles.menuItemText}>Reach out to Customer Care</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                signOut();
+              }}
+            >
+              <Text style={styles.menuItemText}>Sign out</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -207,7 +290,44 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, gap: 12, flexGrow: 1 },
-  logo: { width: 220, height: 98, alignSelf: "center" },
+  logo: { width: 240, height: 107, alignSelf: "center" },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  headerSide: { width: 40, alignSelf: "flex-start" },
+  menuButton: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingHorizontal: 8, paddingTop: 0, paddingBottom: 4 },
+  menuIconDot: {
+    position: "absolute",
+    top: -1,
+    right: -1,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.danger,
+    borderWidth: 1,
+    borderColor: colors.surface,
+  },
+  menuButtonText: { fontSize: 14, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary },
+  menuBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.25)", alignItems: "flex-end" },
+  menuCard: {
+    marginTop: 44,
+    marginRight: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: 260,
+    overflow: "hidden",
+  },
+  menuItem: { paddingVertical: 18, paddingHorizontal: 20 },
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+  },
+  menuItemText: { fontSize: 14, fontFamily: "Montserrat_600SemiBold", color: colors.textPrimary },
+  menuItemDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
+  menuDivider: { height: 1, backgroundColor: colors.border },
   welcome: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "left" },
   hint: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular", textAlign: "center" },
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 4, color: colors.textPrimary },
@@ -257,6 +377,4 @@ const styles = StyleSheet.create({
   playerTileName: { fontSize: 14, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
   playerTilePrivate: { fontSize: 10, fontFamily: "Montserrat_400Regular", color: colors.textMuted, textAlign: "center", marginTop: 4 },
   spacer: { flex: 1 },
-  footerLinks: { textAlign: "center", fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
-  legalLink: { color: colors.accent, fontFamily: "Montserrat_400Regular" },
 });

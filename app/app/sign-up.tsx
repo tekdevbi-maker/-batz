@@ -28,14 +28,16 @@ export default function SignUpScreen() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [attemptedSignUp, setAttemptedSignUp] = useState(false);
   const [step, setStep] = useState<"form" | "attest">("form");
 
+  // No longer waits on `session` -- email confirmation is required, so
+  // signUp() doesn't return an active session anymore. Success now means
+  // routing straight to /verify-email instead.
   useEffect(() => {
-    if (session && attemptedSignUp) {
+    if (session) {
       router.replace("/");
     }
-  }, [session, attemptedSignUp, router]);
+  }, [session, router]);
 
   const canSubmit =
     !!firstName.trim() &&
@@ -50,7 +52,7 @@ export default function SignUpScreen() {
     setError(null);
     try {
       await signUp(email.trim(), password, { firstName: firstName.trim(), lastName: lastName.trim() });
-      setAttemptedSignUp(true);
+      router.push({ pathname: "/verify-email", params: { email: email.trim() } });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
