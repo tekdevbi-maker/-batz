@@ -204,7 +204,7 @@ export default function PlayerProfileScreen() {
     setTransferOfferBusy(true);
     setTransferOfferError(null);
     try {
-      await respondToTransferOffer(supabase, transferOffer.requestId, agree);
+      await respondToTransferOffer(supabase, transferOffer.requestId, agree, transferOffer.playerName);
       const claimedPlayerId = transferOffer.playerId;
       setTransferOffer(null);
       if (agree) {
@@ -245,7 +245,7 @@ export default function PlayerProfileScreen() {
     setAttestBusy(true);
     setAttestError(null);
     try {
-      await attestPlayerParent(supabase, profile.playerId);
+      await attestPlayerParent(supabase, profile.playerId, profile.realName ?? profile.displayName);
       setAttestModalOpen(false);
       router.push({ pathname: "/player-onboarding", params: { playerIds: profile.playerId } });
     } catch (err) {

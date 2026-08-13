@@ -11,7 +11,7 @@ import SafeTopSpacer from "../components/SafeTopSpacer";
 // Replace EFFECTIVE_DATE and CONTACT_EMAIL, and have this reviewed by a
 // lawyer before real users onboard -- this is a solid first draft, not
 // legal advice.
-const EFFECTIVE_DATE = "August 4, 2026";
+const EFFECTIVE_DATE = "August 14, 2026";
 const CONTACT_EMAIL = "tekdevbi@gmail.com";
 
 const SECTIONS: Array<{ heading: string; body: string }> = [
@@ -26,7 +26,8 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     heading: "Children's privacy",
     body:
       "@Batz accounts require the account holder to be at least 13 years old -- this is confirmed with an " +
-      "age attestation at sign-up, before an account is ever created. Players themselves do not create accounts " +
+      "age attestation at sign-up, before an account is ever created, and the email address used to sign up " +
+      "must be confirmed with a verification code before the account can be used. Players themselves do not create accounts " +
       "and do not provide any information directly to @Batz, regardless of age. All information about a player " +
       "(name, uniform number, stats) is entered by the coach or parent/guardian who registers or imports that " +
       "player. Whoever registers a player is the accountable party for that player's account-related decisions -- " +
@@ -44,10 +45,15 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "they never appear on any leaderboard.\n\n" +
       "A player is unlocked only after an explicit parental-consent step: either a parent/guardian requests to " +
       "claim the player and the coach approves it, or a coach offers the player to a specific team member who " +
-      "must then agree before anything changes. Either way, the parent/guardian sees and agrees to a consent " +
-      "screen describing what unlocking means before it takes effect. A parent/guardian can unlink a player at " +
+      "must then agree before anything changes. Either way, the parent/guardian must scroll through and agree to " +
+      "a consent screen -- itemizing what information is collected, how it's used, how long it's kept, and their " +
+      "rights -- before unlocking takes effect, and receives a confirmation email immediately afterward with a " +
+      "window to flag it if the agreement wasn't actually theirs. A parent/guardian can unlink a player at " +
       "any time afterward, returning them to the locked state; a team's Head Coach can also unlink a player " +
-      "unilaterally.",
+      "unilaterally.\n\n" +
+      "A parent/guardian can also set a player's visibility to \"Only Me\" from Player Settings: the player's " +
+      "card (name, photo, uniform number) remains visible to other users, but hitting statistics are replaced " +
+      "with a placeholder for everyone except that parent/guardian.",
   },
   {
     heading: "Information we collect",
@@ -92,17 +98,22 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
   {
     heading: "Third-party service providers",
     body:
-      "@Batz is built on Supabase (database, authentication, and hosting) and, for future account-recovery email " +
-      "delivery, a transactional email provider. These providers process data solely to provide their " +
-      "infrastructure service to @Batz and are not permitted to use it for their own purposes.",
+      "@Batz is built on Supabase (database, authentication, and hosting) and Resend (delivery of account " +
+      "verification, password-recovery, and consent-confirmation emails). These providers process data solely " +
+      "to provide their infrastructure service to @Batz and are not permitted to use it for their own purposes. " +
+      "@Batz does not use advertising or analytics tracking SDKs; if that ever changes, any such integration " +
+      "will be configured as child-directed (no behavioral targeting or device-level tracking).",
   },
   {
     heading: "Data retention and deletion",
     body:
-      "Information is retained as long as the associated account or team is active. To request deletion of an " +
-      "account or a player's information, contact us at " + CONTACT_EMAIL + ". Deleting a player removes their " +
-      "profile; the underlying game stats remain as part of the team's historical record but are no longer " +
-      "linked to a claimed player.",
+      "Information is retained as long as the associated account or team is active. An unclaimed (locked) " +
+      "player's identifying information -- name, photo, and uniform number -- is automatically and permanently " +
+      "deleted once the coach marks that team's season complete; only an anonymized, non-attributable team " +
+      "total of that player's statistics is kept afterward, and the player can no longer be claimed. A claimed " +
+      "player's career statistics are retained for as long as their profile remains claimed. You can delete " +
+      "your own account at any time from User Settings, which removes your personal account information. To " +
+      "request deletion of a specific player's information, contact us at " + CONTACT_EMAIL + ".",
   },
   {
     heading: "Your choices",

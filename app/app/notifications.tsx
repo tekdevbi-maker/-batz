@@ -63,7 +63,7 @@ export default function NotificationsScreen() {
     try {
       const playerIds = newlyAssigned.map((p) => p.playerId);
       for (const player of newlyAssigned) {
-        await attestPlayerParent(supabase, player.playerId);
+        await attestPlayerParent(supabase, player.playerId, player.displayName);
       }
       await acknowledgeNewPlayers(supabase);
       setNewlyAssignedOpen(false);

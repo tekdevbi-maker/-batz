@@ -237,15 +237,37 @@ export async function listMyPendingTransferOffers(supabase: SupabaseClient): Pro
   }));
 }
 
+// Gap #1's passive confirmatory email -- fired best-effort right after
+// consent takes effect (attestPlayerParent / respondToTransferOffer
+// agreeing). Never blocks or fails the caller: the consent itself
+// already happened by the time this runs, so a delivery failure here
+// shouldn't undo it or interrupt the parent's flow into the wizard.
+async function sendAttestationConfirmation(supabase: SupabaseClient, playerName: string): Promise<void> {
+  try {
+    await supabase.functions.invoke("send-attestation-confirmation", { body: { playerName } });
+  } catch {
+    // Best-effort -- swallow. Nothing meaningful for the caller to do
+    // with a failed confirmation-email send.
+  }
+}
+
 // The target's response to a coach-initiated offer -- agreeing is the one
 // place a coach-offered transfer actually changes ownership.
-export async function respondToTransferOffer(supabase: SupabaseClient, requestId: string, agree: boolean): Promise<void> {
+export async function respondToTransferOffer(
+  supabase: SupabaseClient,
+  requestId: string,
+  agree: boolean,
+  playerName?: string
+): Promise<void> {
   const { error } = await supabase.rpc("respond_to_transfer_offer", { p_request_id: requestId, p_agree: agree });
   if (error) {
     if (error.message?.includes("team_at_capacity")) {
       throw new TeamAtCapacityError("This team's 100-member limit has been reached.");
     }
     throw error;
+  }
+  if (agree && playerName) {
+    await sendAttestationConfirmation(supabase, playerName);
   }
 }
 
@@ -260,10 +282,14 @@ export async function unlinkPlayer(supabase: SupabaseClient, playerId: string): 
 
 // "I am the parent for this player": logs the attestation and unlocks
 // full parent-level Settings access for the coach on this specific
-// player, without reassigning parent_user_id.
-export async function attestPlayerParent(supabase: SupabaseClient, playerId: string): Promise<void> {
+// player, without reassigning parent_user_id. playerName, when passed,
+// triggers Gap #1's passive confirmatory email.
+export async function attestPlayerParent(supabase: SupabaseClient, playerId: string, playerName?: string): Promise<void> {
   const { error } = await supabase.rpc("attest_player_parent", { p_player_id: playerId });
   if (error) throw error;
+  if (playerName) {
+    await sendAttestationConfirmation(supabase, playerName);
+  }
 }
 
 export class AlreadyClaimedByParentError extends Error {}
