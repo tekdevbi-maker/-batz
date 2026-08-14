@@ -244,27 +244,34 @@ export default function TeamHomeScreen() {
       />
       <View style={styles.frozenSection}>
         <View style={styles.headerRow}>
-          <Pressable style={styles.teamLogoContainer} onPress={handlePickLogo} disabled={!isHeadCoach || uploadingLogo}>
-            {context?.teamLogoUrl ? (
-              <Image source={{ uri: context.teamLogoUrl }} style={styles.teamLogo} resizeMode="contain" />
-            ) : (
-              <View style={styles.teamLogoPlaceholder}>
-                <Text style={styles.teamLogoPlaceholderText}>
-                  {isHeadCoach ? "Upload Your Team Logo" : "No Team Logo"}
-                </Text>
-              </View>
-            )}
-            {uploadingLogo && (
-              <View style={styles.teamLogoUploadOverlay}>
-                <ActivityIndicator color="white" />
-              </View>
-            )}
+          <View style={styles.teamLogoContainer}>
+            <Pressable onPress={handlePickLogo} disabled={!isHeadCoach || uploadingLogo}>
+              {context?.teamLogoUrl ? (
+                <Image source={{ uri: context.teamLogoUrl }} style={styles.teamLogo} resizeMode="contain" />
+              ) : (
+                <View style={styles.teamLogoPlaceholder}>
+                  <Text style={styles.teamLogoPlaceholderText}>
+                    {isHeadCoach ? "Upload Your Team Logo" : "No Team Logo"}
+                  </Text>
+                </View>
+              )}
+              {uploadingLogo && (
+                <View style={styles.teamLogoUploadOverlay}>
+                  <ActivityIndicator color="white" />
+                </View>
+              )}
+            </Pressable>
             {isCoach && pendingClaimCount > 0 && (
-              <View style={styles.badge}>
+              // Separate from the logo's own Pressable (which opens the
+              // logo-upload flow, or is disabled entirely for assistant
+              // coaches) -- this badge needs its own tap target that
+              // actually leads to what it's counting: the pending claim
+              // requests on the Members screen.
+              <Pressable style={styles.badge} onPress={() => router.push(`/team/${teamId}/members`)}>
                 <Text style={styles.badgeText}>{pendingClaimCount}</Text>
-              </View>
+              </Pressable>
             )}
-          </Pressable>
+          </View>
 
           <Pressable
             style={styles.statsChart}
