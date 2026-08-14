@@ -22,7 +22,6 @@ import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 import CopyableLink from "../../../components/CopyableLink";
 import CircleCropModal from "../../../components/CircleCropModal";
-import { OutlinedText } from "../../../components/PlayerCard";
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -285,22 +284,18 @@ export default function TeamHomeScreen() {
               <Text style={styles.statLabel}>Games</Text>
             </View>
             <View style={styles.statBlock}>
-              <OutlinedText fontSize={20} stroke={0.7} style={styles.statNumberOutlined}>
-                {String(teamAB)}
-              </OutlinedText>
-              <Text style={[styles.statLabel, styles.statLabelRed]}>AB</Text>
+              <Text style={styles.statNumber}>{String(teamAB)}</Text>
+              <Text style={styles.statLabel}>AB</Text>
             </View>
             <View style={styles.statBlock}>
-              <OutlinedText fontSize={20} stroke={0.7} style={styles.statNumberOutlined}>
-                {String(teamHits)}
-              </OutlinedText>
-              <Text style={[styles.statLabel, styles.statLabelRed]}>Hits</Text>
+              <Text style={styles.statNumber}>{String(teamHits)}</Text>
+              <Text style={styles.statLabel}>Hits</Text>
             </View>
             <View style={styles.statBlock}>
-              <OutlinedText fontSize={20} stroke={0.7} style={styles.statNumberOutlined}>
+              <Text style={styles.statNumber}>
                 {(teamAB === 0 ? 0 : teamHits / teamAB).toFixed(3).replace(/^0\./, ".")}
-              </OutlinedText>
-              <Text style={[styles.statLabel, styles.statLabelRed]}>Avg</Text>
+              </Text>
+              <Text style={styles.statLabel}>Avg</Text>
             </View>
           </Pressable>
         </View>
@@ -603,7 +598,6 @@ const styles = StyleSheet.create({
   },
   statBlock: { alignItems: "center", width: 70 },
   statNumber: { fontSize: 20, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
-  statNumberOutlined: { fontFamily: "Montserrat_700Bold" },
   statLabel: {
     fontSize: 11,
     fontFamily: "Montserrat_400Regular",
@@ -612,7 +606,6 @@ const styles = StyleSheet.create({
     width: 70,
     textAlign: "center",
   },
-  statLabelRed: { color: colors.danger, fontFamily: "Montserrat_700Bold" },
   badge: {
     position: "absolute",
     top: -6,
