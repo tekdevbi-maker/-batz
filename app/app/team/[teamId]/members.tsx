@@ -295,7 +295,7 @@ export default function TeamMembersScreen() {
             </Pressable>
           ) : (
             <View style={styles.memberButtonRow}>
-              {member.role === "follower" && (
+              {(member.role === "follower" || member.role === "parent") && (
                 <Pressable style={styles.actionButton} onPress={() => openVerify(member)}>
                   <Text style={styles.actionButtonText}>Verify</Text>
                 </Pressable>
