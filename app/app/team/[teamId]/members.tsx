@@ -21,7 +21,10 @@ import {
   denyClaimRequest,
   TeamAtCapacityError,
   getTeamJoinContext,
+  listPendingSentOffers,
+  cancelTransferOffer,
   type PendingClaimRequest,
+  type PendingSentOffer,
 } from "../../../lib/claimRepository";
 import { colors } from "../../../lib/theme";
 
@@ -52,6 +55,7 @@ export default function TeamMembersScreen() {
   const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingClaimRequest[]>([]);
+  const [sentOffers, setSentOffers] = useState<PendingSentOffer[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
@@ -83,7 +87,12 @@ export default function TeamMembersScreen() {
       : listPendingClaimRequests(supabase, teamId)
           .then(setPendingRequests)
           .catch((err) => setError(errorMessage(err)));
-    await Promise.all([membersPromise, requestsPromise]);
+    const sentOffersPromise = transferRosterEntryId
+      ? Promise.resolve()
+      : listPendingSentOffers(supabase, teamId)
+          .then(setSentOffers)
+          .catch(() => {});
+    await Promise.all([membersPromise, requestsPromise, sentOffersPromise]);
     setLoaded(true);
   }, [teamId, transferRosterEntryId]);
 
@@ -208,6 +217,19 @@ export default function TeamMembersScreen() {
     }
   }
 
+  async function handleCancelOffer(requestId: string) {
+    setBusyRequestId(requestId);
+    setError(null);
+    try {
+      await cancelTransferOffer(supabase, requestId);
+      load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusyRequestId(null);
+    }
+  }
+
   if (!teamId) return null;
 
   if (!loaded) {
@@ -280,6 +302,23 @@ export default function TeamMembersScreen() {
             {member.claimedPlayerNames && (
               <Text style={styles.roleLabel}>Parent of {member.claimedPlayerNames}</Text>
             )}
+            {sentOffers
+              .filter((offer) => offer.targetUserId === member.userId)
+              .map((offer) => (
+                <View key={offer.requestId} style={styles.pendingOfferRow}>
+                  <Text style={styles.pendingOfferText}>Pending to claim {offer.playerName}</Text>
+                  <Pressable
+                    disabled={busyRequestId === offer.requestId}
+                    onPress={() => handleCancelOffer(offer.requestId)}
+                  >
+                    {busyRequestId === offer.requestId ? (
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    ) : (
+                      <Text style={styles.pendingOfferCancel}>Cancel</Text>
+                    )}
+                  </Pressable>
+                </View>
+              ))}
           </View>
           {transferRosterEntryId ? (
             <Pressable
@@ -398,6 +437,9 @@ const styles = StyleSheet.create({
   email: { color: colors.textPrimary, fontSize: 15, fontFamily: "Montserrat_600SemiBold" },
   emailSecondary: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular" },
   roleLabel: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular" },
+  pendingOfferRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  pendingOfferText: { color: colors.textSecondary, fontSize: 13, fontFamily: "Montserrat_400Regular", fontStyle: "italic" },
+  pendingOfferCancel: { color: colors.danger, fontSize: 13, fontFamily: "Montserrat_600SemiBold" },
   actionButton: {
     borderWidth: 1,
     borderColor: colors.border,

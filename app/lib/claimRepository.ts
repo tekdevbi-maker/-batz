@@ -366,6 +366,35 @@ export async function denyClaimRequest(supabase: SupabaseClient, requestId: stri
   if (error) throw error;
 }
 
+export interface PendingSentOffer {
+  requestId: string;
+  playerId: string;
+  playerName: string;
+  targetUserId: string;
+  createdAt: string;
+}
+
+// Coach's own outstanding "Verify"/transfer offers on this team, awaiting
+// the target fan's decision -- excluded from listPendingClaimRequests
+// (nothing for the coach to approve there), but still worth surfacing so
+// a coach can see who they're waiting on and cancel a mistaken offer.
+export async function listPendingSentOffers(supabase: SupabaseClient, teamId: string): Promise<PendingSentOffer[]> {
+  const { data, error } = await supabase.rpc("list_pending_transfer_offers_for_team", { p_team_id: teamId });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    requestId: r.request_id,
+    playerId: r.player_id,
+    playerName: r.player_name,
+    targetUserId: r.target_user_id,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function cancelTransferOffer(supabase: SupabaseClient, requestId: string): Promise<void> {
+  const { error } = await supabase.rpc("cancel_transfer_offer", { p_request_id: requestId });
+  if (error) throw error;
+}
+
 // Badge count for the Team Home "Team Members" tile.
 export async function countPendingClaimRequests(supabase: SupabaseClient, teamId: string): Promise<number> {
   const { data, error } = await supabase.rpc("count_pending_claim_requests_for_team", { p_team_id: teamId });
