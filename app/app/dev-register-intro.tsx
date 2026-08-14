@@ -30,10 +30,6 @@ export default function DevRegisterIntroScreen() {
           Keep it fun. Keep your hitters motivated. And watch them improve at every{" "}
           <Image source={require("../assets/favicon.png")} style={styles.inlineThumb} resizeMode="contain" />.
         </Text>
-        <Text style={styles.note}>
-          If you are the Head Coach of another team, click on "Head Coach? Start New Team!" in the @Batz
-          Home screen menu on the top-right.
-        </Text>
         <View style={styles.navSpacer}>
           {/* No Back button -- the account (via email verification) already
               exists by this point; going back would only land on the now-
@@ -55,7 +51,6 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, marginBottom: 12, lineHeight: 32, textAlign: "center" },
   bodyClosing: { fontSize: 16, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, marginBottom: 12, lineHeight: 32, textAlign: "center" },
   emphasis: { fontSize: 16, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, marginBottom: 12, textAlign: "center" },
-  note: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textMuted, marginTop: 4, lineHeight: 20, textAlign: "center" },
   inlineThumb: { width: 38, height: 38, marginLeft: 4, transform: [{ translateY: 10 }] },
   navSpacer: { marginTop: 24 },
 });

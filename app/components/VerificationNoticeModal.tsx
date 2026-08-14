@@ -16,12 +16,12 @@ export function verificationNoticeText(playerNames: string): string {
     "Data Collection & Privacy Consent: By proceeding, you explicitly authorize the collection, processing, " +
     "and public or team-wide display of the player's name, performance statistics, and associated athletic " +
     "data within this application.\n\n" +
-    "What We Collect: the player's name, uniform number, hitting statistics, and, only if you choose to add " +
-    "one, a photo. On the next screen, you will choose how this information is displayed -- Public (any " +
-    "signed-in user), Private (this player's own team only), or Only Me (hidden from everyone but you, " +
-    "though the player's card remains visible).\n\n" +
+    "What We Collect: the player's name, uniform number, hitting statistics, and photo (optional). These may " +
+    "always be adjusted in the player's Settings. On the next screen, you will choose how this information is " +
+    "displayed -- Public (any signed-in user), Private (this player's own team only), or Only Me (hidden from " +
+    "everyone but you, though the player's card remains visible).\n\n" +
     "Data Retention: for transparency, any player profile that is never claimed by a parent is permanently " +
-    "anonymized once its team's season is marked complete by the coach -- the player's name, photo, and " +
+    "anonymized once its team's season is marked complete by the coach. The player's name, photo, and " +
     "uniform number are deleted outright, and only an anonymous, non-attributable team total is kept. " +
     "Once you agree below, this profile is no longer subject to that process while you remain its " +
     "Parent/Legal Guardian.\n\n" +
