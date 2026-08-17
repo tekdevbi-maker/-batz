@@ -12,6 +12,36 @@ export interface ExistingGameSummary {
   opponent: string | null;
 }
 
+export interface LiveScoringRosterEntry {
+  rosterEntryId: string;
+  uniformNumber: number;
+  firstName: string;
+  lastName: string;
+}
+
+// Live scoring needs the literal roster_entry names (what CSV import
+// matches against, see matchOrCreateRosterEntries), not the identity-gated
+// display name statsRepository's getTeamRosterWithSeasonStats returns --
+// a coach setting a batting order for their own team already knows who's
+// who regardless of a still-locked player's consent state.
+export async function listRosterEntriesForLiveScoring(
+  supabase: SupabaseClient,
+  teamId: string
+): Promise<LiveScoringRosterEntry[]> {
+  const { data, error } = await supabase
+    .from("roster_entry")
+    .select("id, uniform_number, first_name, last_name")
+    .eq("team_id", teamId)
+    .order("uniform_number");
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    rosterEntryId: row.id,
+    uniformNumber: row.uniform_number,
+    firstName: row.first_name ?? "",
+    lastName: row.last_name ?? "",
+  }));
+}
+
 function toSummary(row: {
   id: string;
   game_number: number;

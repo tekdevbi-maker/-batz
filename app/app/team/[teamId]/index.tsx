@@ -471,6 +471,16 @@ export default function TeamHomeScreen() {
                   style={styles.menuItem}
                   onPress={() => {
                     setMenuVisible(false);
+                    router.push({ pathname: "/live-score-setup", params: { teamId } });
+                  }}
+                >
+                  <Text style={styles.menuItemText}>Live Scoring</Text>
+                </Pressable>
+                <View style={styles.menuDivider} />
+                <Pressable
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setMenuVisible(false);
                     router.push(`/team/${teamId}/members`);
                   }}
                 >

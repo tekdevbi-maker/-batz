@@ -129,6 +129,8 @@ export default function RootLayout() {
           <Stack.Screen name="previous-teams" options={{ title: "" }} />
           <Stack.Screen name="join-team" options={{ title: "" }} />
           <Stack.Screen name="import-game" options={{ title: "Import a Game" }} />
+          <Stack.Screen name="live-score-setup" options={{ title: "Live Scoring" }} />
+          <Stack.Screen name="live-score" options={{ title: "Live Scoring" }} />
           <Stack.Screen name="shared-csv" options={{ title: "Import Game" }} />
           <Stack.Screen name="admin" options={{ title: "League/Division Admin" }} />
           <Stack.Screen name="join/[teamId]" options={{ title: "Join Team" }} />
