@@ -89,7 +89,23 @@ export default function LiveScoreScreen() {
   // "Add Batter"/"Replace Batter" can offer bench players who weren't
   // picked during lineup setup.
   const [fullRoster, setFullRoster] = useState<LiveScoringRosterEntry[]>([]);
-  const [pickerMode, setPickerMode] = useState<"add" | "replace" | null>(null);
+
+  // Three lineup-editing flows, each a small multi-step wizard against the
+  // same "action" state:
+  //  - add: pick a bench player, THEN pick where in the order they bat.
+  //  - replace: pick which lineup slot is coming out, THEN pick who's
+  //    coming in off the bench for that slot.
+  //  - bench: pick a lineup slot to remove outright for the rest of the
+  //    game (e.g. injury) -- single step, no bench-player selection.
+  const [action, setAction] = useState<"add" | "replace" | "bench" | null>(null);
+  const [addPlayerPending, setAddPlayerPending] = useState<LiveScoringRosterEntry | null>(null);
+  const [replaceSlotIndex, setReplaceSlotIndex] = useState<number | null>(null);
+
+  function closeLineupAction() {
+    setAction(null);
+    setAddPlayerPending(null);
+    setReplaceSlotIndex(null);
+  }
 
   useEffect(() => {
     if (!teamId) return;
@@ -100,17 +116,48 @@ export default function LiveScoreScreen() {
     (r) => !lineup.some((p) => p.rosterEntryId === r.rosterEntryId)
   );
 
-  function handleAddBatter(player: LiveScoringRosterEntry) {
-    setLineup((prev) => [...prev, { ...player }]);
-    setPickerMode(null);
-  }
-
-  function handleReplaceBatter(player: LiveScoringRosterEntry) {
-    setLineup((prev) => prev.map((p, i) => (i === currentIndex ? { ...player } : p)));
-    setPickerMode(null);
-  }
-
   const currentIndex = lineup.length > 0 ? nextBatterIndex % lineup.length : 0;
+
+  // Inserting shifts everyone from that position on down one slot -- if
+  // the insert lands at or before whoever's currently up, nudge the
+  // pointer forward too so it keeps referring to the same real person.
+  function handleConfirmAddPosition(position: number) {
+    if (!addPlayerPending) return;
+    const player = addPlayerPending;
+    setLineup((prev) => {
+      const next = [...prev];
+      next.splice(position, 0, { ...player });
+      return next;
+    });
+    setNextBatterIndex((prev) => (position <= prev ? prev + 1 : prev));
+    closeLineupAction();
+  }
+
+  function handleConfirmReplacePlayer(player: LiveScoringRosterEntry) {
+    if (replaceSlotIndex === null) return;
+    const slot = replaceSlotIndex;
+    setLineup((prev) => prev.map((p, i) => (i === slot ? { ...player } : p)));
+    closeLineupAction();
+  }
+
+  // Removing a slot shifts everyone after it down one -- keep the pointer
+  // on the same real person: if the benched player was still upcoming
+  // (before the pointer), shift back one; if they were the one about to
+  // bat, the next lineup player slides into that same numeric slot
+  // already, so the index itself doesn't need to move (just re-wrap).
+  function handleConfirmBench(slot: number) {
+    if (lineup.length <= 1) {
+      Alert.alert("Can't bench", "At least one batter has to stay in the lineup.");
+      return;
+    }
+    const newLength = lineup.length - 1;
+    setLineup((prev) => prev.filter((_, i) => i !== slot));
+    setNextBatterIndex((prev) => {
+      const adjusted = slot < prev ? prev - 1 : prev;
+      return ((adjusted % newLength) + newLength) % newLength;
+    });
+    closeLineupAction();
+  }
 
   // Measured once the roster half lays out -- drives the grid's column
   // count (as many as fit, biggest cards that still show the whole team
@@ -267,11 +314,14 @@ export default function LiveScoreScreen() {
             Now Batting: {playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}
           </Text>
           <View style={styles.lineupButtonRow}>
-            <Pressable style={styles.lineupButton} onPress={() => setPickerMode("add")}>
+            <Pressable style={styles.lineupButton} onPress={() => setAction("add")}>
               <Text style={styles.lineupButtonText}>Add Batter</Text>
             </Pressable>
-            <Pressable style={styles.lineupButton} onPress={() => setPickerMode("replace")}>
+            <Pressable style={styles.lineupButton} onPress={() => setAction("replace")}>
               <Text style={styles.lineupButtonText}>Replace Batter</Text>
+            </Pressable>
+            <Pressable style={styles.lineupButton} onPress={() => setAction("bench")}>
+              <Text style={styles.lineupButtonText}>Bench Batter</Text>
             </Pressable>
           </View>
         </View>
@@ -344,25 +394,95 @@ export default function LiveScoreScreen() {
         </Pressable>
       </View>
 
-      <Modal visible={pickerMode !== null} transparent animationType="fade" onRequestClose={() => setPickerMode(null)}>
+      <Modal visible={action !== null} transparent animationType="fade" onRequestClose={closeLineupAction}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {pickerMode === "add" ? "Add a Batter" : `Replace ${playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}`}
-            </Text>
-            <ScrollView style={styles.modalList}>
-              {benchPlayers.length === 0 && <Text style={styles.modalEmpty}>No other roster players available.</Text>}
-              {benchPlayers.map((player) => (
-                <Pressable
-                  key={player.rosterEntryId}
-                  style={styles.modalRow}
-                  onPress={() => (pickerMode === "add" ? handleAddBatter(player) : handleReplaceBatter(player))}
-                >
-                  <Text style={styles.modalRowText}>{playerLabel(player.uniformNumber, player.firstName, player.lastName)}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable style={styles.modalCancel} onPress={() => setPickerMode(null)}>
+            {/* Add, step 1: pick who's coming off the bench. */}
+            {action === "add" && !addPlayerPending && (
+              <>
+                <Text style={styles.modalTitle}>Add a Batter</Text>
+                <ScrollView style={styles.modalList}>
+                  {benchPlayers.length === 0 && <Text style={styles.modalEmpty}>No other roster players available.</Text>}
+                  {benchPlayers.map((player) => (
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => setAddPlayerPending(player)}>
+                      <Text style={styles.modalRowText}>{playerLabel(player.uniformNumber, player.firstName, player.lastName)}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            {/* Add, step 2: pick where in the order they'll bat. */}
+            {action === "add" && addPlayerPending && (
+              <>
+                <Text style={styles.modalTitle}>
+                  Where does {playerLabel(addPlayerPending.uniformNumber, addPlayerPending.firstName, addPlayerPending.lastName)} bat?
+                </Text>
+                <ScrollView style={styles.modalList}>
+                  {lineup.map((player, index) => (
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => handleConfirmAddPosition(index)}>
+                      <Text style={styles.modalRowText}>
+                        {index + 1}. Before {playerLabel(player.uniformNumber, player.firstName, player.lastName)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  <Pressable style={styles.modalRow} onPress={() => handleConfirmAddPosition(lineup.length)}>
+                    <Text style={styles.modalRowText}>{lineup.length + 1}. Bat last</Text>
+                  </Pressable>
+                </ScrollView>
+              </>
+            )}
+
+            {/* Replace, step 1: pick who's coming out. */}
+            {action === "replace" && replaceSlotIndex === null && (
+              <>
+                <Text style={styles.modalTitle}>Replace Who?</Text>
+                <ScrollView style={styles.modalList}>
+                  {lineup.map((player, index) => (
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => setReplaceSlotIndex(index)}>
+                      <Text style={styles.modalRowText}>
+                        {index + 1}. {playerLabel(player.uniformNumber, player.firstName, player.lastName)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            {/* Replace, step 2: pick who's coming in for that slot. */}
+            {action === "replace" && replaceSlotIndex !== null && (
+              <>
+                <Text style={styles.modalTitle}>
+                  Replace {playerLabel(lineup[replaceSlotIndex].uniformNumber, lineup[replaceSlotIndex].firstName, lineup[replaceSlotIndex].lastName)} With
+                </Text>
+                <ScrollView style={styles.modalList}>
+                  {benchPlayers.length === 0 && <Text style={styles.modalEmpty}>No other roster players available.</Text>}
+                  {benchPlayers.map((player) => (
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => handleConfirmReplacePlayer(player)}>
+                      <Text style={styles.modalRowText}>{playerLabel(player.uniformNumber, player.firstName, player.lastName)}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            {/* Bench: pick who's coming out of the game for good. */}
+            {action === "bench" && (
+              <>
+                <Text style={styles.modalTitle}>Bench Which Batter?</Text>
+                <ScrollView style={styles.modalList}>
+                  {lineup.map((player, index) => (
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => handleConfirmBench(index)}>
+                      <Text style={styles.modalRowText}>
+                        {index + 1}. {playerLabel(player.uniformNumber, player.firstName, player.lastName)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            <Pressable style={styles.modalCancel} onPress={closeLineupAction}>
               <Text style={styles.modalCancelText}>Cancel</Text>
             </Pressable>
           </View>
@@ -404,7 +524,7 @@ const styles = StyleSheet.create({
   bottomHalf: { flex: 1, padding: 16, paddingBottom: 24, justifyContent: "space-between" },
   batterRow: { gap: 6 },
   batterName: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
-  lineupButtonRow: { flexDirection: "row", gap: 8, justifyContent: "center" },
+  lineupButtonRow: { flexDirection: "row", gap: 8, justifyContent: "center", flexWrap: "wrap" },
   lineupButton: {
     borderWidth: 1,
     borderColor: colors.accent,
