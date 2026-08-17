@@ -69,7 +69,7 @@ export default function LiveScoreSetupScreen() {
     });
   }
 
-  function handleStartGame() {
+  function handleContinue() {
     if (!teamId || order.length === 0) return;
     updateLiveScoreState({
       teamId,
@@ -83,7 +83,7 @@ export default function LiveScoreSetupScreen() {
       atBats: [],
       nextBatterIndex: 0,
     });
-    router.push({ pathname: "/live-score", params: { teamId } });
+    router.push({ pathname: "/live-score-game-info", params: { teamId } });
   }
 
   if (!session || !teamId) return null;
@@ -143,9 +143,9 @@ export default function LiveScoreSetupScreen() {
       <Pressable
         style={[styles.button, order.length === 0 && styles.buttonDisabled]}
         disabled={order.length === 0}
-        onPress={handleStartGame}
+        onPress={handleContinue}
       >
-        <Text style={styles.buttonText}>Start Game</Text>
+        <Text style={styles.buttonText}>Next</Text>
       </Pressable>
     </ScrollView>
   );

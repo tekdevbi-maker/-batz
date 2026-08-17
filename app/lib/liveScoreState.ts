@@ -25,6 +25,8 @@ export interface LiveScoreState {
   atBats: AtBatEntry[];
   // Index into `lineup` for whoever bats next.
   nextBatterIndex: number;
+  gameNumber: string;
+  opponent: string;
 }
 
 function initialState(): LiveScoreState {
@@ -34,6 +36,8 @@ function initialState(): LiveScoreState {
     lineup: [],
     atBats: [],
     nextBatterIndex: 0,
+    gameNumber: "",
+    opponent: "",
   };
 }
 

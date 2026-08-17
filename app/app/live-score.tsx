@@ -78,6 +78,8 @@ export default function LiveScoreScreen() {
   const initial = getLiveScoreState();
   const [lineup, setLineup] = useState<LineupPlayer[]>(initial.lineup);
   const [teamName] = useState(initial.teamName);
+  const [gameNumber] = useState(initial.gameNumber);
+  const [opponent] = useState(initial.opponent);
   const [atBats, setAtBats] = useState<AtBatEntry[]>(initial.atBats);
   const [nextBatterIndex, setNextBatterIndex] = useState(initial.nextBatterIndex);
   const [pendingOutcome, setPendingOutcome] = useState<AtBatOutcome | null>(null);
@@ -204,8 +206,10 @@ export default function LiveScoreScreen() {
   useEffect(() => {
     if (lineup.length === 0 && teamId) {
       router.replace({ pathname: "/live-score-setup", params: { teamId } });
+    } else if (lineup.length > 0 && !gameNumber && teamId) {
+      router.replace({ pathname: "/live-score-game-info", params: { teamId } });
     }
-  }, [lineup.length, teamId, router]);
+  }, [lineup.length, gameNumber, teamId, router]);
 
   if (!session || !teamId || lineup.length === 0) return null;
 
@@ -233,8 +237,13 @@ export default function LiveScoreScreen() {
     setSaveError(null);
     try {
       const csvText = buildLiveScoreCsv(lineup, atBats);
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const fileName = `batz_live_${datePart}_${(teamName || "team").replace(/[^a-zA-Z0-9]+/g, "_")}.csv`;
+      const now = new Date();
+      const mmddyy =
+        String(now.getMonth() + 1).padStart(2, "0") +
+        String(now.getDate()).padStart(2, "0") +
+        String(now.getFullYear()).slice(-2);
+      const safe = (text: string) => text.replace(/[^a-zA-Z0-9]+/g, "");
+      const fileName = `batz_live_game${safe(gameNumber || "1")}_${mmddyy}_${safe(teamName || "Team")}vs${safe(opponent || "Opponent")}.csv`;
       const mimeType = "text/csv";
 
       if (Platform.OS === "android") {
