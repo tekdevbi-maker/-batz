@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, Alert, Platform } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Text, Pressable, StyleSheet, ScrollView, Alert, Platform, Animated } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as LegacyFileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -11,6 +11,7 @@ import {
   type AtBatOutcome,
 } from "../lib/liveScoreState";
 import { buildLiveScoreCsv } from "../lib/liveScoreExport";
+import PlayerCard from "../components/PlayerCard";
 import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -29,6 +30,8 @@ const OUTCOMES: { key: AtBatOutcome; label: string }[] = [
   { key: "SF", label: "SF" },
   { key: "OUT", label: "Out" },
 ];
+
+const CARD_SCALE_ACTIVE = 1.35;
 
 function playerLabel(uniformNumber: number, firstName: string, lastName: string): string {
   const name = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -55,6 +58,25 @@ export default function LiveScoreScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // One scale value per lineup slot -- the current batter's card animates
+  // up to CARD_SCALE_ACTIVE while every other card eases back down to 1,
+  // so the "zoom" reads as the previous batter shrinking as the next one
+  // grows, not an abrupt swap.
+  const cardScales = useRef(initial.lineup.map(() => new Animated.Value(1))).current;
+  const currentIndex = lineup.length > 0 ? nextBatterIndex % lineup.length : 0;
+
+  useEffect(() => {
+    cardScales.forEach((value, index) => {
+      Animated.spring(value, {
+        toValue: index === currentIndex ? CARD_SCALE_ACTIVE : 1,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+    });
+    // cardScales is a stable ref array, safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
+
   // Redirect back if this screen is ever reached without a lineup set up
   // (e.g. a stale deep link or a screen remount after backgrounding wiped
   // the module-scoped state).
@@ -66,7 +88,7 @@ export default function LiveScoreScreen() {
 
   if (!session || !teamId || lineup.length === 0) return null;
 
-  const currentBatter = lineup[nextBatterIndex % lineup.length];
+  const currentBatter = lineup[currentIndex];
 
   function handleConfirm() {
     if (!pendingOutcome) return;
@@ -137,13 +159,29 @@ export default function LiveScoreScreen() {
   const recentEntries = atBats.slice(-5).reverse();
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{teamName}</Text>
-      <Text style={styles.label}>Now Batting</Text>
-      <Text style={styles.batterName}>
-        {playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}
-      </Text>
+    <View style={styles.screen}>
+      <View style={styles.rosterHalf}>
+        <Text style={styles.title}>{teamName} — Now Batting: #{currentBatter.uniformNumber}</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.rosterRow}
+        >
+          {lineup.map((player, index) => (
+            <Animated.View
+              key={player.rosterEntryId}
+              style={[
+                styles.playerCardWrapper,
+                { transform: [{ scale: cardScales[index] }], zIndex: index === currentIndex ? 2 : 1 },
+              ]}
+            >
+              <PlayerCard firstName={player.firstName || `#${player.uniformNumber}`} lastName={player.lastName} />
+            </Animated.View>
+          ))}
+        </ScrollView>
+      </View>
 
+      <ScrollView style={styles.bottomHalf} contentContainerStyle={styles.container}>
       <View style={styles.outcomeGrid}>
         {OUTCOMES.map((outcome) => (
           <Pressable
@@ -198,16 +236,32 @@ export default function LiveScoreScreen() {
       <Pressable style={[styles.button, saving && styles.buttonDisabled]} disabled={saving} onPress={confirmEndGame}>
         <Text style={styles.buttonText}>{saving ? "Saving…" : "End Game"}</Text>
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  rosterHalf: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingTop: 12,
+  },
+  rosterRow: { alignItems: "center", paddingHorizontal: 20, gap: 16, flexGrow: 1 },
+  playerCardWrapper: { width: 100 },
+  bottomHalf: { flex: 1 },
   container: { padding: 20, gap: 8, paddingBottom: 48 },
-  title: { fontSize: 18, fontFamily: "Montserrat_600SemiBold", color: colors.textSecondary },
+  title: {
+    fontSize: 15,
+    fontFamily: "Montserrat_700Bold",
+    color: colors.textPrimary,
+    textAlign: "center",
+    marginBottom: 8,
+  },
   label: { fontSize: 15, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, marginTop: 16 },
-  batterName: { fontSize: 26, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
   outcomeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12, justifyContent: "center" },
   outcomeButton: {
     width: 72,
