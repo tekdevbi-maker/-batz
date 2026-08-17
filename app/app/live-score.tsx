@@ -490,6 +490,9 @@ export default function LiveScoreScreen() {
                   <Pressable style={styles.modalConfirmCancel} onPress={() => setReplacePlayerPending(null)}>
                     <Text style={styles.modalConfirmCancelText}>Back</Text>
                   </Pressable>
+                  <Pressable style={styles.modalConfirmCancel} onPress={closeLineupAction}>
+                    <Text style={styles.modalConfirmCancelText}>Cancel</Text>
+                  </Pressable>
                   <Pressable style={styles.modalConfirmButton} onPress={applyReplacePlayer}>
                     <Text style={styles.modalConfirmButtonText}>Confirm</Text>
                   </Pressable>
@@ -525,6 +528,9 @@ export default function LiveScoreScreen() {
                   <Pressable style={styles.modalConfirmCancel} onPress={() => setBenchSlotPending(null)}>
                     <Text style={styles.modalConfirmCancelText}>Back</Text>
                   </Pressable>
+                  <Pressable style={styles.modalConfirmCancel} onPress={closeLineupAction}>
+                    <Text style={styles.modalConfirmCancelText}>Cancel</Text>
+                  </Pressable>
                   <Pressable style={styles.modalConfirmButton} onPress={applyBench}>
                     <Text style={styles.modalConfirmButtonText}>Confirm</Text>
                   </Pressable>
@@ -532,9 +538,14 @@ export default function LiveScoreScreen() {
               </>
             )}
 
-            <Pressable style={styles.modalCancel} onPress={closeLineupAction}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </Pressable>
+            {!(
+              (action === "replace" && replaceSlotIndex !== null && replacePlayerPending) ||
+              (action === "bench" && benchSlotPending !== null)
+            ) && (
+              <Pressable style={styles.modalCancel} onPress={closeLineupAction}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </Modal>
