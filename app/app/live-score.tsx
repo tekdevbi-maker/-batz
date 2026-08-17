@@ -100,11 +100,18 @@ export default function LiveScoreScreen() {
   const [action, setAction] = useState<"add" | "replace" | "bench" | null>(null);
   const [addPlayerPending, setAddPlayerPending] = useState<LiveScoringRosterEntry | null>(null);
   const [replaceSlotIndex, setReplaceSlotIndex] = useState<number | null>(null);
+  // The replacement player, once picked, waits here for confirmation
+  // rather than applying immediately.
+  const [replacePlayerPending, setReplacePlayerPending] = useState<LiveScoringRosterEntry | null>(null);
+  // The slot picked for benching also waits for confirmation.
+  const [benchSlotPending, setBenchSlotPending] = useState<number | null>(null);
 
   function closeLineupAction() {
     setAction(null);
     setAddPlayerPending(null);
     setReplaceSlotIndex(null);
+    setReplacePlayerPending(null);
+    setBenchSlotPending(null);
   }
 
   useEffect(() => {
@@ -133,9 +140,10 @@ export default function LiveScoreScreen() {
     closeLineupAction();
   }
 
-  function handleConfirmReplacePlayer(player: LiveScoringRosterEntry) {
-    if (replaceSlotIndex === null) return;
+  function applyReplacePlayer() {
+    if (replaceSlotIndex === null || !replacePlayerPending) return;
     const slot = replaceSlotIndex;
+    const player = replacePlayerPending;
     setLineup((prev) => prev.map((p, i) => (i === slot ? { ...player } : p)));
     closeLineupAction();
   }
@@ -145,7 +153,9 @@ export default function LiveScoreScreen() {
   // (before the pointer), shift back one; if they were the one about to
   // bat, the next lineup player slides into that same numeric slot
   // already, so the index itself doesn't need to move (just re-wrap).
-  function handleConfirmBench(slot: number) {
+  function applyBench() {
+    if (benchSlotPending === null) return;
+    const slot = benchSlotPending;
     if (lineup.length <= 1) {
       Alert.alert("Can't bench", "At least one batter has to stay in the lineup.");
       return;
@@ -450,7 +460,7 @@ export default function LiveScoreScreen() {
             )}
 
             {/* Replace, step 2: pick who's coming in for that slot. */}
-            {action === "replace" && replaceSlotIndex !== null && (
+            {action === "replace" && replaceSlotIndex !== null && !replacePlayerPending && (
               <>
                 <Text style={styles.modalTitle}>
                   Replace {playerLabel(lineup[replaceSlotIndex].uniformNumber, lineup[replaceSlotIndex].firstName, lineup[replaceSlotIndex].lastName)} With
@@ -458,7 +468,7 @@ export default function LiveScoreScreen() {
                 <ScrollView style={styles.modalList}>
                   {benchPlayers.length === 0 && <Text style={styles.modalEmpty}>No other roster players available.</Text>}
                   {benchPlayers.map((player) => (
-                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => handleConfirmReplacePlayer(player)}>
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => setReplacePlayerPending(player)}>
                       <Text style={styles.modalRowText}>{playerLabel(player.uniformNumber, player.firstName, player.lastName)}</Text>
                     </Pressable>
                   ))}
@@ -466,19 +476,59 @@ export default function LiveScoreScreen() {
               </>
             )}
 
-            {/* Bench: pick who's coming out of the game for good. */}
-            {action === "bench" && (
+            {/* Replace, step 3: confirm before applying. */}
+            {action === "replace" && replaceSlotIndex !== null && replacePlayerPending && (
+              <>
+                <Text style={styles.modalConfirmText}>
+                  You are replacing{" "}
+                  {playerLabel(lineup[replaceSlotIndex].uniformNumber, lineup[replaceSlotIndex].firstName, lineup[replaceSlotIndex].lastName)}
+                  {" "}with{" "}
+                  {playerLabel(replacePlayerPending.uniformNumber, replacePlayerPending.firstName, replacePlayerPending.lastName)}
+                  {" "}on the #{replaceSlotIndex + 1} spot in the rotation.
+                </Text>
+                <View style={styles.modalConfirmRow}>
+                  <Pressable style={styles.modalConfirmCancel} onPress={() => setReplacePlayerPending(null)}>
+                    <Text style={styles.modalConfirmCancelText}>Back</Text>
+                  </Pressable>
+                  <Pressable style={styles.modalConfirmButton} onPress={applyReplacePlayer}>
+                    <Text style={styles.modalConfirmButtonText}>Confirm</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+
+            {/* Bench, step 1: pick who's coming out of the game for good. */}
+            {action === "bench" && benchSlotPending === null && (
               <>
                 <Text style={styles.modalTitle}>Bench Which Batter?</Text>
                 <ScrollView style={styles.modalList}>
                   {lineup.map((player, index) => (
-                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => handleConfirmBench(index)}>
+                    <Pressable key={player.rosterEntryId} style={styles.modalRow} onPress={() => setBenchSlotPending(index)}>
                       <Text style={styles.modalRowText}>
                         {index + 1}. {playerLabel(player.uniformNumber, player.firstName, player.lastName)}
                       </Text>
                     </Pressable>
                   ))}
                 </ScrollView>
+              </>
+            )}
+
+            {/* Bench, step 2: confirm before applying. */}
+            {action === "bench" && benchSlotPending !== null && (
+              <>
+                <Text style={styles.modalConfirmText}>
+                  Are you sure you want to remove{" "}
+                  {playerLabel(lineup[benchSlotPending].uniformNumber, lineup[benchSlotPending].firstName, lineup[benchSlotPending].lastName)}
+                  {" "}from this game's rotation?
+                </Text>
+                <View style={styles.modalConfirmRow}>
+                  <Pressable style={styles.modalConfirmCancel} onPress={() => setBenchSlotPending(null)}>
+                    <Text style={styles.modalConfirmCancelText}>Back</Text>
+                  </Pressable>
+                  <Pressable style={styles.modalConfirmButton} onPress={applyBench}>
+                    <Text style={styles.modalConfirmButtonText}>Confirm</Text>
+                  </Pressable>
+                </View>
               </>
             )}
 
@@ -591,4 +641,10 @@ const styles = StyleSheet.create({
   modalRowText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 15 },
   modalCancel: { alignItems: "center", paddingVertical: 10 },
   modalCancelText: { color: colors.textSecondary, fontFamily: "Montserrat_600SemiBold" },
+  modalConfirmText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 16, lineHeight: 22 },
+  modalConfirmRow: { flexDirection: "row", gap: 12, justifyContent: "flex-end" },
+  modalConfirmCancel: { paddingVertical: 10, paddingHorizontal: 16 },
+  modalConfirmCancelText: { color: colors.textSecondary, fontFamily: "Montserrat_600SemiBold" },
+  modalConfirmButton: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
+  modalConfirmButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold" },
 });
