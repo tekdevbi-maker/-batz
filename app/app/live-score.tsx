@@ -210,9 +210,9 @@ const styles = StyleSheet.create({
   batterName: { fontSize: 26, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
   outcomeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12, justifyContent: "center" },
   outcomeButton: {
-    width: "22%",
-    aspectRatio: 1,
-    borderRadius: 999,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: "center",
