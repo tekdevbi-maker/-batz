@@ -82,19 +82,11 @@ export default function LiveScoreScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // One scale value per lineup slot -- the current batter's card animates
-  // up to activeScale while every other card eases back down to 1, so the
-  // "zoom" reads as the previous batter shrinking as the next one grows,
-  // not an abrupt swap. Scale transforms in RN pivot around the view's own
-  // center by default, so this zooms in/out from each card's center.
-  const cardScales = useRef(initial.lineup.map(() => new Animated.Value(1))).current;
   const currentIndex = lineup.length > 0 ? nextBatterIndex % lineup.length : 0;
 
-  // Measured once the roster half lays out -- drives both the grid's
-  // column count (as many as fit, biggest cards that still show the whole
-  // team with no scrolling) and how far the active card needs to scale up
-  // to read as "more than half the roster half," which shrinks as the
-  // team gets bigger (smaller base cards need a bigger multiplier).
+  // Measured once the roster half lays out -- drives the grid's column
+  // count (as many as fit, biggest cards that still show the whole team
+  // with no scrolling) and the spotlight card's fixed size/position.
   const [rosterSize, setRosterSize] = useState({ width: 0, height: 0 });
   function handleRosterLayout(e: LayoutChangeEvent) {
     const { width, height } = e.nativeEvent.layout;
@@ -102,47 +94,24 @@ export default function LiveScoreScreen() {
   }
   const grid = computeGridLayout(rosterSize.width, rosterSize.height, Math.max(lineup.length, 1));
 
-  // The active card scales from its own center, so how far it can grow
-  // before spilling past the roster half's edge depends on where that
-  // particular card sits in the grid -- a card near a corner has much
-  // less headroom than one near the middle. Computed analytically from
-  // the deterministic row/col layout (flex-wrap rows filling the full
-  // width, centered as a block vertically) rather than measured, so it
-  // updates instantly as the batter changes without waiting on onLayout.
-  let activeScale = 1.15;
-  if (grid.cardHeight > 0 && rosterSize.width > 0) {
-    const rows = Math.ceil(lineup.length / grid.columns);
-    const gridTotalHeight = rows * grid.cardHeight + GRID_GAP * (rows - 1);
-    const offsetY = Math.max((rosterSize.height - gridTotalHeight) / 2, 0);
-    const row = Math.floor(currentIndex / grid.columns);
-    const col = currentIndex % grid.columns;
-    const cardLeft = GRID_PADDING + col * (grid.cardWidth + GRID_GAP);
-    const cardTop = offsetY + row * (grid.cardHeight + GRID_GAP);
-    const cardCenterX = cardLeft + grid.cardWidth / 2;
-    const cardCenterY = cardTop + grid.cardHeight / 2;
-
-    // Max half-extent (in original, unscaled px) the card can reach in
-    // each direction before hitting a wall, given its own center point.
-    const maxHalfWidth = Math.min(cardCenterX, rosterSize.width - cardCenterX);
-    const maxHalfHeight = Math.min(cardCenterY, rosterSize.height - cardCenterY);
-    const scaleByWidth = (maxHalfWidth * 2 * 0.95) / grid.cardWidth;
-    const scaleByHeight = (maxHalfHeight * 2 * 0.95) / grid.cardHeight;
-    activeScale = Math.max(Math.min(scaleByWidth, scaleByHeight), 1.05);
-  }
+  // The current batter is shown as a single fixed-position "spotlight"
+  // card, always centered in the roster half regardless of where that
+  // player happens to sit in the grid below -- rather than growing the
+  // grid tile itself in place (which would zoom from a different spot
+  // every time depending on grid position).
+  const spotlightWidth = Math.min(rosterSize.width * 0.62, rosterSize.height * 0.98 * CARD_ASPECT_RATIO);
+  const spotlightHeight = spotlightWidth / CARD_ASPECT_RATIO;
+  const spotlightScale = useRef(new Animated.Value(0.85)).current;
+  const spotlightOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    cardScales.forEach((value, index) => {
-      Animated.spring(value, {
-        toValue: index === currentIndex ? activeScale : 1,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
-    });
-    // cardScales is a stable ref array; activeScale/grid are derived from
-    // rosterSize, which is already a dependency via currentIndex re-runs
-    // whenever layout or batter changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, activeScale]);
+    spotlightScale.setValue(0.85);
+    spotlightOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(spotlightScale, { toValue: 1, friction: 7, useNativeDriver: true }),
+      Animated.timing(spotlightOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+  }, [currentIndex, spotlightScale, spotlightOpacity]);
 
   // Redirect back if this screen is ever reached without a lineup set up
   // (e.g. a stale deep link or a screen remount after backgrounding wiped
@@ -230,19 +199,37 @@ export default function LiveScoreScreen() {
     <View style={styles.screen}>
       <View style={styles.rosterHalf} onLayout={handleRosterLayout}>
         {rosterSize.width > 0 && (
-          <View style={styles.rosterGrid}>
-            {lineup.map((player, index) => (
-              <Animated.View
-                key={player.rosterEntryId}
-                style={[
-                  { width: grid.cardWidth, transform: [{ scale: cardScales[index] }] },
-                  { zIndex: index === currentIndex ? 2 : 1 },
-                ]}
-              >
-                <PlayerCard firstName={player.firstName || `#${player.uniformNumber}`} lastName={player.lastName} />
-              </Animated.View>
-            ))}
-          </View>
+          <>
+            <View style={styles.rosterGrid}>
+              {lineup.map((player, index) => (
+                <View
+                  key={player.rosterEntryId}
+                  style={[
+                    { width: grid.cardWidth },
+                    index === currentIndex && styles.rosterCardActive,
+                  ]}
+                >
+                  <PlayerCard firstName={player.firstName || `#${player.uniformNumber}`} lastName={player.lastName} />
+                </View>
+              ))}
+            </View>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.spotlight,
+                {
+                  width: spotlightWidth,
+                  height: spotlightHeight,
+                  left: (rosterSize.width - spotlightWidth) / 2,
+                  top: (rosterSize.height - spotlightHeight) / 2,
+                  opacity: spotlightOpacity,
+                  transform: [{ scale: spotlightScale }],
+                },
+              ]}
+            >
+              <PlayerCard firstName={currentBatter.firstName || `#${currentBatter.uniformNumber}`} lastName={currentBatter.lastName} />
+            </Animated.View>
+          </>
         )}
       </View>
 
@@ -325,6 +312,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: GRID_GAP,
     paddingHorizontal: GRID_PADDING,
+  },
+  rosterCardActive: { opacity: 0.35 },
+  spotlight: {
+    position: "absolute",
+    zIndex: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
   bottomHalf: { flex: 1, padding: 16, paddingBottom: 24, justifyContent: "space-between" },
   batterName: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
