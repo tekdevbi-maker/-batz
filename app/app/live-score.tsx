@@ -1,27 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert, Platform, Animated, Modal, ScrollView, type LayoutChangeEvent } from "react-native";
+import { View, Text, Pressable, StyleSheet, Alert, Animated, Modal, ScrollView, type LayoutChangeEvent } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as LegacyFileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listRosterEntriesForLiveScoring, type LiveScoringRosterEntry } from "../lib/gamesRepository";
 import {
   getLiveScoreState,
-  resetLiveScoreState,
+  updateLiveScoreState,
   type AtBatEntry,
   type AtBatOutcome,
   type LineupPlayer,
 } from "../lib/liveScoreState";
-import { buildLiveScoreCsv } from "../lib/liveScoreExport";
 import PlayerCard, { CARD_ASPECT_RATIO } from "../components/PlayerCard";
 import { colors } from "../lib/theme";
-
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (err && typeof err === "object" && "message" in err) return String((err as { message: unknown }).message);
-  return String(err);
-}
 
 const OUTCOMES: { key: AtBatOutcome; label: string }[] = [
   { key: "1B", label: "1B" },
@@ -84,8 +75,6 @@ export default function LiveScoreScreen() {
   const [nextBatterIndex, setNextBatterIndex] = useState(initial.nextBatterIndex);
   const [pendingOutcome, setPendingOutcome] = useState<AtBatOutcome | null>(null);
   const [pendingRbi, setPendingRbi] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Full team roster (beyond just the batting order) -- fetched once, so
   // "Add Batter"/"Replace Batter" can offer bench players who weren't
@@ -232,53 +221,19 @@ export default function LiveScoreScreen() {
     setPendingRbi(0);
   }
 
-  async function handleEndGame() {
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const csvText = buildLiveScoreCsv(lineup, atBats);
-      const now = new Date();
-      const mmddyy =
-        String(now.getMonth() + 1).padStart(2, "0") +
-        String(now.getDate()).padStart(2, "0") +
-        String(now.getFullYear()).slice(-2);
-      const safe = (text: string) => text.replace(/[^a-zA-Z0-9]+/g, "");
-      const fileName = `batz_live_game${safe(gameNumber || "1")}_${mmddyy}_${safe(teamName || "Team")}vs${safe(opponent || "Opponent")}.csv`;
-      const mimeType = "text/csv";
-
-      if (Platform.OS === "android") {
-        const permission = await LegacyFileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!permission.granted) {
-          setSaving(false);
-          return;
-        }
-        const fileUri = await LegacyFileSystem.StorageAccessFramework.createFileAsync(
-          permission.directoryUri,
-          fileName.replace(/\.csv$/, ""),
-          mimeType
-        );
-        await LegacyFileSystem.writeAsStringAsync(fileUri, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
-      } else {
-        const path = `${LegacyFileSystem.cacheDirectory}${fileName}`;
-        await LegacyFileSystem.writeAsStringAsync(path, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(path, { mimeType, dialogTitle: "Save the game's stats" });
-        }
-      }
-
-      resetLiveScoreState();
-      router.replace({ pathname: "/import-game", params: { teamId } });
-    } catch (err) {
-      setSaveError(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
+  // Actually saving/importing happens on the summary screen next --
+  // "End Game" here just locks in the current lineup/at-bat log (flushed
+  // to the shared module state, since this screen has been keeping its
+  // own local copies) and hands off to it.
+  function handleEndGame() {
+    updateLiveScoreState({ lineup, atBats, nextBatterIndex });
+    router.push({ pathname: "/live-score-summary", params: { teamId } });
   }
 
   function confirmEndGame() {
     Alert.alert(
       "End Game?",
-      "This saves the game's stats to a file on your phone and locks further corrections. You can still edit the saved file directly afterward.",
+      "This locks further corrections. You'll see a summary next before saving.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "End Game", style: "destructive", onPress: handleEndGame },
@@ -406,10 +361,8 @@ export default function LiveScoreScreen() {
           )}
         </View>
 
-        {saveError && <Text style={styles.error} numberOfLines={2}>{saveError}</Text>}
-
-        <Pressable style={[styles.button, saving && styles.buttonDisabled]} disabled={saving} onPress={confirmEndGame}>
-          <Text style={styles.buttonText}>{saving ? "Saving…" : "End Game"}</Text>
+        <Pressable style={styles.button} onPress={confirmEndGame}>
+          <Text style={styles.buttonText}>End Game</Text>
         </Pressable>
       </View>
 
@@ -642,7 +595,6 @@ const styles = StyleSheet.create({
   },
   undoButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 13 },
   recentText: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular", fontSize: 13, flexShrink: 1 },
-  error: { color: colors.error, fontSize: 13, fontFamily: "Montserrat_400Regular" },
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 12, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
