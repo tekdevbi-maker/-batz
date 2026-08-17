@@ -7,7 +7,7 @@ const CARD_FRAME = require("../assets/card_template_final.png");
 // reference canvas every position/size constant below was measured against.
 const CANVAS_W = 1440;
 const CANVAS_H = 1930;
-const CARD_ASPECT_RATIO = CANVAS_W / CANVAS_H;
+export const CARD_ASPECT_RATIO = CANVAS_W / CANVAS_H;
 
 // Name banner geometry, in CANVAS_W/CANVAS_H pixels, arrived at by hand
 // (see card_composite.png iteration): the red/dark-red banner spans
