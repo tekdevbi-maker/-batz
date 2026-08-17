@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert, Platform, Animated, type LayoutChangeEvent } from "react-native";
+import { View, Text, Pressable, StyleSheet, Alert, Platform, Animated, Modal, ScrollView, type LayoutChangeEvent } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as LegacyFileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useRequireAuth } from "../lib/AuthContext";
+import { supabase } from "../lib/supabase";
+import { listRosterEntriesForLiveScoring, type LiveScoringRosterEntry } from "../lib/gamesRepository";
 import {
   getLiveScoreState,
   resetLiveScoreState,
   type AtBatEntry,
   type AtBatOutcome,
+  type LineupPlayer,
 } from "../lib/liveScoreState";
 import { buildLiveScoreCsv } from "../lib/liveScoreExport";
 import PlayerCard, { CARD_ASPECT_RATIO } from "../components/PlayerCard";
@@ -73,7 +76,7 @@ export default function LiveScoreScreen() {
   const router = useRouter();
 
   const initial = getLiveScoreState();
-  const [lineup] = useState(initial.lineup);
+  const [lineup, setLineup] = useState<LineupPlayer[]>(initial.lineup);
   const [teamName] = useState(initial.teamName);
   const [atBats, setAtBats] = useState<AtBatEntry[]>(initial.atBats);
   const [nextBatterIndex, setNextBatterIndex] = useState(initial.nextBatterIndex);
@@ -81,6 +84,31 @@ export default function LiveScoreScreen() {
   const [pendingRbi, setPendingRbi] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Full team roster (beyond just the batting order) -- fetched once, so
+  // "Add Batter"/"Replace Batter" can offer bench players who weren't
+  // picked during lineup setup.
+  const [fullRoster, setFullRoster] = useState<LiveScoringRosterEntry[]>([]);
+  const [pickerMode, setPickerMode] = useState<"add" | "replace" | null>(null);
+
+  useEffect(() => {
+    if (!teamId) return;
+    listRosterEntriesForLiveScoring(supabase, teamId).then(setFullRoster).catch(() => {});
+  }, [teamId]);
+
+  const benchPlayers = fullRoster.filter(
+    (r) => !lineup.some((p) => p.rosterEntryId === r.rosterEntryId)
+  );
+
+  function handleAddBatter(player: LiveScoringRosterEntry) {
+    setLineup((prev) => [...prev, { ...player }]);
+    setPickerMode(null);
+  }
+
+  function handleReplaceBatter(player: LiveScoringRosterEntry) {
+    setLineup((prev) => prev.map((p, i) => (i === currentIndex ? { ...player } : p)));
+    setPickerMode(null);
+  }
 
   const currentIndex = lineup.length > 0 ? nextBatterIndex % lineup.length : 0;
 
@@ -234,22 +262,47 @@ export default function LiveScoreScreen() {
       </View>
 
       <View style={styles.bottomHalf}>
-        <Text style={styles.batterName} numberOfLines={1} adjustsFontSizeToFit>
-          Now Batting: {playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}
-        </Text>
+        <View style={styles.batterRow}>
+          <Text style={styles.batterName} numberOfLines={1} adjustsFontSizeToFit>
+            Now Batting: {playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}
+          </Text>
+          <View style={styles.lineupButtonRow}>
+            <Pressable style={styles.lineupButton} onPress={() => setPickerMode("add")}>
+              <Text style={styles.lineupButtonText}>Add Batter</Text>
+            </Pressable>
+            <Pressable style={styles.lineupButton} onPress={() => setPickerMode("replace")}>
+              <Text style={styles.lineupButtonText}>Replace Batter</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.outcomeGrid}>
-          {OUTCOMES.map((outcome) => (
-            <Pressable
-              key={outcome.key}
-              style={[styles.outcomeButton, pendingOutcome === outcome.key && styles.outcomeButtonSelected]}
-              onPress={() => setPendingOutcome(outcome.key)}
-            >
-              <Text style={[styles.outcomeButtonText, pendingOutcome === outcome.key && styles.outcomeButtonTextSelected]}>
-                {outcome.label}
-              </Text>
-            </Pressable>
-          ))}
+          <View style={styles.outcomeRow}>
+            {OUTCOMES.slice(0, 4).map((outcome) => (
+              <Pressable
+                key={outcome.key}
+                style={[styles.outcomeButton, pendingOutcome === outcome.key && styles.outcomeButtonSelected]}
+                onPress={() => setPendingOutcome(outcome.key)}
+              >
+                <Text style={[styles.outcomeButtonText, pendingOutcome === outcome.key && styles.outcomeButtonTextSelected]}>
+                  {outcome.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.outcomeRow}>
+            {OUTCOMES.slice(4).map((outcome) => (
+              <Pressable
+                key={outcome.key}
+                style={[styles.outcomeButton, pendingOutcome === outcome.key && styles.outcomeButtonSelected]}
+                onPress={() => setPendingOutcome(outcome.key)}
+              >
+                <Text style={[styles.outcomeButtonText, pendingOutcome === outcome.key && styles.outcomeButtonTextSelected]}>
+                  {outcome.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {pendingOutcome && (
@@ -290,6 +343,31 @@ export default function LiveScoreScreen() {
           <Text style={styles.buttonText}>{saving ? "Saving…" : "End Game"}</Text>
         </Pressable>
       </View>
+
+      <Modal visible={pickerMode !== null} transparent animationType="fade" onRequestClose={() => setPickerMode(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {pickerMode === "add" ? "Add a Batter" : `Replace ${playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}`}
+            </Text>
+            <ScrollView style={styles.modalList}>
+              {benchPlayers.length === 0 && <Text style={styles.modalEmpty}>No other roster players available.</Text>}
+              {benchPlayers.map((player) => (
+                <Pressable
+                  key={player.rosterEntryId}
+                  style={styles.modalRow}
+                  onPress={() => (pickerMode === "add" ? handleAddBatter(player) : handleReplaceBatter(player))}
+                >
+                  <Text style={styles.modalRowText}>{playerLabel(player.uniformNumber, player.firstName, player.lastName)}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable style={styles.modalCancel} onPress={() => setPickerMode(null)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -324,8 +402,19 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   bottomHalf: { flex: 1, padding: 16, paddingBottom: 24, justifyContent: "space-between" },
+  batterRow: { gap: 6 },
   batterName: { fontSize: 18, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
-  outcomeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  lineupButtonRow: { flexDirection: "row", gap: 8, justifyContent: "center" },
+  lineupButton: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  lineupButtonText: { color: colors.accent, fontFamily: "Montserrat_600SemiBold", fontSize: 12 },
+  outcomeGrid: { gap: 8 },
+  outcomeRow: { flexDirection: "row", justifyContent: "space-between" },
   outcomeButton: {
     width: 56,
     height: 56,
@@ -367,4 +456,19 @@ const styles = StyleSheet.create({
   button: { backgroundColor: colors.accent, borderRadius: 8, padding: 12, alignItems: "center" },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
   buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 20, gap: 12, width: "100%", maxWidth: 400, maxHeight: "70%" },
+  modalTitle: { fontSize: 17, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
+  modalList: { flexGrow: 0 },
+  modalEmpty: { color: colors.textSecondary, fontFamily: "Montserrat_400Regular", fontSize: 14, paddingVertical: 12 },
+  modalRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalRowText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 15 },
+  modalCancel: { alignItems: "center", paddingVertical: 10 },
+  modalCancelText: { color: colors.textSecondary, fontFamily: "Montserrat_600SemiBold" },
 });
