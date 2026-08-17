@@ -104,8 +104,8 @@ export default function LiveScoreScreen() {
   const activeScale =
     grid.cardHeight > 0
       ? Math.min(
-          Math.max((rosterSize.height * 0.6) / grid.cardHeight, 1.15),
-          (rosterSize.width * 0.92) / grid.cardWidth
+          Math.max((rosterSize.height * 0.98) / grid.cardHeight, 1.15),
+          (rosterSize.width * 0.98) / grid.cardWidth
         )
       : 1.15;
 
