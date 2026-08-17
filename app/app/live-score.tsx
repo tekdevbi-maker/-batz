@@ -161,12 +161,8 @@ export default function LiveScoreScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.rosterHalf}>
-        <Text style={styles.title}>{teamName} — Now Batting: #{currentBatter.uniformNumber}</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.rosterRow}
-        >
+        <Text style={styles.title}>{teamName}</Text>
+        <ScrollView contentContainerStyle={styles.rosterGrid}>
           {lineup.map((player, index) => (
             <Animated.View
               key={player.rosterEntryId}
@@ -182,6 +178,11 @@ export default function LiveScoreScreen() {
       </View>
 
       <ScrollView style={styles.bottomHalf} contentContainerStyle={styles.container}>
+      <Text style={styles.nowBattingLabel}>Now Batting</Text>
+      <Text style={styles.batterName}>
+        {playerLabel(currentBatter.uniformNumber, currentBatter.firstName, currentBatter.lastName)}
+      </Text>
+
       <View style={styles.outcomeGrid}>
         {OUTCOMES.map((outcome) => (
           <Pressable
@@ -244,14 +245,21 @@ export default function LiveScoreScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   rosterHalf: {
-    flex: 1,
+    flex: 3,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     paddingTop: 12,
   },
-  rosterRow: { alignItems: "center", paddingHorizontal: 20, gap: 16, flexGrow: 1 },
-  playerCardWrapper: { width: 100 },
+  rosterGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    gap: 10,
+    paddingBottom: 16,
+  },
+  playerCardWrapper: { width: "29%" },
   bottomHalf: { flex: 1 },
   container: { padding: 20, gap: 8, paddingBottom: 48 },
   title: {
@@ -262,6 +270,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   label: { fontSize: 15, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, marginTop: 16 },
+  nowBattingLabel: { fontSize: 15, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
+  batterName: { fontSize: 22, fontFamily: "Montserrat_700Bold", color: colors.textPrimary },
   outcomeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12, justifyContent: "center" },
   outcomeButton: {
     width: 72,
