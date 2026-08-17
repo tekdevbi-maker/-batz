@@ -101,13 +101,34 @@ export default function LiveScoreScreen() {
     setRosterSize({ width, height });
   }
   const grid = computeGridLayout(rosterSize.width, rosterSize.height, Math.max(lineup.length, 1));
-  const activeScale =
-    grid.cardHeight > 0
-      ? Math.min(
-          Math.max((rosterSize.height * 0.98) / grid.cardHeight, 1.15),
-          (rosterSize.width * 0.98) / grid.cardWidth
-        )
-      : 1.15;
+
+  // The active card scales from its own center, so how far it can grow
+  // before spilling past the roster half's edge depends on where that
+  // particular card sits in the grid -- a card near a corner has much
+  // less headroom than one near the middle. Computed analytically from
+  // the deterministic row/col layout (flex-wrap rows filling the full
+  // width, centered as a block vertically) rather than measured, so it
+  // updates instantly as the batter changes without waiting on onLayout.
+  let activeScale = 1.15;
+  if (grid.cardHeight > 0 && rosterSize.width > 0) {
+    const rows = Math.ceil(lineup.length / grid.columns);
+    const gridTotalHeight = rows * grid.cardHeight + GRID_GAP * (rows - 1);
+    const offsetY = Math.max((rosterSize.height - gridTotalHeight) / 2, 0);
+    const row = Math.floor(currentIndex / grid.columns);
+    const col = currentIndex % grid.columns;
+    const cardLeft = GRID_PADDING + col * (grid.cardWidth + GRID_GAP);
+    const cardTop = offsetY + row * (grid.cardHeight + GRID_GAP);
+    const cardCenterX = cardLeft + grid.cardWidth / 2;
+    const cardCenterY = cardTop + grid.cardHeight / 2;
+
+    // Max half-extent (in original, unscaled px) the card can reach in
+    // each direction before hitting a wall, given its own center point.
+    const maxHalfWidth = Math.min(cardCenterX, rosterSize.width - cardCenterX);
+    const maxHalfHeight = Math.min(cardCenterY, rosterSize.height - cardCenterY);
+    const scaleByWidth = (maxHalfWidth * 2 * 0.95) / grid.cardWidth;
+    const scaleByHeight = (maxHalfHeight * 2 * 0.95) / grid.cardHeight;
+    activeScale = Math.max(Math.min(scaleByWidth, scaleByHeight), 1.05);
+  }
 
   useEffect(() => {
     cardScales.forEach((value, index) => {
@@ -295,6 +316,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   rosterGrid: {
     flexDirection: "row",
