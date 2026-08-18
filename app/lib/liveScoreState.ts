@@ -4,7 +4,6 @@
 // at-bat log through router params, and nothing here needs to survive an
 // app restart (an abandoned live-scored game is just re-entered from
 // scratch, same as never having started).
-import type { ImportedBattingLine } from "./gameChangerImport";
 
 export type AtBatOutcome = "1B" | "2B" | "3B" | "HR" | "BB" | "HBP" | "SF" | "OUT";
 
@@ -83,28 +82,4 @@ export function undoLastAtBat(): void {
 
 export function resetLiveScoreState(): void {
   state = initialState();
-}
-
-// Separate from the main state above (and deliberately not cleared by
-// resetLiveScoreState) -- carries the finished game's parsed lines across
-// the live-score-summary.tsx -> import-game.tsx hop, one-shot. Consumed
-// and cleared by import-game.tsx on read.
-export interface PendingImportHandoff {
-  gameDate: string;
-  gameNumber: string;
-  opponent: string;
-  lines: ImportedBattingLine[];
-  fileName: string;
-}
-
-let pendingImportHandoff: PendingImportHandoff | null = null;
-
-export function setPendingImportHandoff(handoff: PendingImportHandoff): void {
-  pendingImportHandoff = handoff;
-}
-
-export function consumePendingImportHandoff(): PendingImportHandoff | null {
-  const handoff = pendingImportHandoff;
-  pendingImportHandoff = null;
-  return handoff;
 }

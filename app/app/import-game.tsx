@@ -29,7 +29,6 @@ import {
   type ImportedBattingLine,
 } from "../lib/gameChangerImport";
 import { hashParsedImport } from "../lib/fileHash";
-import { consumePendingImportHandoff } from "../lib/liveScoreState";
 import ColumnMappingModal from "../components/ColumnMappingModal";
 import { MLB_TEAMS } from "../lib/mlbTeams";
 import { formatDateDisplay, parseLocalIsoDate, toLocalIsoDate, todayIso } from "../lib/dateFormat";
@@ -58,10 +57,9 @@ function errorMessage(err: unknown): string {
 
 export default function ImportGameScreen() {
   const { session } = useRequireAuth();
-  const { teamId, incomingFileUri, prefillFromLiveScore } = useLocalSearchParams<{
+  const { teamId, incomingFileUri } = useLocalSearchParams<{
     teamId: string;
     incomingFileUri?: string;
-    prefillFromLiveScore?: string;
   }>();
   const router = useRouter();
 
@@ -235,23 +233,6 @@ export default function ImportGameScreen() {
     setParsedLines(lines);
     setFileHash(hash);
   }
-
-  // Arrived here straight from Live Scoring's "Yes, Save" -- the lines are
-  // already parsed (no file to pick/upload), so skip step 1 entirely and
-  // land on step 2 with everything already filled in, one tap from done.
-  useEffect(() => {
-    if (!prefillFromLiveScore) return;
-    const handoff = consumePendingImportHandoff();
-    if (!handoff) return;
-    setGameDate(handoff.gameDate);
-    setGameNumber(handoff.gameNumber);
-    setOpponent(handoff.opponent);
-    setFileName(handoff.fileName);
-    setStep(2);
-    finalizeLines(handoff.lines, handoff.fileName);
-    // Only ever run once per mount off this param, not on every re-render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefillFromLiveScore]);
 
   async function loadFile(uri: string, name: string) {
     setFileName(name);

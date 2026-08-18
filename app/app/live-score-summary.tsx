@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as LegacyFileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import { useRequireAuth } from "../lib/AuthContext";
-import { getLiveScoreState, resetLiveScoreState, setPendingImportHandoff } from "../lib/liveScoreState";
-import { buildLiveScoreLines, buildLiveScoreCsv } from "../lib/liveScoreExport";
+import { supabase } from "../lib/supabase";
+import { getLiveScoreState, resetLiveScoreState } from "../lib/liveScoreState";
+import { buildLiveScoreLines } from "../lib/liveScoreExport";
 import { buildGameCsvFileName } from "../lib/gameChangerImport";
+import { hashParsedImport } from "../lib/fileHash";
+import { findDuplicateFileImport, importGame } from "../lib/gamesRepository";
 import { aggregateBattingCounts } from "../lib/stats";
 import { todayIso } from "../lib/dateFormat";
 import { colors } from "../lib/theme";
@@ -18,17 +19,18 @@ function errorMessage(err: unknown): string {
 }
 
 // Read-only recap shown right after "End Game" -- confirms the totals look
-// right before anything is saved anywhere. Saving here both writes the CSV
-// to the coach's phone AND hands the already-parsed lines straight to
-// Import a Game's last step (skip re-uploading the file just written).
+// right before the game is recorded. "Import Game" here writes the stats
+// straight to the database (same importGame() the manual Import a Game
+// flow uses), no intermediate file or screen -- a CSV copy is still
+// available afterward via Recent Games' "Export" button if needed.
 export default function LiveScoreSummaryScreen() {
   const { session } = useRequireAuth();
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const router = useRouter();
 
   const state = getLiveScoreState();
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   if (!session || !teamId) return null;
 
@@ -45,52 +47,43 @@ export default function LiveScoreSummaryScreen() {
     router.replace(`/team/${teamId}`);
   }
 
-  async function handleSave() {
-    setSaving(true);
-    setSaveError(null);
+  async function handleImport() {
+    setImporting(true);
+    setImportError(null);
     try {
-      const fileName = buildGameCsvFileName(state.gameNumber, state.teamName, state.opponent, new Date());
-      const csvText = buildLiveScoreCsv(state.lineup, state.atBats);
-      const mimeType = "text/csv";
+      const gameNumber = Number.parseInt(state.gameNumber, 10);
+      const opponent = state.opponent.trim() || null;
+      const gameDate = todayIso();
+      const label = buildGameCsvFileName(state.gameNumber, state.teamName, state.opponent, new Date());
+      const hash = hashParsedImport(label, lines);
 
-      if (Platform.OS === "android") {
-        const permission = await LegacyFileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!permission.granted) {
-          setSaving(false);
-          return;
-        }
-        const fileUri = await LegacyFileSystem.StorageAccessFramework.createFileAsync(
-          permission.directoryUri,
-          fileName.replace(/\.csv$/, ""),
-          mimeType
+      const duplicate = await findDuplicateFileImport(supabase, teamId, hash);
+      if (duplicate) {
+        setImportError(
+          `This looks like a duplicate of Game #${duplicate.gameNumber} on ${duplicate.gameDate}. Check the game number/opponent above.`
         );
-        await LegacyFileSystem.writeAsStringAsync(fileUri, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
-      } else {
-        const path = `${LegacyFileSystem.cacheDirectory}${fileName}`;
-        await LegacyFileSystem.writeAsStringAsync(path, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(path, { mimeType, dialogTitle: "Save the game's stats" });
-        }
+        setImporting(false);
+        return;
       }
 
-      setPendingImportHandoff({
-        gameDate: todayIso(),
-        gameNumber: state.gameNumber,
-        opponent: state.opponent,
-        lines,
-        fileName,
-      });
-      resetLiveScoreState();
-      // Deliberately skip setSaving(false) here -- this component is about
-      // to unmount as we navigate away, and clearing it would force one
-      // more render first. That render re-reads getLiveScoreState() (now
-      // empty from the resetLiveScoreState() call above), which trips this
-      // screen's own "no lineup -> back to setup" guard and fires a second,
-      // competing navigation that can beat this one to the punch.
-      router.replace({ pathname: "/import-game", params: { teamId, prefillFromLiveScore: "1" } });
+      await importGame(supabase, { teamId, gameDate, gameNumber, opponent, fileHash: hash, lines });
+
+      // Deliberately skip setImporting(false) and stay on this screen until
+      // the alert is dismissed -- resetting state here would force a
+      // re-render that trips this screen's own "no lineup -> back to setup"
+      // guard before the coach ever sees the confirmation.
+      Alert.alert("Game Imported", `Game ${state.gameNumber} has been recorded and is ready for viewing.`, [
+        {
+          text: "OK",
+          onPress: () => {
+            resetLiveScoreState();
+            router.replace(`/team/${teamId}`);
+          },
+        },
+      ]);
     } catch (err) {
-      setSaveError(errorMessage(err));
-      setSaving(false);
+      setImportError(errorMessage(err));
+      setImporting(false);
     }
   }
 
@@ -147,14 +140,14 @@ export default function LiveScoreSummaryScreen() {
       </ScrollView>
 
       <Text style={styles.question}>Would you like to import this game?</Text>
-      {saveError && <Text style={styles.error}>{saveError}</Text>}
+      {importError && <Text style={styles.error}>{importError}</Text>}
 
       <View style={styles.buttonRow}>
-        <Pressable style={styles.noButton} disabled={saving} onPress={handleDiscard}>
+        <Pressable style={styles.noButton} disabled={importing} onPress={handleDiscard}>
           <Text style={styles.noButtonText}>No</Text>
         </Pressable>
-        <Pressable style={[styles.yesButton, saving && styles.buttonDisabled]} disabled={saving} onPress={handleSave}>
-          {saving ? <ActivityIndicator color="white" /> : <Text style={styles.yesButtonText}>Import Game</Text>}
+        <Pressable style={[styles.yesButton, importing && styles.buttonDisabled]} disabled={importing} onPress={handleImport}>
+          {importing ? <ActivityIndicator color="white" /> : <Text style={styles.yesButtonText}>Import Game</Text>}
         </Pressable>
       </View>
     </ScrollView>
