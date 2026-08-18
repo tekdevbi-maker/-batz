@@ -88,10 +88,15 @@ export default function LiveScoreSummaryScreen() {
         fileName,
       });
       resetLiveScoreState();
+      // Deliberately skip setSaving(false) here -- this component is about
+      // to unmount as we navigate away, and clearing it would force one
+      // more render first. That render re-reads getLiveScoreState() (now
+      // empty from the resetLiveScoreState() call above), which trips this
+      // screen's own "no lineup -> back to setup" guard and fires a second,
+      // competing navigation that can beat this one to the punch.
       router.replace({ pathname: "/import-game", params: { teamId, prefillFromLiveScore: "1" } });
     } catch (err) {
       setSaveError(errorMessage(err));
-    } finally {
       setSaving(false);
     }
   }
