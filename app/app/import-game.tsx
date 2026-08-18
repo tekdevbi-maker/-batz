@@ -36,6 +36,7 @@ import { formatDateDisplay, parseLocalIsoDate, toLocalIsoDate, todayIso } from "
 import { colors } from "../lib/theme";
 import {
   deleteGame,
+  exportGameCsv,
   findDuplicateFileImport,
   findGamesOnDate,
   getDivisionOpponents,
@@ -113,6 +114,8 @@ export default function ImportGameScreen() {
 
   const [recentGames, setRecentGames] = useState<ExistingGameSummary[]>([]);
   const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
+  const [exportingGameId, setExportingGameId] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const refreshTeamData = useCallback(() => {
     if (!teamId) return;
@@ -155,6 +158,39 @@ export default function ImportGameScreen() {
         },
       ]
     );
+  }
+
+  // Regenerates the CSV from what's actually stored for this game (not a
+  // kept copy of the original upload -- see exportGameCsv) and hands it to
+  // the same save-to-phone flow Live Scoring uses.
+  async function handleExportGame(game: ExistingGameSummary) {
+    setExportingGameId(game.id);
+    setExportError(null);
+    try {
+      const { fileName, csvText } = await exportGameCsv(supabase, game.id);
+      const mimeType = "text/csv";
+
+      if (Platform.OS === "android") {
+        const permission = await LegacyFileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permission.granted) return;
+        const fileUri = await LegacyFileSystem.StorageAccessFramework.createFileAsync(
+          permission.directoryUri,
+          fileName.replace(/\.csv$/, ""),
+          mimeType
+        );
+        await LegacyFileSystem.writeAsStringAsync(fileUri, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
+      } else {
+        const path = `${LegacyFileSystem.cacheDirectory}${fileName}`;
+        await LegacyFileSystem.writeAsStringAsync(path, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(path, { mimeType, dialogTitle: "Export game stats" });
+        }
+      }
+    } catch (err) {
+      setExportError(errorMessage(err));
+    } finally {
+      setExportingGameId(null);
+    }
   }
 
   useEffect(() => {
@@ -635,23 +671,37 @@ export default function ImportGameScreen() {
           {recentGames.length > 0 && (
             <>
               <Text style={styles.label}>Recent Games</Text>
+              {exportError && <Text style={styles.error}>{exportError}</Text>}
               {recentGames.map((game) => (
                 <View key={game.id} style={styles.gameRow}>
                   <Text style={styles.gameRowText}>
                     Game #{game.gameNumber}
                     {game.opponent ? ` vs ${game.opponent}` : ""} | {formatDateDisplay(game.gameDate)}
                   </Text>
-                  <Pressable
-                    style={styles.deleteButton}
-                    disabled={deletingGameId === game.id}
-                    onPress={() => confirmDeleteGame(game)}
-                  >
-                    {deletingGameId === game.id ? (
-                      <ActivityIndicator size="small" color={colors.error} />
-                    ) : (
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    )}
-                  </Pressable>
+                  <View style={styles.gameRowActions}>
+                    <Pressable
+                      style={styles.exportButton}
+                      disabled={exportingGameId === game.id}
+                      onPress={() => handleExportGame(game)}
+                    >
+                      {exportingGameId === game.id ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <Text style={styles.exportButtonText}>Export</Text>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      style={styles.deleteButton}
+                      disabled={deletingGameId === game.id}
+                      onPress={() => confirmDeleteGame(game)}
+                    >
+                      {deletingGameId === game.id ? (
+                        <ActivityIndicator size="small" color={colors.error} />
+                      ) : (
+                        <Text style={styles.deleteButtonText}>Delete</Text>
+                      )}
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </>
@@ -790,7 +840,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  gameRowText: { fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
+  gameRowText: { flex: 1, fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary },
+  gameRowActions: { flexDirection: "row", gap: 8 },
+  exportButton: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  exportButtonText: { color: colors.accent, fontSize: 14, fontFamily: "Montserrat_600SemiBold" },
   deleteButton: {
     borderWidth: 1,
     borderColor: colors.danger,

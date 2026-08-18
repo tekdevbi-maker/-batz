@@ -1,4 +1,4 @@
-import { TEMPLATE_HEADERS, type ImportedBattingLine } from "./gameChangerImport";
+import { serializeBattingLinesCsv, type ImportedBattingLine } from "./gameChangerImport";
 import type { AtBatEntry, LineupPlayer } from "./liveScoreState";
 
 // Walks per plate-appearance entries down to the same per-player totals
@@ -61,28 +61,6 @@ export function buildLiveScoreLines(lineup: LineupPlayer[], atBats: AtBatEntry[]
   });
 }
 
-function csvField(value: string | number): string {
-  const text = String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
 export function buildLiveScoreCsv(lineup: LineupPlayer[], atBats: AtBatEntry[]): string {
-  const rows = buildLiveScoreLines(lineup, atBats).map((line) => [
-    line.jerseyNumber,
-    line.lastName,
-    line.firstName,
-    line.ab,
-    line.h,
-    line.singles,
-    line.doubles,
-    line.triples,
-    line.hr,
-    line.rbi,
-    line.bb,
-    line.hbp,
-    line.sf,
-  ]);
-
-  const lines = [TEMPLATE_HEADERS, ...rows].map((row) => row.map(csvField).join(","));
-  return lines.join("\n") + "\n";
+  return serializeBattingLinesCsv(buildLiveScoreLines(lineup, atBats));
 }

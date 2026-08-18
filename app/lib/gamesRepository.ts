@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ImportedBattingLine } from "./gameChangerImport";
+import { buildGameCsvFileName, serializeBattingLinesCsv, type ImportedBattingLine } from "./gameChangerImport";
 import { aggregateBattingCounts, type BattingCounts } from "./stats";
 import { calculateStarTiers } from "./starTiers";
 import { generateLockedPlayerTag } from "./playerTag";
 import { getTeamJoinContext } from "./claimRepository";
+import { parseLocalIsoDate } from "./dateFormat";
 
 export interface ExistingGameSummary {
   id: string;
@@ -471,4 +472,48 @@ async function detectAndRecordMilestones(
 export async function deleteGame(supabase: SupabaseClient, gameId: string): Promise<void> {
   const { error } = await supabase.rpc("delete_game_and_cleanup_roster", { p_game_id: gameId });
   if (error) throw error;
+}
+
+// Regenerates the game's CSV from the stats actually stored in the
+// database, rather than keeping the originally-uploaded file anywhere --
+// so the export always matches what's currently on record, even if a
+// game's stats were ever corrected via delete-and-reimport.
+export async function exportGameCsv(
+  supabase: SupabaseClient,
+  gameId: string
+): Promise<{ fileName: string; csvText: string }> {
+  const { data: game, error: gameError } = await supabase
+    .from("game")
+    .select("game_number, game_date, opponent, team:team_id(name)")
+    .eq("id", gameId)
+    .single();
+  if (gameError) throw gameError;
+
+  const { data: statRows, error: statError } = await supabase
+    .from("game_batting_stat")
+    .select(
+      "jersey_number, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf, roster_entry:roster_entry_id(uniform_number, first_name, last_name)"
+    )
+    .eq("game_id", gameId);
+  if (statError) throw statError;
+
+  const lines: ImportedBattingLine[] = (statRows ?? []).map((row: any) => ({
+    jerseyNumber: String(row.roster_entry?.uniform_number ?? row.jersey_number ?? ""),
+    firstName: row.roster_entry?.first_name ?? "",
+    lastName: row.roster_entry?.last_name ?? "",
+    ab: row.ab,
+    h: row.h,
+    singles: row.singles,
+    doubles: row.doubles,
+    triples: row.triples,
+    hr: row.hr,
+    rbi: row.rbi,
+    bb: row.bb,
+    hbp: row.hbp,
+    sf: row.sf,
+  }));
+
+  const teamName = (game as any).team?.name ?? "Team";
+  const fileName = buildGameCsvFileName(game.game_number, teamName, game.opponent, parseLocalIsoDate(game.game_date));
+  return { fileName, csvText: serializeBattingLinesCsv(lines) };
 }

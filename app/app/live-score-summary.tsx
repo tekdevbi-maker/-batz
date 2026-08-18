@@ -6,6 +6,7 @@ import * as Sharing from "expo-sharing";
 import { useRequireAuth } from "../lib/AuthContext";
 import { getLiveScoreState, resetLiveScoreState, setPendingImportHandoff } from "../lib/liveScoreState";
 import { buildLiveScoreLines, buildLiveScoreCsv } from "../lib/liveScoreExport";
+import { buildGameCsvFileName } from "../lib/gameChangerImport";
 import { aggregateBattingCounts } from "../lib/stats";
 import { todayIso } from "../lib/dateFormat";
 import { colors } from "../lib/theme";
@@ -14,14 +15,6 @@ function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (err && typeof err === "object" && "message" in err) return String((err as { message: unknown }).message);
   return String(err);
-}
-
-function buildFileName(gameNumber: string, teamName: string, opponent: string): string {
-  const now = new Date();
-  const mmddyy =
-    String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0") + String(now.getFullYear()).slice(-2);
-  const safe = (text: string) => text.replace(/[^a-zA-Z0-9]+/g, "");
-  return `batz_live_game${safe(gameNumber || "1")}_${mmddyy}_${safe(teamName || "Team")}vs${safe(opponent || "Opponent")}.csv`;
 }
 
 // Read-only recap shown right after "End Game" -- confirms the totals look
@@ -56,7 +49,7 @@ export default function LiveScoreSummaryScreen() {
     setSaving(true);
     setSaveError(null);
     try {
-      const fileName = buildFileName(state.gameNumber, state.teamName, state.opponent);
+      const fileName = buildGameCsvFileName(state.gameNumber, state.teamName, state.opponent, new Date());
       const csvText = buildLiveScoreCsv(state.lineup, state.atBats);
       const mimeType = "text/csv";
 
@@ -153,7 +146,7 @@ export default function LiveScoreSummaryScreen() {
         </View>
       </ScrollView>
 
-      <Text style={styles.question}>Would you like to save this game?</Text>
+      <Text style={styles.question}>Would you like to import this game?</Text>
       {saveError && <Text style={styles.error}>{saveError}</Text>}
 
       <View style={styles.buttonRow}>
@@ -161,7 +154,7 @@ export default function LiveScoreSummaryScreen() {
           <Text style={styles.noButtonText}>No</Text>
         </Pressable>
         <Pressable style={[styles.yesButton, saving && styles.buttonDisabled]} disabled={saving} onPress={handleSave}>
-          {saving ? <ActivityIndicator color="white" /> : <Text style={styles.yesButtonText}>Yes, Save</Text>}
+          {saving ? <ActivityIndicator color="white" /> : <Text style={styles.yesButtonText}>Import Game</Text>}
         </Pressable>
       </View>
     </ScrollView>

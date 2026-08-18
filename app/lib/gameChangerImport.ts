@@ -204,6 +204,48 @@ export const TEMPLATE_HEADERS = [
 
 export const TEMPLATE_CSV_TEXT = TEMPLATE_HEADERS.join(",") + "\n";
 
+function csvField(value: string | number): string {
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+// Serializes parsed batting lines back into the @Batz template shape --
+// shared by live-scoring's export and the Recent Games "Export" button, so
+// both produce a file re-importable through the same TEMPLATE_MAPPING path.
+export function serializeBattingLinesCsv(lines: ImportedBattingLine[]): string {
+  const rows = lines.map((line) => [
+    line.jerseyNumber,
+    line.lastName,
+    line.firstName,
+    line.ab,
+    line.h,
+    line.singles,
+    line.doubles,
+    line.triples,
+    line.hr,
+    line.rbi,
+    line.bb,
+    line.hbp,
+    line.sf,
+  ]);
+  const csvRows = [TEMPLATE_HEADERS, ...rows].map((row) => row.map(csvField).join(","));
+  return csvRows.join("\n") + "\n";
+}
+
+// Shared by live-scoring's save-to-phone flow and the Recent Games export
+// button -- same naming convention either way: batz_live_game{N}_{MMDDYY}_{Team}vs{Opponent}.csv
+export function buildGameCsvFileName(
+  gameNumber: string | number,
+  teamName: string,
+  opponent: string | null,
+  date: Date
+): string {
+  const mmddyy =
+    String(date.getMonth() + 1).padStart(2, "0") + String(date.getDate()).padStart(2, "0") + String(date.getFullYear()).slice(-2);
+  const safe = (text: string) => text.replace(/[^a-zA-Z0-9]+/g, "");
+  return `batz_live_game${safe(String(gameNumber || "1"))}_${mmddyy}_${safe(teamName || "Team")}vs${safe(opponent || "Opponent")}.csv`;
+}
+
 const TEMPLATE_MAPPING: ColumnMapping = {
   jerseyNumber: 0,
   lastName: 1,
