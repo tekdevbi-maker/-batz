@@ -19,6 +19,12 @@ export interface AtBatEntry {
   rosterEntryId: string;
   outcome: AtBatOutcome;
   rbi: number;
+  // Snapshot of the batter at record time -- a player benched or replaced
+  // later drops out of `lineup`, but their at-bats (and the name/number
+  // needed to report them) must still count when the game ends.
+  uniformNumber: number;
+  firstName: string;
+  lastName: string;
 }
 
 export interface LiveScoreState {

@@ -206,7 +206,14 @@ export default function LiveScoreScreen() {
 
   function handleConfirm() {
     if (!pendingOutcome) return;
-    const entry: AtBatEntry = { rosterEntryId: currentBatter.rosterEntryId, outcome: pendingOutcome, rbi: pendingRbi };
+    const entry: AtBatEntry = {
+      rosterEntryId: currentBatter.rosterEntryId,
+      outcome: pendingOutcome,
+      rbi: pendingRbi,
+      uniformNumber: currentBatter.uniformNumber,
+      firstName: currentBatter.firstName,
+      lastName: currentBatter.lastName,
+    };
     setAtBats((prev) => [...prev, entry]);
     setNextBatterIndex((prev) => (prev + 1) % lineup.length);
     setPendingOutcome(null);
@@ -242,7 +249,6 @@ export default function LiveScoreScreen() {
   }
 
   const lastEntry = atBats.length > 0 ? atBats[atBats.length - 1] : null;
-  const lastEntryPlayer = lastEntry ? lineup.find((p) => p.rosterEntryId === lastEntry.rosterEntryId) : null;
 
   return (
     <View style={styles.screen}>
@@ -355,7 +361,7 @@ export default function LiveScoreScreen() {
           </Pressable>
           {lastEntry && (
             <Text style={styles.recentText} numberOfLines={1}>
-              Last: {lastEntryPlayer ? playerLabel(lastEntryPlayer.uniformNumber, lastEntryPlayer.firstName, lastEntryPlayer.lastName) : "?"} — {lastEntry.outcome}
+              Last: {playerLabel(lastEntry.uniformNumber, lastEntry.firstName, lastEntry.lastName)} — {lastEntry.outcome}
               {lastEntry.rbi > 0 ? ` (${lastEntry.rbi} RBI)` : ""}
             </Text>
           )}

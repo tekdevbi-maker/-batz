@@ -6,8 +6,31 @@ import type { AtBatEntry, LineupPlayer } from "./liveScoreState";
 // -- BB/HBP/SF don't count as an at-bat, everything else (hits and outs)
 // does, same as real baseball scoring rules.
 export function buildLiveScoreLines(lineup: LineupPlayer[], atBats: AtBatEntry[]): ImportedBattingLine[] {
-  return lineup.map((player) => {
-    const own = atBats.filter((a) => a.rosterEntryId === player.rosterEntryId);
+  // A benched or replaced player drops out of `lineup`, but their at-bats
+  // (and the name/number snapshot on each entry) must still be reported --
+  // so the player list here is current lineup (including anyone with zero
+  // at-bats so far) plus anyone else who batted before leaving it.
+  const orderedIds: string[] = [];
+  const seen = new Set<string>();
+  for (const player of lineup) {
+    if (!seen.has(player.rosterEntryId)) {
+      orderedIds.push(player.rosterEntryId);
+      seen.add(player.rosterEntryId);
+    }
+  }
+  for (const atBat of atBats) {
+    if (!seen.has(atBat.rosterEntryId)) {
+      orderedIds.push(atBat.rosterEntryId);
+      seen.add(atBat.rosterEntryId);
+    }
+  }
+
+  return orderedIds.map((rosterEntryId) => {
+    const own = atBats.filter((a) => a.rosterEntryId === rosterEntryId);
+    const lineupPlayer = lineup.find((p) => p.rosterEntryId === rosterEntryId);
+    const uniformNumber = lineupPlayer?.uniformNumber ?? own[0].uniformNumber;
+    const firstName = lineupPlayer?.firstName ?? own[0].firstName;
+    const lastName = lineupPlayer?.lastName ?? own[0].lastName;
     const count = (outcome: AtBatEntry["outcome"]) => own.filter((a) => a.outcome === outcome).length;
     const singles = count("1B");
     const doubles = count("2B");
@@ -21,9 +44,9 @@ export function buildLiveScoreLines(lineup: LineupPlayer[], atBats: AtBatEntry[]
     const ab = h + outs;
     const rbi = own.reduce((sum, a) => sum + a.rbi, 0);
     return {
-      jerseyNumber: String(player.uniformNumber),
-      lastName: player.lastName,
-      firstName: player.firstName,
+      jerseyNumber: String(uniformNumber),
+      lastName,
+      firstName,
       ab,
       h,
       singles,
