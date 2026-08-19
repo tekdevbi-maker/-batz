@@ -30,24 +30,40 @@ export async function unfollowPlayer(supabase: SupabaseClient, playerId: string,
   if (error) throw error;
 }
 
+export interface SeasonEndedTotals {
+  ab: number;
+  h: number;
+  singles: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  rbi: number;
+  bb: number;
+  hbp: number;
+  sf: number;
+}
+
 export interface ActivityFeedPost {
   id: string;
   playerId: string | null;
   playerDisplayName: string;
   playerParentUserId: string;
   teamName: string;
-  category: "hits" | "doubles" | "triples" | "home_runs" | "game_imported";
+  category: "hits" | "doubles" | "triples" | "home_runs" | "game_imported" | "season_ended";
   tier: number | null;
-  gameId: string;
+  gameId: string | null;
   gameDate: string;
   gameNumber: number | null;
   opponent: string | null;
   createdAt: string;
   likeCount: number;
   likedByMe: boolean;
+  // Only present on a "season_ended" post -- the team's full-season totals
+  // at the moment the season was marked complete (see mark_season_ended).
+  seasonTotals: SeasonEndedTotals | null;
 }
 
-type MilestoneCategory = Exclude<ActivityFeedPost["category"], "game_imported">;
+type MilestoneCategory = Exclude<ActivityFeedPost["category"], "game_imported" | "season_ended">;
 
 const CATEGORY_LABELS: Record<MilestoneCategory, string> = {
   hits: "Hits",
@@ -57,7 +73,7 @@ const CATEGORY_LABELS: Record<MilestoneCategory, string> = {
 };
 
 export function describeMilestone(post: Pick<ActivityFeedPost, "category" | "tier">): string {
-  if (post.category === "game_imported") return "";
+  if (post.category === "game_imported" || post.category === "season_ended") return "";
   return `${"⭐".repeat(post.tier ?? 0)} in ${CATEGORY_LABELS[post.category]}`;
 }
 
@@ -73,6 +89,10 @@ export function describeGameImportedParts(
     gameLabel: `Game ${post.gameNumber ?? "?"}`,
     after: `${opponentText} on ${formattedGameDate} is now available for viewing.`,
   };
+}
+
+export function describeSeasonEnded(teamName: string): string {
+  return `Good job ${teamName}! See you next season!`;
 }
 
 // Once unlocked, a player's own "Display As" choice (Player Settings)
@@ -124,6 +144,21 @@ async function toPosts(supabase: SupabaseClient, userId: string, rows: any[]): P
     createdAt: r.created_at,
     likeCount: likeCounts.get(r.id) ?? 0,
     likedByMe: likedByMe.has(r.id),
+    seasonTotals:
+      r.category === "season_ended"
+        ? {
+            ab: r.total_ab ?? 0,
+            h: r.total_h ?? 0,
+            singles: r.total_singles ?? 0,
+            doubles: r.total_doubles ?? 0,
+            triples: r.total_triples ?? 0,
+            hr: r.total_hr ?? 0,
+            rbi: r.total_rbi ?? 0,
+            bb: r.total_bb ?? 0,
+            hbp: r.total_hbp ?? 0,
+            sf: r.total_sf ?? 0,
+          }
+        : null,
   }));
 }
 
@@ -137,7 +172,9 @@ export async function listFollowingFeed(supabase: SupabaseClient, userId: string
 
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, game_id, category, tier, created_at, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .select(
+      "id, player_id, game_id, category, tier, created_at, total_ab, total_h, total_singles, total_doubles, total_triples, total_hr, total_rbi, total_bb, total_hbp, total_sf, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)"
+    )
     .in("player_id", playerIds)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -155,7 +192,9 @@ export async function listTeamActivityFeed(
 ): Promise<ActivityFeedPost[]> {
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, game_id, category, tier, created_at, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .select(
+      "id, player_id, game_id, category, tier, created_at, total_ab, total_h, total_singles, total_doubles, total_triples, total_hr, total_rbi, total_bb, total_hbp, total_sf, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)"
+    )
     .eq("team_id", teamId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -172,7 +211,9 @@ export async function listPlayerActivity(
 ): Promise<ActivityFeedPost[]> {
   const { data, error } = await supabase
     .from("activity_feed_item")
-    .select("id, player_id, game_id, category, tier, created_at, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)")
+    .select(
+      "id, player_id, game_id, category, tier, created_at, total_ab, total_h, total_singles, total_doubles, total_triples, total_hr, total_rbi, total_bb, total_hbp, total_sf, player:player_id(player_tag, parent_user_id, first_name, last_name, display_mode, is_coach_fallback), team:team_id(name), game:game_id(game_date, game_number, opponent)"
+    )
     .eq("player_id", playerId)
     .order("created_at", { ascending: false })
     .limit(limit);

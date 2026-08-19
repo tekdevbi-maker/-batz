@@ -12,13 +12,14 @@ import { uploadTeamLogo, leaveTeam, getTeamAnonymizedTotals } from "../../../lib
 import {
   describeGameImportedParts,
   describeMilestone,
+  describeSeasonEnded,
   likePost,
   listTeamActivityFeed,
   unlikePost,
   type ActivityFeedPost,
 } from "../../../lib/socialRepository";
 import { formatDateDisplay } from "../../../lib/dateFormat";
-import { EMPTY_BATTING_COUNTS } from "../../../lib/stats";
+import { EMPTY_BATTING_COUNTS, calculateStats } from "../../../lib/stats";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 import CopyableLink from "../../../components/CopyableLink";
@@ -28,6 +29,39 @@ function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (err && typeof err === "object" && "message" in err) return String((err as { message: unknown }).message);
   return String(err);
+}
+
+function fmtRate(n: number): string {
+  return n.toFixed(3).replace(/^0\./, ".");
+}
+
+// Same metric list Team Leaders ranks by (spec Section 8), totaled for the
+// whole team instead of ranked per-player -- shown on the "season ended"
+// activity post.
+function SeasonTotalsGrid({ totals }: { totals: NonNullable<ActivityFeedPost["seasonTotals"]> }) {
+  const stats = calculateStats(totals);
+  const tiles: Array<{ label: string; value: string }> = [
+    { label: "Hits", value: String(totals.h) },
+    { label: "2B", value: String(totals.doubles) },
+    { label: "3B", value: String(totals.triples) },
+    { label: "HR", value: String(totals.hr) },
+    { label: "RBI", value: String(totals.rbi) },
+    { label: "BB", value: String(totals.bb) },
+    { label: "AVG", value: fmtRate(stats.avg) },
+    { label: "OBP", value: fmtRate(stats.obp) },
+    { label: "SLG", value: fmtRate(stats.slg) },
+    { label: "OPS", value: fmtRate(stats.ops) },
+  ];
+  return (
+    <View style={styles.seasonTotalsGrid}>
+      {tiles.map((tile) => (
+        <View key={tile.label} style={styles.seasonTotalTile}>
+          <Text style={styles.seasonTotalValue}>{tile.value}</Text>
+          <Text style={styles.seasonTotalLabel}>{tile.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
 }
 
 export default function TeamHomeScreen() {
@@ -357,6 +391,14 @@ export default function TeamHomeScreen() {
           <Text style={styles.hint}>No milestones yet.</Text>
         )}
         {activity.map((post) => {
+          if (post.category === "season_ended" && post.seasonTotals) {
+            return (
+              <View key={post.id} style={styles.postRow}>
+                <Text style={styles.postText}>{describeSeasonEnded(post.teamName)}</Text>
+                <SeasonTotalsGrid totals={post.seasonTotals} />
+              </View>
+            );
+          }
           if (post.category === "game_imported") {
             const parts = describeGameImportedParts(post, formatDateDisplay(post.gameDate));
             return (
@@ -659,4 +701,20 @@ const styles = StyleSheet.create({
   postText: { fontSize: 14, fontFamily: "Montserrat_400Regular", color: colors.textSecondary },
   link: { color: colors.accent, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   likedLink: { color: colors.danger, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  seasonTotalsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  seasonTotalTile: {
+    width: "18%",
+    minWidth: 56,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  seasonTotalValue: { color: "white", fontFamily: "Montserrat_700Bold", fontSize: 16 },
+  seasonTotalLabel: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 11, marginTop: 2 },
 });
