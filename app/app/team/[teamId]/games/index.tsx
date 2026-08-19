@@ -8,6 +8,7 @@ import { supabase } from "../../../../lib/supabase";
 import { listGamesForTeam, type GameSummary } from "../../../../lib/statsRepository";
 import { isCoachOnTeam } from "../../../../lib/teamsRepository";
 import { deleteGame, exportGameCsv } from "../../../../lib/gamesRepository";
+import { getTeamJoinContext } from "../../../../lib/claimRepository";
 import { formatDateDisplay } from "../../../../lib/dateFormat";
 import { colors } from "../../../../lib/theme";
 import TeamTabBar from "../../../../components/TeamTabBar";
@@ -25,6 +26,7 @@ export default function GameLogScreen() {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
+  const [seasonEnded, setSeasonEnded] = useState(false);
   const [exportingGameId, setExportingGameId] = useState<string | null>(null);
   const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
 
@@ -37,6 +39,9 @@ export default function GameLogScreen() {
     if (!teamId || !session) return;
     refreshGames();
     isCoachOnTeam(supabase, teamId, session.user.id).then(setIsCoach).catch(() => {});
+    getTeamJoinContext(supabase, teamId)
+      .then((context) => setSeasonEnded(context.seasonStatus === "ended"))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, session]);
 
@@ -103,7 +108,7 @@ export default function GameLogScreen() {
   return (
     <View style={styles.root}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        {isCoach && (
+        {isCoach && !seasonEnded && (
           <View style={styles.actionRow}>
             <Pressable
               style={styles.actionTile}

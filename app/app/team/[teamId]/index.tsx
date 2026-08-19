@@ -503,26 +503,30 @@ export default function TeamHomeScreen() {
                     </View>
                   )}
                 </Pressable>
-                <View style={styles.menuDivider} />
-                <Pressable
-                  style={styles.menuItem}
-                  onPress={() => {
-                    setMenuVisible(false);
-                    router.push({ pathname: "/import-game", params: { teamId } });
-                  }}
-                >
-                  <Text style={styles.menuItemText}>Import Game</Text>
-                </Pressable>
-                <View style={styles.menuDivider} />
-                <Pressable
-                  style={styles.menuItem}
-                  onPress={() => {
-                    setMenuVisible(false);
-                    router.push({ pathname: "/live-score-setup", params: { teamId } });
-                  }}
-                >
-                  <Text style={styles.menuItemText}>Live Scoring</Text>
-                </Pressable>
+                {context?.seasonStatus !== "ended" && (
+                  <>
+                    <View style={styles.menuDivider} />
+                    <Pressable
+                      style={styles.menuItem}
+                      onPress={() => {
+                        setMenuVisible(false);
+                        router.push({ pathname: "/import-game", params: { teamId } });
+                      }}
+                    >
+                      <Text style={styles.menuItemText}>Import Game</Text>
+                    </Pressable>
+                    <View style={styles.menuDivider} />
+                    <Pressable
+                      style={styles.menuItem}
+                      onPress={() => {
+                        setMenuVisible(false);
+                        router.push({ pathname: "/live-score-setup", params: { teamId } });
+                      }}
+                    >
+                      <Text style={styles.menuItemText}>Live Scoring</Text>
+                    </Pressable>
+                  </>
+                )}
                 <View style={styles.menuDivider} />
                 <Pressable
                   style={styles.menuItem}

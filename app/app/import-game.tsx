@@ -29,6 +29,7 @@ import {
   type ImportedBattingLine,
 } from "../lib/gameChangerImport";
 import { hashParsedImport } from "../lib/fileHash";
+import { getTeamJoinContext } from "../lib/claimRepository";
 import ColumnMappingModal from "../components/ColumnMappingModal";
 import { MLB_TEAMS } from "../lib/mlbTeams";
 import { formatDateDisplay, parseLocalIsoDate, toLocalIsoDate, todayIso } from "../lib/dateFormat";
@@ -132,6 +133,19 @@ export default function ImportGameScreen() {
   useEffect(() => {
     refreshTeamData();
   }, [refreshTeamData]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    getTeamJoinContext(supabase, teamId)
+      .then((context) => {
+        if (context.seasonStatus === "ended") {
+          Alert.alert("Season Complete", "This team's season has ended -- Import a Game is no longer available.");
+          router.replace(`/team/${teamId}`);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
 
   function confirmDeleteGame(game: ExistingGameSummary) {
     Alert.alert(

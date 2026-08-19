@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -37,16 +37,19 @@ export default function LiveScoreSetupScreen() {
   useEffect(() => {
     if (!teamId) return;
     resetLiveScoreState();
-    Promise.all([
-      listRosterEntriesForLiveScoring(supabase, teamId),
-      getTeamJoinContext(supabase, teamId).then((c) => c.teamName),
-    ])
-      .then(([rosterRows, name]) => {
+    Promise.all([listRosterEntriesForLiveScoring(supabase, teamId), getTeamJoinContext(supabase, teamId)])
+      .then(([rosterRows, context]) => {
+        if (context.seasonStatus === "ended") {
+          Alert.alert("Season Complete", "This team's season has ended -- Live Scoring is no longer available.");
+          router.replace(`/team/${teamId}`);
+          return;
+        }
         setRoster(rosterRows);
-        setTeamName(name);
+        setTeamName(context.teamName);
       })
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
   const availableRoster = roster.filter((r) => !order.some((o) => o.rosterEntryId === r.rosterEntryId));
