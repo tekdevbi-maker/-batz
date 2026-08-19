@@ -174,13 +174,16 @@ export default function PlayerSettingsScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable hitSlop={12} disabled={saving} onPress={handleSave}>
-              {saving ? (
-                <ActivityIndicator color={colors.accent} />
-              ) : (
-                <Text style={styles.headerSaveText}>Save</Text>
-              )}
-            </Pressable>
+            <View style={styles.headerSaveRow}>
+              {saved && !saving && <Text style={styles.headerSavedText}>Saved</Text>}
+              <Pressable hitSlop={12} disabled={saving} onPress={handleSave}>
+                {saving ? (
+                  <ActivityIndicator color={colors.accent} />
+                ) : (
+                  <Text style={styles.headerSaveText}>Save</Text>
+                )}
+              </Pressable>
+            </View>
           ),
         }}
       />
@@ -344,7 +347,6 @@ export default function PlayerSettingsScreen() {
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
-      {saved && <Text style={styles.success}>Saved.</Text>}
     </ScrollView>
   );
 }
@@ -354,7 +356,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 12, flexShrink: 1, color: colors.textPrimary },
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
-  success: { color: colors.success, fontSize: 15, fontFamily: "Montserrat_600SemiBold" },
   plainText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   realNameBox: {
     padding: 10,
@@ -401,4 +402,6 @@ const styles = StyleSheet.create({
   secondaryButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, alignItems: "center" },
   secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   headerSaveText: { color: colors.accent, fontFamily: "Montserrat_700Bold", fontSize: 16, paddingHorizontal: 4 },
+  headerSaveRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerSavedText: { color: colors.success, fontFamily: "Montserrat_600SemiBold", fontSize: 14 },
 });
