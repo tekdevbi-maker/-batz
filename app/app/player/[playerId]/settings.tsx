@@ -10,7 +10,7 @@ import {
   Switch,
   Image,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
@@ -47,7 +47,6 @@ function errorMessage(err: unknown): string {
 export default function PlayerSettingsScreen() {
   const { session } = useRequireAuth();
   const { playerId } = useLocalSearchParams<{ playerId: string }>();
-  const router = useRouter();
 
   const [loaded, setLoaded] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -172,6 +171,19 @@ export default function PlayerSettingsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable hitSlop={12} disabled={saving} onPress={handleSave}>
+              {saving ? (
+                <ActivityIndicator color={colors.accent} />
+              ) : (
+                <Text style={styles.headerSaveText}>Save</Text>
+              )}
+            </Pressable>
+          ),
+        }}
+      />
       <View style={styles.realNameBox}>
         <Text style={styles.realNameLabel}>Real Name (on file, not shown publicly)</Text>
         <Text style={styles.realNameValue}>{realName ?? "Not yet provided"}</Text>
@@ -333,14 +345,6 @@ export default function PlayerSettingsScreen() {
 
       {error && <Text style={styles.error}>{error}</Text>}
       {saved && <Text style={styles.success}>Saved.</Text>}
-
-      <Pressable style={[styles.button, saving && styles.buttonDisabled]} disabled={saving} onPress={handleSave}>
-        {saving ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Save</Text>}
-      </Pressable>
-
-      <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-        <Text style={styles.secondaryButtonText}>Back to profile</Text>
-      </Pressable>
     </ScrollView>
   );
 }
@@ -393,9 +397,8 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
   chipSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
-  button: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 16 },
   buttonDisabled: { backgroundColor: colors.accentDisabled },
-  buttonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 18 },
   secondaryButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, alignItems: "center" },
   secondaryButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_400Regular" },
+  headerSaveText: { color: colors.accent, fontFamily: "Montserrat_700Bold", fontSize: 16, paddingHorizontal: 4 },
 });
