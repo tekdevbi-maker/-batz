@@ -1,4 +1,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { EMPTY_BATTING_COUNTS, type BattingCounts } from "./stats";
+
+// Running total folded in by mark_season_ended (see
+// 20260814030000_season_end_anonymization.sql) every time an unclaimed
+// roster spot's stats get anonymized -- without adding this back into
+// whatever's summing game_batting_stat for a team total, marking a season
+// complete would silently shrink the team's visible season stats by
+// however much those players contributed, instead of preserving the total.
+export async function getTeamAnonymizedTotals(supabase: SupabaseClient, teamId: string): Promise<BattingCounts> {
+  const { data, error } = await supabase
+    .from("team")
+    .select(
+      "anonymized_ab, anonymized_h, anonymized_singles, anonymized_doubles, anonymized_triples, anonymized_hr, anonymized_rbi, anonymized_bb, anonymized_hbp, anonymized_sf"
+    )
+    .eq("id", teamId)
+    .single();
+  if (error) throw error;
+  if (!data) return EMPTY_BATTING_COUNTS;
+  return {
+    ab: data.anonymized_ab,
+    h: data.anonymized_h,
+    singles: data.anonymized_singles,
+    doubles: data.anonymized_doubles,
+    triples: data.anonymized_triples,
+    hr: data.anonymized_hr,
+    rbi: data.anonymized_rbi,
+    bb: data.anonymized_bb,
+    hbp: data.anonymized_hbp,
+    sf: data.anonymized_sf,
+  };
+}
 
 // Whether the given user coaches this team at all (head or assistant) --
 // drives whether a locked (coach-fallback) player's real name/stats show,

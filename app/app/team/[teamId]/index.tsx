@@ -8,7 +8,7 @@ import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamJoinContext, countPendingClaimRequests, type TeamJoinContext } from "../../../lib/claimRepository";
 import { listTeamCoaches, type TeamCoach } from "../../../lib/coachesRepository";
-import { uploadTeamLogo, leaveTeam } from "../../../lib/teamsRepository";
+import { uploadTeamLogo, leaveTeam, getTeamAnonymizedTotals } from "../../../lib/teamsRepository";
 import {
   describeGameImportedParts,
   describeMilestone,
@@ -18,6 +18,7 @@ import {
   type ActivityFeedPost,
 } from "../../../lib/socialRepository";
 import { formatDateDisplay } from "../../../lib/dateFormat";
+import { EMPTY_BATTING_COUNTS } from "../../../lib/stats";
 import { colors } from "../../../lib/theme";
 import TeamTabBar from "../../../components/TeamTabBar";
 import CopyableLink from "../../../components/CopyableLink";
@@ -82,9 +83,13 @@ export default function TeamHomeScreen() {
         .then(async ({ data: gameRows }) => {
           const gameIds = (gameRows ?? []).map((g: { id: string }) => g.id);
           setGamesPlayedCount(gameIds.length);
+          // Anonymized totals (see getTeamAnonymizedTotals) still count even
+          // with zero live games left -- a season-ended team with only
+          // unclaimed players wouldn't otherwise show any stats at all.
+          const anonymized = await getTeamAnonymizedTotals(supabase, teamId).catch(() => EMPTY_BATTING_COUNTS);
           if (gameIds.length === 0) {
-            setTeamAB(0);
-            setTeamHits(0);
+            setTeamAB(anonymized.ab);
+            setTeamHits(anonymized.h);
             return;
           }
           const { data: statRows } = await supabase
@@ -93,7 +98,7 @@ export default function TeamHomeScreen() {
             .in("game_id", gameIds);
           const totals = (statRows ?? []).reduce(
             (acc, r) => ({ ab: acc.ab + r.ab, h: acc.h + r.h }),
-            { ab: 0, h: 0 }
+            { ab: anonymized.ab, h: anonymized.h }
           );
           setTeamAB(totals.ab);
           setTeamHits(totals.h);
