@@ -77,7 +77,7 @@ export default function LiveScoreSummaryScreen() {
           text: "OK",
           onPress: () => {
             resetLiveScoreState();
-            router.replace(`/team/${teamId}`);
+            router.replace(`/team/${teamId}/games`);
           },
         },
       ]);
