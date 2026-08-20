@@ -81,10 +81,10 @@ export default function LiveScoreScreen() {
   // picked during lineup setup.
   const [fullRoster, setFullRoster] = useState<LiveScoringRosterEntry[]>([]);
 
-  // A benched player is out for the rest of THIS game (unlike Replace,
-  // which just swaps who's in a slot) -- tracked separately from `lineup`
-  // since being benched removes them from lineup, but they still need to
-  // stay excluded from Add/Replace's bench-player picker afterward.
+  // Anyone benched OR replaced out of the lineup is done for the rest of
+  // THIS game -- tracked separately from `lineup` since leaving the
+  // lineup that way removes them from it, but they still need to stay
+  // excluded from Add/Replace's bench-player picker afterward.
   const [benchedRosterEntryIds, setBenchedRosterEntryIds] = useState<Set<string>>(new Set());
 
   // Three lineup-editing flows, each a small multi-step wizard against the
@@ -141,6 +141,10 @@ export default function LiveScoreScreen() {
     if (replaceSlotIndex === null || !replacePlayerPending) return;
     const slot = replaceSlotIndex;
     const player = replacePlayerPending;
+    // The outgoing player is done for the rest of this game too, same as
+    // a straight bench -- otherwise they'd reappear as selectable in
+    // Add/Replace right after being swapped out.
+    setBenchedRosterEntryIds((prev) => new Set(prev).add(lineup[slot].rosterEntryId));
     setLineup((prev) => prev.map((p, i) => (i === slot ? { ...player } : p)));
     closeLineupAction();
   }
