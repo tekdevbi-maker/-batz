@@ -53,27 +53,34 @@ export default function CircleCropModal({
           <Text style={styles.title}>Crop Team Logo</Text>
           <Text style={styles.hint}>Only what's inside the circle will be used.</Text>
 
-          <ViewShot ref={shotRef} options={{ format: "png", quality: 1, result: "tmpfile" }} style={styles.shotWrapper}>
-            {imageUri && (
+          {/* Backdrop sits behind (not inside) the ViewShot -- a white or
+              light photo would otherwise blend invisibly into the card's
+              own near-white background with nothing to show the crop
+              circle's edge. Kept out of the captured subtree so it never
+              bakes into the uploaded PNG's transparency. */}
+          <View style={styles.shotBackdrop}>
+            <ViewShot ref={shotRef} options={{ format: "png", quality: 1, result: "tmpfile" }} style={styles.shotWrapper}>
+              {imageUri && (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={{
+                    position: "absolute",
+                    left: (HOLE_CX - HOLE_R) * SCALE,
+                    top: (HOLE_CY - HOLE_R) * SCALE,
+                    width: HOLE_R * 2 * SCALE,
+                    height: HOLE_R * 2 * SCALE,
+                    borderRadius: HOLE_R * SCALE,
+                  }}
+                  resizeMode="cover"
+                />
+              )}
               <Image
-                source={{ uri: imageUri }}
-                style={{
-                  position: "absolute",
-                  left: (HOLE_CX - HOLE_R) * SCALE,
-                  top: (HOLE_CY - HOLE_R) * SCALE,
-                  width: HOLE_R * 2 * SCALE,
-                  height: HOLE_R * 2 * SCALE,
-                  borderRadius: HOLE_R * SCALE,
-                }}
-                resizeMode="cover"
+                source={RING}
+                style={{ position: "absolute", top: 0, left: 0, width: PREVIEW_W, height: PREVIEW_H }}
+                resizeMode="stretch"
               />
-            )}
-            <Image
-              source={RING}
-              style={{ position: "absolute", top: 0, left: 0, width: PREVIEW_W, height: PREVIEW_H }}
-              resizeMode="stretch"
-            />
-          </ViewShot>
+            </ViewShot>
+          </View>
 
           <View style={styles.buttonRow}>
             <Pressable style={styles.secondaryButton} onPress={onCancel} disabled={busy}>
@@ -96,6 +103,10 @@ const styles = StyleSheet.create({
   hint: { fontSize: 13, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, marginBottom: 16, textAlign: "center" },
   // No background set (stays transparent) so the captured PNG keeps
   // alpha=0 in the corners rather than flattening to an opaque backdrop.
+  // Mid-gray, deliberately distinct from both a typical white/light photo
+  // and the card's own near-white background -- see the comment above the
+  // ViewShot for why this lives on a separate wrapper.
+  shotBackdrop: { width: PREVIEW_W, height: PREVIEW_H, backgroundColor: "#8a8f99", borderRadius: 8 },
   shotWrapper: { width: PREVIEW_W, height: PREVIEW_H },
   buttonRow: { flexDirection: "row", gap: 12, marginTop: 20 },
   button: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, alignItems: "center" },
