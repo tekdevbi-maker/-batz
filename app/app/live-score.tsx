@@ -81,6 +81,12 @@ export default function LiveScoreScreen() {
   // picked during lineup setup.
   const [fullRoster, setFullRoster] = useState<LiveScoringRosterEntry[]>([]);
 
+  // A benched player is out for the rest of THIS game (unlike Replace,
+  // which just swaps who's in a slot) -- tracked separately from `lineup`
+  // since being benched removes them from lineup, but they still need to
+  // stay excluded from Add/Replace's bench-player picker afterward.
+  const [benchedRosterEntryIds, setBenchedRosterEntryIds] = useState<Set<string>>(new Set());
+
   // Three lineup-editing flows, each a small multi-step wizard against the
   // same "action" state:
   //  - add: pick a bench player, THEN pick where in the order they bat.
@@ -111,7 +117,7 @@ export default function LiveScoreScreen() {
   }, [teamId]);
 
   const benchPlayers = fullRoster.filter(
-    (r) => !lineup.some((p) => p.rosterEntryId === r.rosterEntryId)
+    (r) => !lineup.some((p) => p.rosterEntryId === r.rosterEntryId) && !benchedRosterEntryIds.has(r.rosterEntryId)
   );
 
   const currentIndex = lineup.length > 0 ? nextBatterIndex % lineup.length : 0;
@@ -152,6 +158,7 @@ export default function LiveScoreScreen() {
       return;
     }
     const newLength = lineup.length - 1;
+    setBenchedRosterEntryIds((prev) => new Set(prev).add(lineup[slot].rosterEntryId));
     setLineup((prev) => prev.filter((_, i) => i !== slot));
     setNextBatterIndex((prev) => {
       const adjusted = slot < prev ? prev - 1 : prev;
