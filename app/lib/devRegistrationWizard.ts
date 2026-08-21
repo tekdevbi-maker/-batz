@@ -37,7 +37,6 @@ export interface DevWizardState {
   usingDefaultSeason: boolean | null;
   season: "Spring" | "Summer" | "Fall" | "Winter" | null;
   year: number | null;
-  isHistorical: boolean;
 
   teamName: string;
 
@@ -63,7 +62,6 @@ function initialState(): DevWizardState {
     usingDefaultSeason: null,
     season: null,
     year: null,
-    isHistorical: false,
     teamName: "",
     createdTeamId: null,
     sameGroupTeams: [],

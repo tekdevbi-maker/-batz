@@ -116,7 +116,6 @@ export default function RootLayout() {
           <Stack.Screen name="dev-register-recball" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-division" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-season" options={{ headerShown: false, animation: "none" }} />
-          <Stack.Screen name="dev-register-active-check" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-teamname" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-confirm" options={{ headerShown: false, animation: "none" }} />
           <Stack.Screen name="dev-register-complete" options={{ headerShown: false, animation: "none" }} />

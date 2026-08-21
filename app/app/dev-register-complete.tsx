@@ -1,49 +1,14 @@
 import { Text, StyleSheet, ScrollView, View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import * as Linking from "expo-linking";
-import { getDevWizardState, resetDevWizardState } from "../lib/devRegistrationWizard";
+import { getDevWizardState } from "../lib/devRegistrationWizard";
 import { colors } from "../lib/theme";
 import SafeTopSpacer from "../components/SafeTopSpacer";
 import FadeIn from "../components/FadeIn";
-import CopyableLink from "../components/CopyableLink";
 
-// Page 11 of 11 (first of its sub-pages). Historical-stats registrations
-// (Inactive, excluded from leaderboards) skip the competitive "how you
-// stack up" messaging entirely and get a short, simple confirmation
-// instead -- unified across both paths that can lead to a historical
-// registration, and kept as a single page (nothing to split).
+// Page 11 of 11 (first of its sub-pages).
 export default function DevRegisterCompleteScreen() {
   const router = useRouter();
   const state = getDevWizardState();
-  const joinLink = state.createdTeamId ? Linking.createURL(`/join/${state.createdTeamId}`) : "";
-
-  function handleDone() {
-    resetDevWizardState();
-    router.replace("/");
-  }
-
-  if (state.isHistorical) {
-    return (
-      <>
-        <SafeTopSpacer />
-        <FadeIn>
-        <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>Team registered for historical record-keeping</Text>
-          <Text style={styles.body}>
-            "{state.teamName}" has been created as an Inactive team -- it won't appear on any leaderboard
-            or count toward other teams' standings, since it's just here to preserve past stats.
-          </Text>
-          <Text style={styles.label}>Share this with parents to join and claim their Player:</Text>
-          <CopyableLink value={joinLink} />
-          <View style={styles.spacer} />
-          <Pressable style={styles.button} onPress={handleDone}>
-            <Text style={styles.buttonText}>Done</Text>
-          </Pressable>
-        </ScrollView>
-        </FadeIn>
-      </>
-    );
-  }
 
   // The newly created team is deliberately excluded from
   // listSameGroupTeams (it's meant for "every OTHER team in the group"),
@@ -90,7 +55,6 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 24, gap: 4, justifyContent: "center" },
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", marginBottom: 8, color: colors.textPrimary },
   body: { fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, lineHeight: 21, marginBottom: 12 },
-  label: { fontSize: 15, fontFamily: "Montserrat_600SemiBold", marginTop: 8, color: colors.textPrimary },
   teamList: { marginBottom: 12 },
   teamListItem: { fontSize: 15, fontFamily: "Montserrat_400Regular", color: colors.textPrimary, paddingVertical: 2 },
   spacer: { minHeight: 24 },

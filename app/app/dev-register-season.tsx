@@ -20,12 +20,11 @@ function defaultSeason(): (typeof SEASONS)[number] {
 }
 const YEAR_OPTIONS = Array.from({ length: 9 }, (_, i) => currentYear() - 2 + i);
 
-// Page 7 of 11: "Will this be for [DefaultSeason] [DefaultYear]?" -- "Yes"
-// advances straight to Team Name (page 9), skipping page 8 entirely per
-// the spec ("If Yes was chosen in Page 7, automatically go to Page 9").
-// Picking a custom season/year instead routes through page 8's
-// active-vs-historical check, since only the default season/year is ever
-// allowed for a normal active-team registration.
+// Page 7 of 11: "Will this be for [DefaultSeason] [DefaultYear]?" -- either
+// answer just labels the team (for League/Division/Season grouping and
+// leaderboards) and advances straight to Team Name. There's no path here
+// to register a team as an already-completed/historical season -- every
+// team starts active, in_season (see dev-register-confirm.tsx).
 export default function DevRegisterSeasonScreen() {
   const router = useRouter();
   const defSeason = defaultSeason();
@@ -36,13 +35,13 @@ export default function DevRegisterSeasonScreen() {
   const [year, setYear] = useState<number>(getDevWizardState().year ?? defYear);
 
   function chooseDefault() {
-    updateDevWizardState({ usingDefaultSeason: true, season: defSeason, year: defYear, isHistorical: false });
+    updateDevWizardState({ usingDefaultSeason: true, season: defSeason, year: defYear });
     router.push("/dev-register-teamname");
   }
 
   function handleNext() {
     updateDevWizardState({ usingDefaultSeason: false, season, year });
-    router.push("/dev-register-active-check");
+    router.push("/dev-register-teamname");
   }
 
   return (

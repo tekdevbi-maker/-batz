@@ -18,7 +18,6 @@ const HIDDEN_ON = new Set([
   "/dev-register-recball",
   "/dev-register-division",
   "/dev-register-season",
-  "/dev-register-active-check",
   "/dev-register-teamname",
   "/dev-register-confirm",
   "/dev-register-complete",

@@ -71,8 +71,6 @@ export default function DevRegisterConfirmScreen() {
         sport: state.sport!,
         season: state.season!,
         year: state.year!,
-        isActive: !state.isHistorical,
-        seasonStatus: state.isHistorical ? "ended" : "in_season",
       });
       await assignPrimaryCoach(supabase, {
         teamId: team.id,
@@ -81,15 +79,13 @@ export default function DevRegisterConfirmScreen() {
         lastName: state.lastName,
       });
 
-      const sameGroupTeams = state.isHistorical
-        ? []
-        : await listSameGroupTeams(supabase, {
-            divisionId,
-            sport: state.sport!,
-            season: state.season!,
-            year: state.year!,
-            excludeTeamId: team.id,
-          });
+      const sameGroupTeams = await listSameGroupTeams(supabase, {
+        divisionId,
+        sport: state.sport!,
+        season: state.season!,
+        year: state.year!,
+        excludeTeamId: team.id,
+      });
 
       updateDevWizardState({ createdTeamId: team.id, sameGroupTeams });
       router.push("/dev-register-complete");
