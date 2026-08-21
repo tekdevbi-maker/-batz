@@ -483,29 +483,35 @@ export async function deleteGame(supabase: SupabaseClient, gameId: string): Prom
 // database, rather than keeping the originally-uploaded file anywhere --
 // so the export always matches what's currently on record, even if a
 // game's stats were ever corrected via delete-and-reimport.
+//
+// Goes through get_team_game_stat_lines (coach-gated, SECURITY DEFINER)
+// instead of a plain client select -- game_batting_stat/roster_entry are
+// RLS-restricted by the Section 7 visibility model (can_view_stat_line),
+// which is correct for public stat viewing but wrong for a coach's own
+// export: a Private or other-owned claimed player's row would otherwise
+// silently vanish from the CSV with no error, exactly like the reported
+// "only 1 player" bug.
 export async function exportGameCsv(
   supabase: SupabaseClient,
   gameId: string
 ): Promise<{ fileName: string; csvText: string }> {
   const { data: game, error: gameError } = await supabase
     .from("game")
-    .select("game_number, game_date, opponent, team:team_id(name)")
+    .select("team_id, game_number, game_date, opponent, team:team_id(name)")
     .eq("id", gameId)
     .single();
   if (gameError) throw gameError;
 
-  const { data: statRows, error: statError } = await supabase
-    .from("game_batting_stat")
-    .select(
-      "jersey_number, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf, roster_entry:roster_entry_id(uniform_number, first_name, last_name)"
-    )
-    .eq("game_id", gameId);
+  const { data: statRows, error: statError } = await supabase.rpc("get_team_game_stat_lines", {
+    p_team_id: game.team_id,
+    p_game_id: gameId,
+  });
   if (statError) throw statError;
 
   const lines: ImportedBattingLine[] = (statRows ?? []).map((row: any) => ({
-    jerseyNumber: String(row.roster_entry?.uniform_number ?? row.jersey_number ?? ""),
-    firstName: row.roster_entry?.first_name ?? "",
-    lastName: row.roster_entry?.last_name ?? "",
+    jerseyNumber: String(row.uniform_number),
+    firstName: row.first_name ?? "",
+    lastName: row.last_name ?? "",
     ab: row.ab,
     h: row.h,
     singles: row.singles,
@@ -530,6 +536,11 @@ export async function exportGameCsv(
 // mark_season_ended, since that RPC deletes unclaimed roster spots and
 // their stat rows once it folds them into the team's anonymized total --
 // this is the last chance to capture their real names in an export.
+//
+// Goes through get_team_season_totals (coach-gated, SECURITY DEFINER,
+// already summed in SQL) for the same reason exportGameCsv does -- a
+// plain select here would silently drop any player the viewer can't see
+// under the Section 7 visibility model.
 export async function exportSeasonTotalsCsv(
   supabase: SupabaseClient,
   teamId: string
@@ -541,51 +552,26 @@ export async function exportSeasonTotalsCsv(
     .single();
   if (teamError) throw teamError;
 
-  const { data: gameRows, error: gameError } = await supabase.from("game").select("id").eq("team_id", teamId);
-  if (gameError) throw gameError;
-  const gameIds = (gameRows ?? []).map((g: { id: string }) => g.id);
-
-  const { data: rosterRows, error: rosterError } = await supabase
-    .from("roster_entry")
-    .select("id, uniform_number, first_name, last_name")
-    .eq("team_id", teamId)
-    .order("uniform_number");
-  if (rosterError) throw rosterError;
-
-  const statsByRosterEntry = new Map<string, BattingCounts[]>();
-  if (gameIds.length > 0) {
-    const { data: statRows, error: statError } = await supabase
-      .from("game_batting_stat")
-      .select("roster_entry_id, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf")
-      .in("game_id", gameIds);
-    if (statError) throw statError;
-    for (const row of statRows ?? []) {
-      const list = statsByRosterEntry.get(row.roster_entry_id) ?? [];
-      list.push({
-        ab: row.ab,
-        h: row.h,
-        singles: row.singles,
-        doubles: row.doubles,
-        triples: row.triples,
-        hr: row.hr,
-        rbi: row.rbi,
-        bb: row.bb,
-        hbp: row.hbp,
-        sf: row.sf,
-      });
-      statsByRosterEntry.set(row.roster_entry_id, list);
-    }
-  }
-
-  const lines: ImportedBattingLine[] = (rosterRows ?? []).map((re: any) => {
-    const counts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
-    return {
-      jerseyNumber: String(re.uniform_number),
-      firstName: re.first_name ?? "",
-      lastName: re.last_name ?? "",
-      ...counts,
-    };
+  const { data: totalsRows, error: totalsError } = await supabase.rpc("get_team_season_totals", {
+    p_team_id: teamId,
   });
+  if (totalsError) throw totalsError;
+
+  const lines: ImportedBattingLine[] = (totalsRows ?? []).map((row: any) => ({
+    jerseyNumber: String(row.uniform_number),
+    firstName: row.first_name ?? "",
+    lastName: row.last_name ?? "",
+    ab: row.ab,
+    h: row.h,
+    singles: row.singles,
+    doubles: row.doubles,
+    triples: row.triples,
+    hr: row.hr,
+    rbi: row.rbi,
+    bb: row.bb,
+    hbp: row.hbp,
+    sf: row.sf,
+  }));
 
   const fileName = buildSeasonTotalsCsvFileName(team.name, team.season, team.year);
   return { fileName, csvText: serializeBattingLinesCsv(lines) };
