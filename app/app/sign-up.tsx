@@ -68,7 +68,7 @@ export default function SignUpScreen() {
           confirming={submitting}
           error={error}
           onConfirm={handleSubmit}
-          onCancel={() => setStep("form")}
+          onCancel={() => router.replace("/login")}
         />
       </>
     );

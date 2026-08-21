@@ -141,7 +141,7 @@ export default function JoinTeamScreen() {
         confirming={creatingAccount}
         error={accountError}
         onConfirm={handleCreateAccount}
-        onCancel={() => setStep("form")}
+        onCancel={() => router.replace("/login")}
       />
     );
   }

@@ -96,7 +96,10 @@ export default function DevRegisterScreen() {
           confirming={submitting}
           error={error}
           onConfirm={handleAttestConfirm}
-          onCancel={() => setStep("form")}
+          onCancel={() => {
+            resetDevWizardState();
+            router.replace("/login");
+          }}
         />
       </>
     );
