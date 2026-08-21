@@ -245,9 +245,9 @@ export default function PlayerProfileScreen() {
     setAttestBusy(true);
     setAttestError(null);
     try {
-      await attestPlayerParent(supabase, profile.playerId, profile.realName ?? profile.displayName);
+      const finalPlayerId = await attestPlayerParent(supabase, profile.playerId, profile.realName ?? profile.displayName);
       setAttestModalOpen(false);
-      router.push({ pathname: "/player-onboarding", params: { playerIds: profile.playerId } });
+      router.push({ pathname: "/player-onboarding", params: { playerIds: finalPlayerId } });
     } catch (err) {
       setAttestError(errorMessage(err));
     } finally {

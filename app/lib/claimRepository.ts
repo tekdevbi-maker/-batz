@@ -286,12 +286,20 @@ export async function unlinkPlayer(supabase: SupabaseClient, playerId: string): 
 // full parent-level Settings access for the coach on this specific
 // player, without reassigning parent_user_id. playerName, when passed,
 // triggers Gap #1's passive confirmatory email.
-export async function attestPlayerParent(supabase: SupabaseClient, playerId: string, playerName?: string): Promise<void> {
-  const { error } = await supabase.rpc("attest_player_parent", { p_player_id: playerId });
+//
+// Returns the FINAL player id -- if the attesting parent already had an
+// existing player with the same name (e.g. this same kid claimed on an
+// earlier season), the RPC merges/deletes p_player_id and repoints
+// everything to that existing row. Callers must navigate onward with
+// this returned id, not the one they passed in, or a follow-up action
+// (like player-onboarding's save) will silently target a deleted row.
+export async function attestPlayerParent(supabase: SupabaseClient, playerId: string, playerName?: string): Promise<string> {
+  const { data, error } = await supabase.rpc("attest_player_parent", { p_player_id: playerId });
   if (error) throw error;
   if (playerName) {
     await sendAttestationConfirmation(supabase, playerName);
   }
+  return (data as string) ?? playerId;
 }
 
 export class AlreadyClaimedByParentError extends Error {}

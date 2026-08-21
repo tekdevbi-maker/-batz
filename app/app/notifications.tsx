@@ -61,14 +61,17 @@ export default function NotificationsScreen() {
     setAgreeing(true);
     setAgreeError(null);
     try {
-      const playerIds = newlyAssigned.map((p) => p.playerId);
+      // attestPlayerParent's return can differ from the id passed in --
+      // see its own comment -- so onboarding must navigate with what it
+      // actually returns, not the pre-attest newlyAssigned list.
+      const finalPlayerIds: string[] = [];
       for (const player of newlyAssigned) {
-        await attestPlayerParent(supabase, player.playerId, player.displayName);
+        finalPlayerIds.push(await attestPlayerParent(supabase, player.playerId, player.displayName));
       }
       await acknowledgeNewPlayers(supabase);
       setNewlyAssignedOpen(false);
       setNewlyAssigned([]);
-      router.push({ pathname: "/player-onboarding", params: { playerIds: playerIds.join(",") } });
+      router.push({ pathname: "/player-onboarding", params: { playerIds: finalPlayerIds.join(",") } });
     } catch (err) {
       setAgreeError(err instanceof Error ? err.message : String(err));
     } finally {
