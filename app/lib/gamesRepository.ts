@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildGameCsvFileName, serializeBattingLinesCsv, type ImportedBattingLine } from "./gameChangerImport";
+import {
+  buildGameCsvFileName,
+  buildSeasonTotalsCsvFileName,
+  serializeBattingLinesCsv,
+  type ImportedBattingLine,
+} from "./gameChangerImport";
 import { aggregateBattingCounts, type BattingCounts } from "./stats";
 import { calculateStarTiers } from "./starTiers";
 import { generateLockedPlayerTag } from "./playerTag";
@@ -515,5 +520,73 @@ export async function exportGameCsv(
 
   const teamName = (game as any).team?.name ?? "Team";
   const fileName = buildGameCsvFileName(game.game_number, teamName, game.opponent, parseLocalIsoDate(game.game_date));
+  return { fileName, csvText: serializeBattingLinesCsv(lines) };
+}
+
+// Whole-season record-keeping export for the coach who ran every game --
+// every roster spot that season, real names regardless of claim status
+// (same reasoning as listRosterEntriesForLiveScoring: a coach already
+// knows who's who), summed across every game. Must run BEFORE
+// mark_season_ended, since that RPC deletes unclaimed roster spots and
+// their stat rows once it folds them into the team's anonymized total --
+// this is the last chance to capture their real names in an export.
+export async function exportSeasonTotalsCsv(
+  supabase: SupabaseClient,
+  teamId: string
+): Promise<{ fileName: string; csvText: string }> {
+  const { data: team, error: teamError } = await supabase
+    .from("team")
+    .select("name, season, year")
+    .eq("id", teamId)
+    .single();
+  if (teamError) throw teamError;
+
+  const { data: gameRows, error: gameError } = await supabase.from("game").select("id").eq("team_id", teamId);
+  if (gameError) throw gameError;
+  const gameIds = (gameRows ?? []).map((g: { id: string }) => g.id);
+
+  const { data: rosterRows, error: rosterError } = await supabase
+    .from("roster_entry")
+    .select("id, uniform_number, first_name, last_name")
+    .eq("team_id", teamId)
+    .order("uniform_number");
+  if (rosterError) throw rosterError;
+
+  const statsByRosterEntry = new Map<string, BattingCounts[]>();
+  if (gameIds.length > 0) {
+    const { data: statRows, error: statError } = await supabase
+      .from("game_batting_stat")
+      .select("roster_entry_id, ab, h, singles, doubles, triples, hr, rbi, bb, hbp, sf")
+      .in("game_id", gameIds);
+    if (statError) throw statError;
+    for (const row of statRows ?? []) {
+      const list = statsByRosterEntry.get(row.roster_entry_id) ?? [];
+      list.push({
+        ab: row.ab,
+        h: row.h,
+        singles: row.singles,
+        doubles: row.doubles,
+        triples: row.triples,
+        hr: row.hr,
+        rbi: row.rbi,
+        bb: row.bb,
+        hbp: row.hbp,
+        sf: row.sf,
+      });
+      statsByRosterEntry.set(row.roster_entry_id, list);
+    }
+  }
+
+  const lines: ImportedBattingLine[] = (rosterRows ?? []).map((re: any) => {
+    const counts = aggregateBattingCounts(statsByRosterEntry.get(re.id) ?? []);
+    return {
+      jerseyNumber: String(re.uniform_number),
+      firstName: re.first_name ?? "",
+      lastName: re.last_name ?? "",
+      ...counts,
+    };
+  });
+
+  const fileName = buildSeasonTotalsCsvFileName(team.name, team.season, team.year);
   return { fileName, csvText: serializeBattingLinesCsv(lines) };
 }

@@ -246,6 +246,15 @@ export function buildGameCsvFileName(
   return `batz_live_game${safe(String(gameNumber || "1"))}_${mmddyy}_${safe(teamName || "Team")}vs${safe(opponent || "Opponent")}.csv`;
 }
 
+// Whole-season summary saved to the coach's phone when a season is marked
+// complete (see markSeasonEndedWithTotals in gamesRepository.ts) -- one row
+// per player who was ever on the roster that season, real names, summed
+// across every game. Distinct from a single game's file name above.
+export function buildSeasonTotalsCsvFileName(teamName: string, season: string, year: number): string {
+  const safe = (text: string) => text.replace(/[^a-zA-Z0-9]+/g, "");
+  return `batz_season_totals_${safe(teamName || "Team")}_${safe(season || "Season")}${year}.csv`;
+}
+
 const TEMPLATE_MAPPING: ColumnMapping = {
   jerseyNumber: 0,
   lastName: 1,
