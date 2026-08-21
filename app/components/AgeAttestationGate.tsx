@@ -40,7 +40,10 @@ export default function AgeAttestationGate({
         )}
       </Pressable>
       <Pressable style={styles.cancelButton} disabled={confirming} onPress={onCancel}>
-        <Text style={styles.cancelButtonText}>Cancel Registration</Text>
+        <View style={styles.cancelButtonContent}>
+          <Text style={styles.cancelButtonTextLeft}>No, I'm under 13.</Text>
+          <Text style={styles.cancelButtonTextCenter}>Cancel Registration</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -57,5 +60,7 @@ const styles = StyleSheet.create({
   confirmButtonTextLeft: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "left" },
   confirmButtonTextCenter: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "center" },
   cancelButton: { width: "100%", maxWidth: 400, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 14, alignItems: "center" },
-  cancelButtonText: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
+  cancelButtonContent: { width: "100%", gap: 12 },
+  cancelButtonTextLeft: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "left" },
+  cancelButtonTextCenter: { color: colors.textPrimary, fontFamily: "Montserrat_600SemiBold", fontSize: 16, textAlign: "center" },
 });
