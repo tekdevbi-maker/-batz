@@ -6,7 +6,7 @@ import SafeTopSpacer from "../components/SafeTopSpacer";
 // same caveat applies: solid first draft, have it reviewed by a lawyer
 // before real users onboard.
 const EFFECTIVE_DATE = "August 4, 2026";
-const CONTACT_EMAIL = "tekdevbi@gmail.com";
+const CONTACT_EMAIL = "atbatz@brain-spell.com";
 const GOVERNING_LAW = "the State of Florida";
 
 const SECTIONS: Array<{ heading: string; body: string }> = [

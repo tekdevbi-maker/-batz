@@ -12,7 +12,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_ADDRESS = Deno.env.get("CONSENT_EMAIL_FROM") ?? "noreply@brain-spell.com";
-const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "support@brain-spell.com";
+const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "atbatz@brain-spell.com";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

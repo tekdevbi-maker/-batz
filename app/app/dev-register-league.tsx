@@ -135,7 +135,7 @@ export default function DevRegisterLeagueScreen() {
 
         <Text style={styles.adminNote}>
           Are you an admin for your league? Reach out to us so we can provide administrative access!
-          Send an email to tekdevbi@gmail.com
+          Send an email to atbatz@brain-spell.com
         </Text>
 
         <WizardNav onBack={() => router.back()} onNext={handleNext} nextDisabled={!canProceed} />

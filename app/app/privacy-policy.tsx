@@ -12,7 +12,7 @@ import SafeTopSpacer from "../components/SafeTopSpacer";
 // lawyer before real users onboard -- this is a solid first draft, not
 // legal advice.
 const EFFECTIVE_DATE = "August 14, 2026";
-const CONTACT_EMAIL = "tekdevbi@gmail.com";
+const CONTACT_EMAIL = "atbatz@brain-spell.com";
 
 const SECTIONS: Array<{ heading: string; body: string }> = [
   {
