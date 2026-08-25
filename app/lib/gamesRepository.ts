@@ -613,5 +613,13 @@ export async function listMySeasonTotals(supabase: SupabaseClient, userId: strin
 export async function downloadSeasonTotalsCsvText(supabase: SupabaseClient, path: string): Promise<string> {
   const { data, error } = await supabase.storage.from("season-totals").download(path);
   if (error) throw error;
-  return data.text();
+  // React Native's Blob polyfill has no .text() method (browser-only) --
+  // FileReader.readAsText is the cross-platform way to get a Blob's
+  // string content here.
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read the downloaded file."));
+    reader.readAsText(data);
+  });
 }

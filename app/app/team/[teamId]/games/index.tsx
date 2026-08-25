@@ -6,9 +6,10 @@ import * as Sharing from "expo-sharing";
 import { useRequireAuth } from "../../../../lib/AuthContext";
 import { supabase } from "../../../../lib/supabase";
 import { listGamesForTeam, type GameSummary } from "../../../../lib/statsRepository";
-import { isCoachOnTeam } from "../../../../lib/teamsRepository";
-import { deleteGame, exportGameCsv } from "../../../../lib/gamesRepository";
-import { getTeamJoinContext } from "../../../../lib/claimRepository";
+import { isCoachOnTeam, isHeadCoachOnTeam } from "../../../../lib/teamsRepository";
+import { deleteGame, exportGameCsv, downloadSeasonTotalsCsvText } from "../../../../lib/gamesRepository";
+import { buildSeasonTotalsCsvFileName } from "../../../../lib/gameChangerImport";
+import { getTeamJoinContext, type TeamJoinContext } from "../../../../lib/claimRepository";
 import { formatDateDisplay } from "../../../../lib/dateFormat";
 import { colors } from "../../../../lib/theme";
 import TeamTabBar from "../../../../components/TeamTabBar";
@@ -26,9 +27,13 @@ export default function GameLogScreen() {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
-  const [seasonEnded, setSeasonEnded] = useState(false);
+  const [isHeadCoach, setIsHeadCoach] = useState(false);
+  const [context, setContext] = useState<TeamJoinContext | null>(null);
   const [exportingGameId, setExportingGameId] = useState<string | null>(null);
   const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
+  const [exportingSeasonTotals, setExportingSeasonTotals] = useState(false);
+
+  const seasonEnded = context?.seasonStatus === "ended";
 
   function refreshGames() {
     if (!teamId) return;
@@ -39,9 +44,8 @@ export default function GameLogScreen() {
     if (!teamId || !session) return;
     refreshGames();
     isCoachOnTeam(supabase, teamId, session.user.id).then(setIsCoach).catch(() => {});
-    getTeamJoinContext(supabase, teamId)
-      .then((context) => setSeasonEnded(context.seasonStatus === "ended"))
-      .catch(() => {});
+    isHeadCoachOnTeam(supabase, teamId, session.user.id).then(setIsHeadCoach).catch(() => {});
+    getTeamJoinContext(supabase, teamId).then(setContext).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, session]);
 
@@ -77,6 +81,44 @@ export default function GameLogScreen() {
       setError(errorMessage(err));
     } finally {
       setExportingGameId(null);
+    }
+  }
+
+  // Once a season is marked complete, individual games are no longer
+  // shown or exportable here -- the only thing a head coach can pull for
+  // that season is the Season Totals CSV already saved to their @Batz
+  // account at season-end (settings.tsx's confirmEndSeason). File name is
+  // deterministic (buildSeasonTotalsCsvFileName), so it's fetched
+  // straight from storage rather than needing a lookup table.
+  async function handleExportSeasonTotals() {
+    if (!context || !session) return;
+    setExportingSeasonTotals(true);
+    setError(null);
+    try {
+      const fileName = buildSeasonTotalsCsvFileName(context.teamName, context.season, context.year);
+      const csvText = await downloadSeasonTotalsCsvText(supabase, `${session.user.id}/${fileName}`);
+      const mimeType = "text/csv";
+
+      if (Platform.OS === "android") {
+        const permission = await LegacyFileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permission.granted) return;
+        const fileUri = await LegacyFileSystem.StorageAccessFramework.createFileAsync(
+          permission.directoryUri,
+          fileName.replace(/\.csv$/, ""),
+          mimeType
+        );
+        await LegacyFileSystem.writeAsStringAsync(fileUri, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
+      } else {
+        const path = `${LegacyFileSystem.cacheDirectory}${fileName}`;
+        await LegacyFileSystem.writeAsStringAsync(path, csvText, { encoding: LegacyFileSystem.EncodingType.UTF8 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(path, { mimeType, dialogTitle: "Export season totals" });
+        }
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setExportingSeasonTotals(false);
     }
   }
 
@@ -125,43 +167,67 @@ export default function GameLogScreen() {
           </View>
         )}
         {error && <Text style={styles.error}>{error}</Text>}
-        {games.length === 0 && !error && <Text style={styles.hint}>No games imported yet.</Text>}
-        {games.map((game) => (
-          <View key={game.id} style={styles.gameRow}>
-            <Pressable style={styles.gameRowMain} onPress={() => router.push(`/team/${teamId}/games/${game.id}`)}>
-              <Text style={styles.gameRowText}>
-                Game #{game.gameNumber}
-                {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
-              </Text>
-            </Pressable>
-            {isCoach && (
-              <View style={styles.gameRowActions}>
-                <Pressable
-                  style={styles.exportButton}
-                  disabled={exportingGameId === game.id}
-                  onPress={() => handleExportGame(game)}
-                >
-                  {exportingGameId === game.id ? (
-                    <ActivityIndicator size="small" color={colors.accent} />
-                  ) : (
-                    <Text style={styles.exportButtonText}>Export</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={styles.deleteButton}
-                  disabled={deletingGameId === game.id}
-                  onPress={() => confirmDeleteGame(game)}
-                >
-                  {deletingGameId === game.id ? (
-                    <ActivityIndicator size="small" color={colors.error} />
-                  ) : (
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  )}
-                </Pressable>
-              </View>
+        {seasonEnded ? (
+          <>
+            <Text style={styles.hint}>
+              This season has ended -- individual games are no longer shown here.
+              {isHeadCoach ? " Export the Season Totals CSV below for your records." : ""}
+            </Text>
+            {isHeadCoach && (
+              <Pressable
+                style={[styles.seasonTotalsButton, exportingSeasonTotals && styles.buttonDisabled]}
+                disabled={exportingSeasonTotals}
+                onPress={handleExportSeasonTotals}
+              >
+                {exportingSeasonTotals ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.seasonTotalsButtonText}>Export Season Totals</Text>
+                )}
+              </Pressable>
             )}
-          </View>
-        ))}
+          </>
+        ) : (
+          <>
+            {games.length === 0 && !error && <Text style={styles.hint}>No games imported yet.</Text>}
+            {games.map((game) => (
+              <View key={game.id} style={styles.gameRow}>
+                <Pressable style={styles.gameRowMain} onPress={() => router.push(`/team/${teamId}/games/${game.id}`)}>
+                  <Text style={styles.gameRowText}>
+                    Game #{game.gameNumber}
+                    {game.opponent ? ` vs ${game.opponent}` : ""} ({formatDateDisplay(game.gameDate)})
+                  </Text>
+                </Pressable>
+                {isCoach && (
+                  <View style={styles.gameRowActions}>
+                    <Pressable
+                      style={styles.exportButton}
+                      disabled={exportingGameId === game.id}
+                      onPress={() => handleExportGame(game)}
+                    >
+                      {exportingGameId === game.id ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <Text style={styles.exportButtonText}>Export</Text>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      style={styles.deleteButton}
+                      disabled={deletingGameId === game.id}
+                      onPress={() => confirmDeleteGame(game)}
+                    >
+                      {deletingGameId === game.id ? (
+                        <ActivityIndicator size="small" color={colors.error} />
+                      ) : (
+                        <Text style={styles.deleteButtonText}>Delete</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
       <TeamTabBar teamId={teamId} active="games" />
     </View>
@@ -181,8 +247,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   actionTileText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 15 },
-  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular", marginBottom: 12 },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
+  seasonTotalsButton: { backgroundColor: colors.accent, borderRadius: 8, padding: 14, alignItems: "center" },
+  seasonTotalsButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 16 },
+  buttonDisabled: { backgroundColor: colors.accentDisabled },
   gameRow: {
     flexDirection: "row",
     alignItems: "center",
