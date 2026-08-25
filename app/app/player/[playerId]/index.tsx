@@ -11,6 +11,7 @@ import {
   listMyPendingTransferOffers,
   respondToTransferOffer,
   unlinkPlayer,
+  deleteUnclaimedPlayer,
   AlreadyClaimedByParentError,
   TeamAtCapacityError,
   type PendingTransferOffer,
@@ -71,6 +72,9 @@ export default function PlayerProfileScreen() {
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
   const [unlinkBusy, setUnlinkBusy] = useState(false);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!playerId || !session) return;
@@ -236,6 +240,21 @@ export default function PlayerProfileScreen() {
     }
   }
 
+  async function handleDelete() {
+    if (!profile) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await deleteUnclaimedPlayer(supabase, profile.playerId);
+      setDeleteModalOpen(false);
+      router.replace(`/team/${currentSeasonLine(profile)?.teamId}/roster`);
+    } catch (err) {
+      setDeleteError(errorMessage(err));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   // Same "Important Profile Verification Notice" consent flow as the
   // parent-side Home banner (notifications.tsx) -- a Head Coach unlocking
   // their own kid's fallback profile still has to read and agree to the
@@ -329,6 +348,13 @@ export default function PlayerProfileScreen() {
               <Pressable style={styles.tileButton} onPress={() => setAttestModalOpen(true)}>
                 <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
                   {"Unlock\nPlayer"}
+                </Text>
+              </Pressable>
+            )}
+            {isCoachOwner && profile.isCoachFallback && (
+              <Pressable style={styles.tileButton} onPress={() => setDeleteModalOpen(true)}>
+                <Text style={[styles.tileButtonText, { fontSize: 12 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={1}>
+                  {"Delete\nPlayer"}
                 </Text>
               </Pressable>
             )}
@@ -461,6 +487,31 @@ export default function PlayerProfileScreen() {
               </Pressable>
               <Pressable style={styles.modalAgree} disabled={unlinkBusy} onPress={handleUnlink}>
                 {unlinkBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalAgreeText}>Unlink</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={deleteModalOpen} transparent animationType="fade" onRequestClose={() => setDeleteModalOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalText}>
+              Permanently delete {profile.displayName}? This removes the roster spot and every batting stat
+              recorded for it -- this can't be undone. Nobody has claimed this player, so there's no career
+              record elsewhere to preserve.
+            </Text>
+            {deleteError && <Text style={styles.error}>{deleteError}</Text>}
+            <View style={styles.modalButtonRow}>
+              <Pressable
+                style={[styles.secondaryButton, styles.modalCancel]}
+                disabled={deleteBusy}
+                onPress={() => setDeleteModalOpen(false)}
+              >
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.modalAgree} disabled={deleteBusy} onPress={handleDelete}>
+                {deleteBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalAgreeText}>Delete</Text>}
               </Pressable>
             </View>
           </View>

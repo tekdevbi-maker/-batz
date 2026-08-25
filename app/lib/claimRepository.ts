@@ -282,6 +282,14 @@ export async function unlinkPlayer(supabase: SupabaseClient, playerId: string): 
   if (error) throw error;
 }
 
+// Permanently deletes an unclaimed (coach-fallback) roster spot and its
+// batting stats. Head-coach-only; the RPC rejects a claimed player outright
+// so a real parent's career data can never be wiped this way.
+export async function deleteUnclaimedPlayer(supabase: SupabaseClient, playerId: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_unclaimed_player", { p_player_id: playerId });
+  if (error) throw error;
+}
+
 // "I am the parent for this player": logs the attestation and unlocks
 // full parent-level Settings access for the coach on this specific
 // player, without reassigning parent_user_id. playerName, when passed,

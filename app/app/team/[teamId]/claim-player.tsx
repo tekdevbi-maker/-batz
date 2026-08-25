@@ -112,8 +112,8 @@ export default function ClaimPlayerScreen() {
         <Text style={styles.title}>Player added</Text>
         <Text style={styles.hint}>
           The player is now on the roster and linked to your account. Once their actual parent has an
-          account, use Team Members to transfer ownership -- from that player's Profile, tap "Transfer to
-          Parent".
+          account, use Team Members to transfer ownership -- from that player's Profile, tap "Transfer
+          Player".
         </Text>
 
         <Pressable style={styles.button} onPress={() => router.replace(`/team/${teamId}`)}>
