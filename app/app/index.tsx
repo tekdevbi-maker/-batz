@@ -231,6 +231,16 @@ export default function Home() {
             </Pressable>
             <View style={styles.menuDivider} />
             <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setUserMenuVisible(false);
+                router.push("/merge-players");
+              }}
+            >
+              <Text style={styles.menuItemText}>Merge Players</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
               style={styles.menuItemRow}
               onPress={() => {
                 setUserMenuVisible(false);

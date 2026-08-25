@@ -365,6 +365,20 @@ export async function listMyPlayers(supabase: SupabaseClient, userId: string): P
   };
 }
 
+// Fixes the case where a coach misspelled a player's name and the parent
+// ends up with two separate profiles for the same kid (exact-name-match
+// auto-dedupe never fires since the names don't actually match). The
+// caller picks which of their own two players to keep -- everything else
+// (roster history, stats, activity feed, followers) moves onto it and the
+// duplicate is deleted.
+export async function mergeMyPlayers(supabase: SupabaseClient, keepPlayerId: string, mergePlayerId: string): Promise<void> {
+  const { error } = await supabase.rpc("merge_my_players", {
+    p_keep_player_id: keepPlayerId,
+    p_merge_player_id: mergePlayerId,
+  });
+  if (error) throw error;
+}
+
 export interface PlayerSearchResult {
   playerId: string;
   displayName: string;

@@ -183,6 +183,12 @@ export default function UserSettingsScreen() {
         {savingPassword ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Update Password</Text>}
       </Pressable>
 
+      <Text style={styles.label}>Season Totals</Text>
+      <Text style={styles.hint}>View or save the Season Totals CSVs you've saved from ending a season.</Text>
+      <Pressable style={styles.button} onPress={() => router.push("/season-totals")}>
+        <Text style={styles.buttonText}>View Season Totals</Text>
+      </Pressable>
+
       <Text style={styles.label}>Delete Account</Text>
       <Text style={styles.hint}>
         Permanently deletes your account. Any player you have access to will revert back to their team's Head

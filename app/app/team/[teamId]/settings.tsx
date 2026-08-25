@@ -1,12 +1,10 @@
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
-import * as LegacyFileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { markSeasonEnded, isHeadCoachOnTeam } from "../../../lib/teamsRepository";
-import { exportSeasonTotalsCsv } from "../../../lib/gamesRepository";
+import { exportSeasonTotalsCsv, saveSeasonTotalsToProfile } from "../../../lib/gamesRepository";
 import { colors } from "../../../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -53,14 +51,14 @@ export default function TeamSettingsScreen() {
   function confirmEndSeason() {
     Alert.alert(
       "Mark season complete?",
-      `${name} will move to Previous Teams. A Season Totals CSV (every player, summed) will save to your phone first for your records. This can't be undone from here.`,
+      `${name} will move to Previous Teams. A Season Totals CSV (every player, summed) will save to your @Batz account first for your records. This can't be undone from here.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Mark Complete",
           style: "destructive",
           onPress: async () => {
-            if (!teamId) return;
+            if (!teamId || !session) return;
             setEndingSeason(true);
             setError(null);
             try {
@@ -69,30 +67,7 @@ export default function TeamSettingsScreen() {
               // into the team's anonymized total, so this is the last
               // chance to capture everyone's real names in one file.
               const { fileName, csvText } = await exportSeasonTotalsCsv(supabase, teamId);
-              const mimeType = "text/csv";
-              if (Platform.OS === "android") {
-                const permission = await LegacyFileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-                if (!permission.granted) {
-                  setError("Season Totals CSV wasn't saved -- season not marked complete. Try again when ready.");
-                  return;
-                }
-                const fileUri = await LegacyFileSystem.StorageAccessFramework.createFileAsync(
-                  permission.directoryUri,
-                  fileName.replace(/\.csv$/, ""),
-                  mimeType
-                );
-                await LegacyFileSystem.writeAsStringAsync(fileUri, csvText, {
-                  encoding: LegacyFileSystem.EncodingType.UTF8,
-                });
-              } else {
-                const path = `${LegacyFileSystem.cacheDirectory}${fileName}`;
-                await LegacyFileSystem.writeAsStringAsync(path, csvText, {
-                  encoding: LegacyFileSystem.EncodingType.UTF8,
-                });
-                if (await Sharing.isAvailableAsync()) {
-                  await Sharing.shareAsync(path, { mimeType, dialogTitle: "Save this season's totals" });
-                }
-              }
+              await saveSeasonTotalsToProfile(supabase, session.user.id, fileName, csvText);
 
               await markSeasonEnded(supabase, teamId);
               setSeasonStatus("ended");

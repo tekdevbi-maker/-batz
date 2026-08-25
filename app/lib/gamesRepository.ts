@@ -576,3 +576,42 @@ export async function exportSeasonTotalsCsv(
   const fileName = buildSeasonTotalsCsvFileName(team.name, team.season, team.year);
   return { fileName, csvText: serializeBattingLinesCsv(lines) };
 }
+
+// Saves a Season Totals CSV into the head coach's own account in Supabase
+// Storage instead of an on-device save -- available from any device the
+// coach logs into afterward, and doesn't need an OS-level file-system
+// permission prompt at the moment the season is marked complete. Private
+// bucket keyed by "{coach_user_id}/{file_name}" (see
+// 20260825150000_season_totals_storage.sql); upsert since a re-run of the
+// same team/season/year would otherwise collide on file name.
+export async function saveSeasonTotalsToProfile(
+  supabase: SupabaseClient,
+  userId: string,
+  fileName: string,
+  csvText: string
+): Promise<void> {
+  const { error } = await supabase.storage
+    .from("season-totals")
+    .upload(`${userId}/${fileName}`, csvText, { contentType: "text/csv", upsert: true });
+  if (error) throw error;
+}
+
+export interface SeasonTotalsFile {
+  name: string;
+  path: string;
+  createdAt: string | null;
+}
+
+export async function listMySeasonTotals(supabase: SupabaseClient, userId: string): Promise<SeasonTotalsFile[]> {
+  const { data, error } = await supabase.storage.from("season-totals").list(userId, {
+    sortBy: { column: "created_at", order: "desc" },
+  });
+  if (error) throw error;
+  return (data ?? []).map((f) => ({ name: f.name, path: `${userId}/${f.name}`, createdAt: f.created_at ?? null }));
+}
+
+export async function downloadSeasonTotalsCsvText(supabase: SupabaseClient, path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from("season-totals").download(path);
+  if (error) throw error;
+  return data.text();
+}

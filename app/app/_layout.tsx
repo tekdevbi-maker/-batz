@@ -140,6 +140,8 @@ export default function RootLayout() {
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="user-settings" options={{ title: "User Settings" }} />
+          <Stack.Screen name="merge-players" options={{ title: "Merge Players" }} />
+          <Stack.Screen name="season-totals" options={{ title: "Season Totals" }} />
           <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
           <Stack.Screen name="customer-care" options={{ title: "" }} />
           <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
