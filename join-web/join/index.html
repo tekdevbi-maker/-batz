@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Join a team on @Batz</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    color: #12224a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .card {
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  h1 {
+    font-size: 26px;
+    margin: 0 0 8px;
+    color: #12224a;
+  }
+  p {
+    font-size: 16px;
+    line-height: 24px;
+    color: #4c5b7d;
+    margin: 0 0 24px;
+  }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 24px;
+    border: 3px solid #dbe6fb;
+    border-top-color: #1d4ed8;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .store-links {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .store-links.visible { display: flex; }
+  .store-button {
+    display: block;
+    background: #1d4ed8;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .store-button.disabled {
+    background: #aac0ee;
+    pointer-events: none;
+  }
+  .hint {
+    font-size: 13px;
+    color: #8993ac;
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner" id="spinner"></div>
+    <h1>Opening @Batz&hellip;</h1>
+    <p id="message">If the app doesn't open automatically, use the buttons below.</p>
+
+    <!--
+      TODO once the app is live in each store:
+      - Replace APPLE_APP_STORE_URL below with the real
+        https://apps.apple.com/app/id{APPLE_NUMERIC_APP_ID} link
+        (available once App Store Connect issues one).
+      - PLAY_STORE_URL already points at the real listing URL format
+        (com.batz.app) -- it'll work as soon as the Play Console listing
+        is public, no change needed there.
+      - Once both are real, remove the "disabled"/placeholder handling
+        below (the try/catch around updating href, and the "coming soon"
+        text) so the buttons behave like normal links.
+    -->
+    <div class="store-links" id="storeLinks">
+      <a class="store-button disabled" id="appleLink" href="#">Get it on the App Store (coming soon)</a>
+      <a class="store-button" id="playLink" href="https://play.google.com/store/apps/details?id=com.batz.app">Get it on Google Play</a>
+    </div>
+
+    <p class="hint">Already have @Batz? This link should have opened it automatically.</p>
+  </div>
+
+  <script>
+    (function () {
+      var path = window.location.pathname; // "/join/{teamId}"
+      var teamId = path.split("/").filter(Boolean).pop() || "";
+      var appLink = "batz://join/" + encodeURIComponent(teamId);
+
+      var spinner = document.getElementById("spinner");
+      var message = document.getElementById("message");
+      var storeLinks = document.getElementById("storeLinks");
+
+      // Attempt the deep link immediately. If the app is installed, the OS
+      // switches away from this page before the fallback timer below ever
+      // fires. If nothing happens within the timeout, assume the app isn't
+      // installed and show the store buttons instead.
+      window.location.href = appLink;
+
+      setTimeout(function () {
+        spinner.style.display = "none";
+        message.textContent = "Don't have @Batz yet? Download it below, then open this link again.";
+        storeLinks.classList.add("visible");
+      }, 1500);
+    })();
+  </script>
+</body>
+</html>

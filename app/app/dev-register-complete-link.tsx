@@ -1,7 +1,7 @@
 import { Text, StyleSheet, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
-import * as Linking from "expo-linking";
 import { getDevWizardState } from "../lib/devRegistrationWizard";
+import { buildTeamJoinLink } from "../lib/links";
 import { colors } from "../lib/theme";
 import SafeTopSpacer from "../components/SafeTopSpacer";
 import FadeIn from "../components/FadeIn";
@@ -12,7 +12,7 @@ import CopyableLink from "../components/CopyableLink";
 export default function DevRegisterCompleteLinkScreen() {
   const router = useRouter();
   const state = getDevWizardState();
-  const joinLink = state.createdTeamId ? Linking.createURL(`/join/${state.createdTeamId}`) : "";
+  const joinLink = state.createdTeamId ? buildTeamJoinLink(state.createdTeamId) : "";
 
   return (
     <>

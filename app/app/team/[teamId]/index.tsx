@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Modal, Alert } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Linking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import { getTeamJoinContext, countPendingClaimRequests, type TeamJoinContext } from "../../../lib/claimRepository";
+import { buildTeamJoinLink } from "../../../lib/links";
 import { listTeamCoaches, type TeamCoach } from "../../../lib/coachesRepository";
 import { uploadTeamLogo, leaveTeam, getTeamAnonymizedTotals } from "../../../lib/teamsRepository";
 import {
@@ -444,7 +444,7 @@ export default function TeamHomeScreen() {
         <View style={styles.backdrop}>
           <View style={styles.joinLinkCard}>
             <Text style={styles.hint}>Share the link below to your fans!</Text>
-            <CopyableLink value={Linking.createURL(`/join/${teamId}`)} />
+            <CopyableLink value={buildTeamJoinLink(teamId)} />
             <Pressable style={styles.gotItButton} onPress={() => setJoinLinkVisible(false)}>
               <Text style={styles.gotItButtonText}>Got It</Text>
             </Pressable>
