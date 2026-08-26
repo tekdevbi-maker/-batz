@@ -42,29 +42,45 @@ function OutlinedText({
   fontSize,
   stroke,
   style,
+  shrinkToFit = false,
+  minimumFontScale = 0.5,
+  width,
 }: {
   children: string;
   fontSize: number;
   stroke: number;
   style?: object;
+  // When set, shrinks (rather than clips) a name too wide for its box --
+  // needed for OutlinedText specifically since, unlike a plain Text, its
+  // stroke effect is drawn by stacking multiple absolutely-positioned Text
+  // layers on top of each other. adjustsFontSizeToFit only has something to
+  // shrink against if every layer gets the same explicit width -- an
+  // absolutely-positioned Text with no declared width sizes to its own
+  // content and never shrinks, no matter what wraps it.
+  shrinkToFit?: boolean;
+  minimumFontScale?: number;
+  width?: number;
 }) {
   const offsets = [
     [-stroke, -stroke], [0, -stroke], [stroke, -stroke],
     [-stroke, 0], [stroke, 0],
     [-stroke, stroke], [0, stroke], [stroke, stroke],
   ];
+  const shrinkProps = shrinkToFit ? { adjustsFontSizeToFit: true, minimumFontScale } : {};
+  const widthStyle = width != null ? { width } : undefined;
   return (
-    <View>
+    <View style={widthStyle}>
       {offsets.map(([dx, dy], i) => (
         <Text
           key={i}
-          style={[style, { fontSize, color: "#000", position: "absolute", left: dx, top: dy }]}
+          style={[style, widthStyle, { fontSize, color: "#000", position: "absolute", left: dx, top: dy }]}
           numberOfLines={1}
+          {...shrinkProps}
         >
           {children}
         </Text>
       ))}
-      <Text style={[style, { fontSize, color: "#fff", position: "relative" }]} numberOfLines={1}>
+      <Text style={[style, widthStyle, { fontSize, color: "#fff", position: "relative" }]} numberOfLines={1} {...shrinkProps}>
         {children}
       </Text>
     </View>
@@ -148,10 +164,14 @@ export default function PlayerCard({
           >
             <Text
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.5}
               style={{
                 fontFamily: "Montserrat_400Regular",
                 fontSize: LAST_NAME_SIZE * scale,
+                width: MAX_TEXT_W * scale,
                 color: "#fff",
+                textAlign: "center",
                 textShadowColor: "rgba(0,0,0,0.55)",
                 textShadowOffset: { width: 2 * scale, height: 2 * scale },
                 textShadowRadius: 1,

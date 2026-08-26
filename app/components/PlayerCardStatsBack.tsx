@@ -38,6 +38,17 @@ const NUMBER_CENTER_Y = LOGO_CENTER_Y;
 const NUMBER_DIAMETER = LOGO_DIAMETER;
 const NUMBER_RING_W = 8;
 
+// Name/league/measurables text is centered up top, but must never bleed
+// under the logo or number circles -- a long custom league/division/team
+// name (e.g. "Orange County Metro Conference" from the free-text league
+// field) can otherwise stretch past them since centering alone doesn't
+// stop at either circle's edge. Bounded to the horizontal gap between the
+// two circles, with a margin so text never touches either one.
+const NAME_BLOCK_MARGIN = 40;
+const NAME_BLOCK_LEFT = LOGO_CENTER_X + LOGO_DIAMETER / 2 + NAME_BLOCK_MARGIN;
+const NAME_BLOCK_RIGHT = NUMBER_CENTER_X - NUMBER_DIAMETER / 2 - NAME_BLOCK_MARGIN;
+const NAME_BLOCK_WIDTH = NAME_BLOCK_RIGHT - NAME_BLOCK_LEFT;
+
 // Yr/Season/Team squeezed tighter (Yr is only 2 digits now) to free up
 // width for the stat columns.
 const BASE_COL_W = [50, 90, 120, 80, 65, 65, 65, 65, 80, 65, 100, 100, 100, 100];
@@ -200,21 +211,27 @@ export default function PlayerCardStatsBack({
             </View>
           )}
 
-          {/* Top-middle: name (same first/last fonts as the card front) / league info / measurables */}
-          <View style={{ position: "absolute", left: CONTENT_LEFT * scale, top: (CONTENT_TOP + 8) * scale, width: (CONTENT_RIGHT - CONTENT_LEFT) * scale, alignItems: "center" }}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <OutlinedText
-                fontSize={100 * scale}
-                stroke={NAME_STROKE_W * scale}
-                style={{
-                  fontFamily: "Anton_400Regular",
-                  fontStyle: "italic",
-                  fontWeight: "bold",
-                  textAlign: "center",
-                }}
-              >
-                {firstName.toUpperCase()}
-              </OutlinedText>
+          {/* Top-middle: name (same first/last fonts as the card front) / league info / measurables --
+              bounded to NAME_BLOCK_WIDTH (the gap between the logo and number circles) so long text
+              truncates instead of bleeding under either one. */}
+          <View style={{ position: "absolute", left: NAME_BLOCK_LEFT * scale, top: (CONTENT_TOP + 8) * scale, width: NAME_BLOCK_WIDTH * scale, alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", maxWidth: "100%" }}>
+              <View style={{ flexShrink: 1 }}>
+                <OutlinedText
+                  fontSize={100 * scale}
+                  stroke={NAME_STROKE_W * scale}
+                  shrinkToFit
+                  width={NAME_BLOCK_WIDTH * 0.55 * scale}
+                  style={{
+                    fontFamily: "Anton_400Regular",
+                    fontStyle: "italic",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  {firstName.toUpperCase()}
+                </OutlinedText>
+              </View>
               <Text
                 style={{
                   fontFamily: "Montserrat_400Regular",
@@ -224,16 +241,22 @@ export default function PlayerCardStatsBack({
                   textShadowColor: "rgba(0,0,0,0.55)",
                   textShadowOffset: { width: 2 * scale, height: 2 * scale },
                   textShadowRadius: 1,
+                  flexShrink: 1,
                 }}
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
               >
                 {lastName.toUpperCase()}
               </Text>
             </View>
-            <Text style={{ fontFamily: "Montserrat_600SemiBold", fontSize: 36 * scale, color: colors.textSecondary, marginTop: 10 * scale }} numberOfLines={1}>
+            <Text
+              style={{ fontFamily: "Montserrat_600SemiBold", fontSize: 36 * scale, color: colors.textSecondary, marginTop: 10 * scale, maxWidth: "100%", textAlign: "center" }}
+              numberOfLines={2}
+            >
               {[leagueName, divisionName, teamName, `${season} ${year}`].filter(Boolean).join("  |  ")}
             </Text>
-            <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 32 * scale, color: colors.textSecondary, marginTop: 8 * scale }} numberOfLines={1}>
+            <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 32 * scale, color: colors.textSecondary, marginTop: 8 * scale, maxWidth: "100%" }} numberOfLines={1}>
               {measurables}
             </Text>
           </View>
