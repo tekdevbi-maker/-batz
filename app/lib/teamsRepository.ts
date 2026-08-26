@@ -130,15 +130,6 @@ export async function listAllMyCoachedTeams(supabase: SupabaseClient, userId: st
   return byStatus(data ?? [], "in_season");
 }
 
-export async function listAllMyPreviousCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
-  const { data, error } = await supabase
-    .from("coach_assignment")
-    .select(`team:team_id(${TEAM_COLUMNS})`)
-    .eq("user_id", userId);
-  if (error) throw error;
-  return byStatus(data ?? [], "ended");
-}
-
 // Ended-season counterparts, backing Home's "Previous Teams" section.
 export async function listMyPreviousCoachedTeams(supabase: SupabaseClient, userId: string): Promise<CoachedTeam[]> {
   const { data, error } = await supabase
