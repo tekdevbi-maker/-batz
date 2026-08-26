@@ -10,7 +10,7 @@
     "scheme": "batz",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.batz.app",
+      "bundleIdentifier": "com.atbatz.app",
       "infoPlist": {
         "CFBundleDocumentTypes": [
           {
@@ -26,7 +26,7 @@
       }
     },
     "android": {
-      "package": "com.batz.app",
+      "package": "com.atbatz.app",
       "adaptiveIcon": {
         "backgroundColor": "#153474",
         "foregroundImage": "./assets/android-icon-foreground.png",

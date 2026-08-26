@@ -83,15 +83,15 @@
         https://apps.apple.com/app/id{APPLE_NUMERIC_APP_ID} link
         (available once App Store Connect issues one).
       - PLAY_STORE_URL already points at the real listing URL format
-        (com.batz.app) -- it'll work as soon as the Play Console listing
-        is public, no change needed there.
+        (com.atbatz.app) -- it'll work as soon as the Play Console
+        listing is public, no change needed there.
       - Once both are real, remove the "disabled"/placeholder handling
         below (the try/catch around updating href, and the "coming soon"
         text) so the buttons behave like normal links.
     -->
     <div class="store-links" id="storeLinks">
       <a class="store-button disabled" id="appleLink" href="#">Get it on the App Store (coming soon)</a>
-      <a class="store-button" id="playLink" href="https://play.google.com/store/apps/details?id=com.batz.app">Get it on Google Play</a>
+      <a class="store-button" id="playLink" href="https://play.google.com/store/apps/details?id=com.atbatz.app">Get it on Google Play</a>
     </div>
 
     <p class="hint">Already have @Batz? This link should have opened it automatically.</p>
