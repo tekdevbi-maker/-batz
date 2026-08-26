@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.atbatz.app",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDocumentTypes": [
           {
             "CFBundleTypeName": "Stats CSV",
