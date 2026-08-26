@@ -11,7 +11,7 @@ import WizardNav from "../components/WizardNav";
 
 // Page 3 of 11: "Which league are you affiliated with?" -- two separate
 // fields now: an autosuggest search restricted to existing (already
-// verified) leagues, and a distinct "Or...Make Your Own League" field for
+// verified) leagues, and a distinct "Not a Little League?" field for
 // starting a brand-new one. The two are mutually exclusive -- picking a
 // suggestion clears the new-league text and vice versa. New leagues no
 // longer sit in an admin-verification queue (see
@@ -124,7 +124,11 @@ export default function DevRegisterLeagueScreen() {
           <Text style={styles.hint}>Couldn't load leagues: {loadError}. Pull down to retry or check your connection.</Text>
         )}
 
-        <Text style={styles.label}>Or...Make Your Own League</Text>
+        <Text style={styles.label}>Not a Little League?</Text>
+        <Text style={styles.hint}>
+          You can use your County, District, etc (i.e., FHSAA Class 7A District 3, or Orange County Metro
+          Conference)
+        </Text>
         <TextInput
           style={styles.input}
           value={newLeagueName}
