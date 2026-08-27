@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.atbatz.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "LSSupportsOpeningDocumentsInPlace": true,
         "CFBundleDocumentTypes": [
           {
             "CFBundleTypeName": "Stats CSV",
