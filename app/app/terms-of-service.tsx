@@ -20,7 +20,7 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     heading: "Independent product",
     body:
       "@Batz is an independently developed app for tracking little league hitting statistics. It is not " +
-      "affiliated with, endorsed by, or sponsored by GameChanger, DICK'S Sporting Goods, or any league, team, " +
+      "affiliated with, endorsed by, or sponsored by any third-party scorekeeping service, or any league, team, " +
       "or sanctioning body referenced within it. Team, league, and division names entered by users belong to " +
       "those organizations, not to @Batz.",
   },
@@ -64,7 +64,7 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
   {
     heading: "Imported data",
     body:
-      "Game statistics are imported from CSV files you export from GameChanger or a similar service. You're " +
+      "Game statistics are imported from CSV files you export from your scorekeeping app or service. You're " +
       "responsible for ensuring you're authorized to export and import that data (e.g. as the team's coach). " +
       "@Batz is not responsible for the accuracy of data as exported by a third-party service.",
   },

@@ -19,7 +19,7 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     heading: "Who we are",
     body:
       "@Batz is an independent app for tracking little league hitting statistics. " +
-      "It is not affiliated with, endorsed by, or connected to GameChanger or DICK'S Sporting Goods. " +
+      "It is not affiliated with, endorsed by, or connected to any third-party scorekeeping service. " +
       "This policy explains what information @Batz collects, how it's used, and the choices available to you.",
   },
   {
@@ -63,7 +63,7 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "age attestation timestamp confirming you were 13 or older when the account was created.\n\n" +
       "Coach information: first and last name, entered when registering as a coach.\n\n" +
       "Player information: first and last name (optional -- a player can be identified only by their PlayerTag, " +
-      "see below), uniform number, and hitting statistics imported from a GameChanger CSV export the coach uploads.\n\n" +
+      "see below), uniform number, and hitting statistics imported from a CSV export the coach uploads.\n\n" +
       "Team logo: a coach may optionally upload an image to display as their team's logo. This is the only " +
       "photo-type data @Batz collects, and it's a team logo, not a photo of any person.\n\n" +
       "User-generated content: text you submit through the Block/Report feature or a Customer Care request.\n\n" +
