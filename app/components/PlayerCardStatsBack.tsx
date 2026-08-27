@@ -221,7 +221,13 @@ export default function PlayerCardStatsBack({
                   fontSize={100 * scale}
                   stroke={NAME_STROKE_W * scale}
                   shrinkToFit
-                  width={NAME_BLOCK_WIDTH * 0.55 * scale}
+                  // Sized to the actual name (rough Anton-font char-width
+                  // estimate) instead of a fixed box -- a fixed width left
+                  // a visible gap before the last name for anyone shorter
+                  // than the reserved space. Still caps at the same 55% of
+                  // NAME_BLOCK_WIDTH so a long first name shrinks instead
+                  // of bleeding into the last name/edge.
+                  width={Math.min(firstName.length * 100 * scale * 0.62, NAME_BLOCK_WIDTH * 0.55 * scale)}
                   style={{
                     fontFamily: "Anton_400Regular",
                     fontStyle: "italic",
