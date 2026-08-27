@@ -60,7 +60,10 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     body:
       "Account information: the email address and password you use to sign in (your password is handled " +
       "entirely by our authentication provider, Supabase, and is never visible to us in plain text), and an " +
-      "age attestation timestamp confirming you were 13 or older when the account was created.\n\n" +
+      "age attestation timestamp confirming you were 13 or older when the account was created. A team's " +
+      "coaching staff can see the email address of that team's own members (fans/followers) on the Team " +
+      "Members screen, for identifying who's requesting to claim a player -- it is not shown to other " +
+      "members, and not shared outside your own team.\n\n" +
       "Coach information: first and last name, entered when registering as a coach.\n\n" +
       "Player information: first and last name (optional -- a player can be identified only by their PlayerTag, " +
       "see below), uniform number, and hitting statistics imported from a CSV export the coach uploads. Once " +
