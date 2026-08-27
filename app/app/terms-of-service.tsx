@@ -80,8 +80,7 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     body:
       "To the fullest extent permitted by law, @Batz and its developer aren't liable for any indirect, " +
       "incidental, or consequential damages arising from your use of the app, including disputes arising from " +
-      "how statistics are used (e.g. in all-star selection decisions) -- @Batz provides the data; decisions " +
-      "made using it are outside our control.",
+      "how statistics are used -- @Batz provides the data; decisions made using it are outside our control.",
   },
   {
     heading: "Termination",

@@ -40,9 +40,9 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
     body:
       "A player imported from a game file starts in a locked state, owned by the team's Head Coach, until a " +
       "parent/guardian claims them. While locked, a player's name and uniform number are hidden from everyone " +
-      "except that team's coaching staff -- everyone else sees only a generic identifier in the form " +
-      "\"[Team Name] Player [Uniform Number]\" (for example, \"Rays Player 17\"), their stats show as blank, and " +
-      "they never appear on any leaderboard.\n\n" +
+      "except that team's coaching staff -- everyone else sees only a generic identifier such as " +
+      "\"Rays Player 17\" and their stats show as blank. The player never appears on any leaderboard while " +
+      "locked.\n\n" +
       "A player is unlocked only after an explicit parental-consent step: either a parent/guardian requests to " +
       "claim the player and the coach approves it, or a coach offers the player to a specific team member who " +
       "must then agree before anything changes. Either way, the parent/guardian must scroll through and agree to " +
@@ -76,7 +76,7 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "Once unlocked (claimed), a player is identified in the app by a PlayerTag (a pseudonym) rather than " +
       "their real name by default. A player's real name is never shown in search results, leaderboards, or the " +
       "activity feed, unless that player's parent/guardian explicitly chooses to reveal it in Settings. Before " +
-      "being claimed, see \"Locked players and parental consent\" above -- name and uniform number are hidden " +
+      "being claimed, see \"Locked players and parental consent\" above -- the player's real name is hidden " +
       "entirely, not just pseudonymized.\n\n" +
       "Hitting statistics (current and past season) for a claimed, unlocked player are visible to any signed-in " +
       "@Batz user by design -- this is intentional and central to the app's purpose of making performance " +
