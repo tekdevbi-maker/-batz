@@ -169,7 +169,7 @@ export default function JoinTeamScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>
-        Join the {context.leagueInitials} | {context.divisionName} | {context.teamName}
+        Join the {context.leagueName} | {context.divisionName} | {context.teamName}
       </Text>
       <Text style={styles.hint}>
         You have been invited by {coachName} to follow the {context.teamName} during their{" "}
