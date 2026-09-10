@@ -5,96 +5,152 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Join a team on @Batz</title>
 <style>
-  :root { color-scheme: light; }
+  :root {
+    color-scheme: light;
+    --navy: #12224a;
+    --navy-soft: #4c5b7d;
+    --red: #c0392b;
+    --line: #e6ebf4;
+    --bg: #f4f6fb;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
-    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #ffffff;
-    color: #12224a;
+    padding: 32px 20px;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #ffffff 0%, var(--bg) 60%);
+    color: var(--navy);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 24px;
-    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
   }
+
   .card {
-    max-width: 420px;
     width: 100%;
+    max-width: 460px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px -20px rgba(18, 34, 74, 0.25);
+    overflow: hidden;
+  }
+
+  .accent {
+    height: 6px;
+    background: linear-gradient(90deg, var(--navy) 0%, var(--navy) 55%, var(--red) 55%, var(--red) 100%);
+  }
+
+  .inner {
+    padding: 36px 32px 32px;
     text-align: center;
   }
+
+  .logo {
+    width: 250px;
+    max-width: 76%;
+    height: auto;
+    display: block;
+    margin: 6px auto 24px;
+  }
+
   h1 {
-    font-size: 26px;
+    font-size: 22px;
+    line-height: 1.3;
     margin: 0 0 8px;
-    color: #12224a;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: -0.2px;
   }
-  p {
-    font-size: 16px;
-    line-height: 24px;
-    color: #4c5b7d;
-    margin: 0 0 24px;
+
+  p.sub {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--navy-soft);
+    margin: 0 0 26px;
   }
+
   .spinner {
-    width: 32px;
-    height: 32px;
-    margin: 0 auto 24px;
-    border: 3px solid #dbe6fb;
-    border-top-color: #1d4ed8;
+    width: 30px;
+    height: 30px;
+    margin: 4px auto 22px;
+    border: 3px solid var(--line);
+    border-top-color: var(--red);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .store-links {
+
+  .stores {
     display: none;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    gap: 14px;
   }
-  .store-links.visible { display: flex; }
-  .store-button {
+  .stores.visible { display: flex; }
+
+  .stores a {
     display: block;
-    background: #1d4ed8;
-    color: #ffffff;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 16px;
-    padding: 14px;
-    border-radius: 8px;
+    line-height: 0;
+    transition: transform 0.12s ease, opacity 0.12s ease;
   }
-  .store-button.disabled {
-    background: #aac0ee;
-    pointer-events: none;
+  .stores a:hover { transform: translateY(-1px); opacity: 0.9; }
+  .stores img {
+    height: 52px;
+    width: auto;
+    display: block;
   }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 4px 0 22px;
+    color: #9aa4bd;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
   .hint {
     font-size: 13px;
-    color: #8993ac;
-    margin-top: 16px;
+    color: #9aa4bd;
+    margin: 22px 0 0;
+    line-height: 1.5;
   }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="spinner" id="spinner"></div>
-    <h1>Opening @Batz&hellip;</h1>
-    <p id="message">If the app doesn't open automatically, use the buttons below.</p>
+    <div class="accent"></div>
+    <div class="inner">
+      <img class="logo" src="../assets/wordmark-full.png" alt="@Batz" />
 
-    <!--
-      TODO once the app is live in each store:
-      - Replace APPLE_APP_STORE_URL below with the real
-        https://apps.apple.com/app/id{APPLE_NUMERIC_APP_ID} link
-        (available once App Store Connect issues one).
-      - PLAY_STORE_URL already points at the real listing URL format
-        (com.atbatz.app) -- it'll work as soon as the Play Console
-        listing is public, no change needed there.
-      - Once both are real, remove the "disabled"/placeholder handling
-        below (the try/catch around updating href, and the "coming soon"
-        text) so the buttons behave like normal links.
-    -->
-    <div class="store-links" id="storeLinks">
-      <a class="store-button disabled" id="appleLink" href="#">Get it on the App Store (coming soon)</a>
-      <a class="store-button" id="playLink" href="https://play.google.com/store/apps/details?id=com.atbatz.app">Get it on Google Play</a>
+      <h1 id="title">You&rsquo;ve been invited to join a team</h1>
+      <p class="sub" id="message">Opening the @Batz app&hellip;</p>
+
+      <div class="spinner" id="spinner"></div>
+
+      <div class="stores" id="storeLinks">
+        <div class="divider">Get the app</div>
+        <a id="appleLink" href="https://apps.apple.com/app/id6805728001">
+          <img src="../assets/AppStore.png" alt="Download on the App Store" />
+        </a>
+        <a id="playLink" href="https://play.google.com/store/apps/details?id=com.atbatz.app">
+          <img src="../assets/PlayStore.png" alt="Get it on Google Play" />
+        </a>
+      </div>
+
+      <p class="hint">Already have @Batz installed? This link should have opened it automatically &mdash; if not, reopen it after installing.</p>
     </div>
-
-    <p class="hint">Already have @Batz? This link should have opened it automatically.</p>
   </div>
 
   <script>
@@ -107,15 +163,15 @@
       var message = document.getElementById("message");
       var storeLinks = document.getElementById("storeLinks");
 
-      // Attempt the deep link immediately. If the app is installed, the OS
-      // switches away from this page before the fallback timer below ever
-      // fires. If nothing happens within the timeout, assume the app isn't
-      // installed and show the store buttons instead.
+      // Fire the deep link immediately. If the app is installed, the OS
+      // switches away from this page before the fallback timer fires. If
+      // nothing happens within the timeout, assume the app isn't installed
+      // and reveal the store badges instead.
       window.location.href = appLink;
 
       setTimeout(function () {
         spinner.style.display = "none";
-        message.textContent = "Don't have @Batz yet? Download it below, then open this link again.";
+        message.textContent = "Download @Batz below, then open this link again to join.";
         storeLinks.classList.add("visible");
       }, 1500);
     })();
