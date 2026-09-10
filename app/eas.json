@@ -30,7 +30,7 @@
     "production": {
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "internal"
+        "track": "production"
       },
       "ios": {
         "ascAppId": "6805728001",

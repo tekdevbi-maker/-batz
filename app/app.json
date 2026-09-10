@@ -3,7 +3,7 @@
     "name": "@Batz",
     "slug": "batz",
     "owner": "tekdevbis-team",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -124,7 +124,15 @@
       ],
       "./plugins/withSplashScreenNavBarFix.js",
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3185604672137905~5049614839",
+          "iosAppId": "ca-app-pub-3185604672137905~2423451498"
+        }
+      ],
+      "./plugins/withAdMobKotlinFix.js"
     ],
     "extra": {
       "router": {},

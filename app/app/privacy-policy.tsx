@@ -74,7 +74,8 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "the claiming parent/guardian can add, change, or remove it.\n\n" +
       "User-generated content: text you submit through the Block/Report feature or a Customer Care request.\n\n" +
       "We do not collect phone numbers, home addresses, precise location, payment information, " +
-      "or any government-issued ID. We do not use advertising or analytics tracking SDKs.",
+      "or any government-issued ID. We do not use analytics tracking SDKs. We use Google AdMob to display " +
+      "ads -- see \"Advertising\" below for what that involves.",
   },
   {
     heading: "PlayerTag and stat visibility",
@@ -102,13 +103,23 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "We do not sell personal information, and we do not share it with third parties for their own marketing purposes.",
   },
   {
+    heading: "Advertising",
+    body:
+      "@Batz displays banner ads served by Google AdMob to support the app. Every ad request @Batz makes is " +
+      "configured as child-directed (Google's tagForChildDirectedTreatment / tagForUnderAgeOfConsent settings), " +
+      "which disables personalized/behavioral ad targeting -- AdMob does not build a profile from your device's " +
+      "identifiers or activity in other apps, and only serves contextual, general-audience ads. Google may still " +
+      "process limited technical information (such as IP address and device information) as needed to deliver " +
+      "an ad and to detect invalid traffic/fraud. See Google's own Privacy Policy for how AdMob handles this " +
+      "information: https://policies.google.com/privacy.",
+  },
+  {
     heading: "Third-party service providers",
     body:
       "@Batz is built on Supabase (database, authentication, and hosting) and Resend (delivery of account " +
       "verification, password-recovery, and consent-confirmation emails). These providers process data solely " +
       "to provide their infrastructure service to @Batz and are not permitted to use it for their own purposes. " +
-      "@Batz does not use advertising or analytics tracking SDKs; if that ever changes, any such integration " +
-      "will be configured as child-directed (no behavioral targeting or device-level tracking).",
+      "@Batz does not use analytics tracking SDKs. See \"Advertising\" above for our use of Google AdMob.",
   },
   {
     heading: "Data retention and deletion",

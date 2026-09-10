@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
@@ -12,6 +13,7 @@ import {
 import { Anton_400Regular } from "@expo-google-fonts/anton";
 import { AuthProvider, useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
+import { initAds } from "../lib/ads";
 import AdBanner from "../components/AdBanner";
 import SlimHeader from "../components/SlimHeader";
 
@@ -84,6 +86,13 @@ export default function RootLayout() {
     Montserrat_800ExtraBold,
     Anton_400Regular,
   });
+
+  // Fire-and-forget: the child-directed request configuration must be set
+  // before the SDK initializes (see lib/ads.ts), but ad rendering itself
+  // (AdBanner) doesn't need to block app startup on this resolving.
+  useEffect(() => {
+    initAds().catch((err) => console.warn("AdMob init failed:", err));
+  }, []);
 
   if (!fontsLoaded) {
     return (

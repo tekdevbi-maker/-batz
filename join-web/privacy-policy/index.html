@@ -51,7 +51,7 @@ Player photo: once a player has been claimed, that player's parent/guardian may 
 
 User-generated content: text you submit through the Block/Report feature or a Customer Care request.
 
-We do not collect phone numbers, home addresses, precise location, payment information, or any government-issued ID. We do not use advertising or analytics tracking SDKs.</p>
+We do not collect phone numbers, home addresses, precise location, payment information, or any government-issued ID. We do not use analytics tracking SDKs. We use Google AdMob to display ads -- see "Advertising" below for what that involves.</p>
 
     <h2>PlayerTag and stat visibility</h2>
     <p>Once unlocked (claimed), a player is identified in the app by a PlayerTag (a pseudonym) rather than their real name by default. A player's real name is never shown in search results, leaderboards, or the activity feed, unless that player's parent/guardian explicitly chooses to reveal it in Settings. Before being claimed, see "Locked players and parental consent" above -- the player's real name is hidden entirely, not just pseudonymized.
@@ -67,8 +67,11 @@ To maintain safety: reviewing Block/Report submissions.
 
 We do not sell personal information, and we do not share it with third parties for their own marketing purposes.</p>
 
+    <h2>Advertising</h2>
+    <p>@Batz displays banner ads served by Google AdMob to support the app. Every ad request @Batz makes is configured as child-directed (Google's tagForChildDirectedTreatment / tagForUnderAgeOfConsent settings), which disables personalized/behavioral ad targeting -- AdMob does not build a profile from your device's identifiers or activity in other apps, and only serves contextual, general-audience ads. Google may still process limited technical information (such as IP address and device information) as needed to deliver an ad and to detect invalid traffic/fraud. See Google's own Privacy Policy for how AdMob handles this information: <a href="https://policies.google.com/privacy">https://policies.google.com/privacy</a>.</p>
+
     <h2>Third-party service providers</h2>
-    <p>@Batz is built on Supabase (database, authentication, and hosting) and Resend (delivery of account verification, password-recovery, and consent-confirmation emails). These providers process data solely to provide their infrastructure service to @Batz and are not permitted to use it for their own purposes. @Batz does not use advertising or analytics tracking SDKs; if that ever changes, any such integration will be configured as child-directed (no behavioral targeting or device-level tracking).</p>
+    <p>@Batz is built on Supabase (database, authentication, and hosting) and Resend (delivery of account verification, password-recovery, and consent-confirmation emails). These providers process data solely to provide their infrastructure service to @Batz and are not permitted to use it for their own purposes. @Batz does not use analytics tracking SDKs. See "Advertising" above for our use of Google AdMob.</p>
 
     <h2>Data retention and deletion</h2>
     <p>Information is retained as long as the associated account or team is active. An unclaimed (locked) player's identifying information -- name, photo, and uniform number -- is automatically and permanently deleted once the coach marks that team's season complete; only an anonymized, non-attributable team total of that player's statistics is kept afterward, and the player can no longer be claimed. A claimed player's career statistics are retained for as long as their profile remains claimed. You can delete your own account at any time from User Settings, which removes your personal account information. To request deletion of a specific player's information, contact us at atbatz@brain-spell.com.</p>
