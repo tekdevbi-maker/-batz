@@ -1,32 +1,310 @@
 <!doctype html>
 <html lang="en">
 <head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>@Batz</title>
+<title>@Batz: Youth Baseball &amp; Softball Stats</title>
+<meta name="description" content="Free baseball-card player profiles and league leaderboards for youth baseball and softball teams." />
 <style>
+  :root {
+    color-scheme: light;
+    --navy: #12224a;
+    --navy-soft: #4c5b7d;
+    --red: #c0392b;
+    --line: #e6ebf4;
+    --bg: #f4f6fb;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     margin: 0;
-    min-height: 100vh;
+    background: #ffffff;
+    color: var(--navy);
+    font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  nav.top img { height: 34px; display: block; }
+  nav.top .links { display: flex; gap: 24px; font-size: 14px; font-weight: 600; }
+  nav.top .links a { text-decoration: none; color: var(--navy-soft); }
+  nav.top .links a:hover { color: var(--navy); }
+
+  /* Hero */
+  .hero {
+    background: radial-gradient(900px 500px at 50% -20%, #ffffff 0%, var(--bg) 70%);
+    padding: 64px 24px 56px;
+    text-align: center;
+  }
+  .hero-logo {
+    width: 340px;
+    max-width: 82%;
+    height: auto;
+    display: block;
+    margin: 0 auto 24px;
+  }
+  .hero h1 {
+    font-size: 34px;
+    line-height: 1.25;
+    margin: 0 auto 14px;
+    max-width: 640px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+  .hero p.lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--navy-soft);
+    max-width: 560px;
+    margin: 0 auto 30px;
+  }
+  .store-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .store-row a { display: block; line-height: 0; transition: transform 0.12s ease, opacity 0.12s ease; }
+  .store-row a:hover { transform: translateY(-1px); opacity: 0.9; }
+  .store-row img { height: 54px; width: auto; display: block; }
+
+  /* Accent divider */
+  .accent-line {
+    height: 5px;
+    background: linear-gradient(90deg, var(--navy) 0%, var(--navy) 55%, var(--red) 55%, var(--red) 100%);
+  }
+
+  /* Sections */
+  section { padding: 64px 24px; }
+  section.alt { background: var(--bg); }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--red);
+    text-align: center;
+    margin: 0 0 10px;
+  }
+  h2 {
+    font-size: 28px;
+    text-align: center;
+    margin: 0 0 8px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+  .section-sub {
+    text-align: center;
+    color: var(--navy-soft);
+    font-size: 16px;
+    max-width: 560px;
+    margin: 0 auto 44px;
+    line-height: 1.6;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .step {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 24px;
+    box-shadow: 0 10px 30px -18px rgba(18, 34, 74, 0.25);
+  }
+  .step .num {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #ffffff;
-    color: #12224a;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 24px;
-    box-sizing: border-box;
-    text-align: center;
+    margin-bottom: 16px;
+    font-size: 15px;
   }
-  h1 { font-size: 28px; margin: 0 0 8px; }
-  p { color: #4c5b7d; font-size: 16px; }
-  a { color: #1d4ed8; }
+  .step h3 { font-size: 18px; margin: 0 0 8px; }
+  .step p { font-size: 14.5px; line-height: 1.55; color: var(--navy-soft); margin: 0; }
+
+  /* Feature grid */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .feature {
+    display: flex;
+    gap: 16px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .feature .icon {
+    flex: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+  .feature h3 { font-size: 16px; margin: 0 0 4px; }
+  .feature p { font-size: 14px; line-height: 1.5; color: var(--navy-soft); margin: 0; }
+
+  /* CTA */
+  .cta {
+    text-align: center;
+    background: var(--navy);
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 48px 32px;
+    margin: 0 24px;
+  }
+  .cta h2 { color: #ffffff; }
+  .cta p { color: #c7d0e6; max-width: 480px; margin: 0 auto 28px; line-height: 1.6; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 32px 24px 40px;
+    text-align: center;
+    color: var(--navy-soft);
+    font-size: 13.5px;
+  }
+  footer .flinks { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  footer .flinks a { text-decoration: none; color: var(--navy-soft); }
+  footer .flinks a:hover { color: var(--navy); text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .steps, .features { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 27px; }
+    nav.top .links { display: none; }
+  }
 </style>
 </head>
 <body>
-  <div>
-    <h1>@Batz</h1>
-    <p>Youth baseball &amp; softball stats tracking. Ask your coach for a team join link to get started.</p>
-  </div>
+  <nav class="top">
+    <a href="/" style="line-height:0;"><img src="assets/wordmark-full.png" alt="@Batz" /></a>
+    <div class="links">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#features">Features</a>
+      <a href="/support/">Support</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <img class="hero-logo" src="assets/wordmark-full.png" alt="@Batz" />
+    <h1>No Fees. No Subscriptions.</h1>
+    <p class="lede">
+      @Batz turns your team's hitting stats into a baseball-card-style profile for every player, plus
+      league leaderboards so families can see how the team stacks up. Completely free for coaches,
+      players, and families.
+    </p>
+    <div class="store-row">
+      <a href="https://apps.apple.com/app/id6805728001"><img src="assets/AppStore.png" alt="Download on the App Store" /></a>
+      <a href="https://play.google.com/store/apps/details?id=com.atbatz.app"><img src="assets/PlayStore.png" alt="Get it on Google Play" /></a>
+    </div>
+  </header>
+
+  <div class="accent-line"></div>
+
+  <section id="how-it-works">
+    <div class="wrap">
+      <p class="eyebrow">How It Works</p>
+      <h2>From game day to the leaderboard</h2>
+      <p class="section-sub">Coaches do the setup once, and it's free for everyone on the team all season long.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="num">1</div>
+          <h3>Import your stats</h3>
+          <p>Already tracking games somewhere else? Import the stats from a CSV you already have. No retyping anything.</p>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <h3>Every player gets a card</h3>
+          <p>Season and career stats are calculated automatically into a baseball-card-style profile parents and players can follow, free.</p>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <h3>Share one link</h3>
+          <p>Send parents a single team link, no emails to collect. They follow the season, milestones, and standings for free.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="alt">
+    <div class="wrap">
+      <p class="eyebrow">Features</p>
+      <h2>Built for the whole team</h2>
+      <p class="section-sub">Not just a scorebook, a shared home for the season.</p>
+      <div class="features">
+        <div class="feature">
+          <div class="icon">&#128176;</div>
+          <div>
+            <h3>Free</h3>
+            <p>No subscriptions, no paywalls. Every coach, player, and family gets the full experience for free.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="icon">&#127942;</div>
+          <div>
+            <h3>Baseball Card Profiles</h3>
+            <p>Every player gets their own baseball-card-style stat profile that parents and players can follow all season.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="icon">&#128200;</div>
+          <div>
+            <h3>Team &amp; League Leaderboards</h3>
+            <p>See where your team stacks up against every other team in your league and division.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="icon">&#9733;</div>
+          <div>
+            <h3>Star Ratings</h3>
+            <p>Players earn stars for singles, doubles, triples, and home runs, a fun way to see progress at a glance.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cta">
+      <h2>Ready for this season?</h2>
+      <p>Download @Batz and get your team set up in minutes. It's completely free for coaches, players, and families.</p>
+      <div class="store-row">
+        <a href="https://apps.apple.com/app/id6805728001"><img src="assets/AppStore.png" alt="Download on the App Store" /></a>
+        <a href="https://play.google.com/store/apps/details?id=com.atbatz.app"><img src="assets/PlayStore.png" alt="Get it on Google Play" /></a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="flinks">
+      <a href="/privacy-policy/">Privacy Policy</a>
+      <a href="/terms-of-service/">Terms of Service</a>
+      <a href="/support/">Support</a>
+      <a href="/delete-account/">Delete Account</a>
+    </div>
+    &copy; 2026 BrainSpell LLC. @Batz is not affiliated with any third-party scorekeeping service.
+  </footer>
 </body>
 </html>
