@@ -87,8 +87,16 @@ export default function LeagueLeaderboardScreen() {
   }
 
   const category = CATEGORIES.find((c) => c.key === categoryKey)!;
+  // A player with nothing recorded in the selected category (0 hits, a
+  // .000 average from zero at-bats, etc.) has no real rank to show --
+  // drop them from this category's list entirely rather than taking up a
+  // Top 25 slot at 0.
   const sorted = useMemo(
-    () => [...entries].sort((a, b) => category.value(b) - category.value(a)).slice(0, TOP_N),
+    () =>
+      entries
+        .filter((e) => category.value(e) > 0)
+        .sort((a, b) => category.value(b) - category.value(a))
+        .slice(0, TOP_N),
     [entries, category]
   );
   const ranks = useMemo(() => computeStandardCompetitionRanks(sorted, category.value), [sorted, category]);

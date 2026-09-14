@@ -71,6 +71,19 @@ export default function TeamMembersScreen() {
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
+  // "Promote" name popup -- only shown when the member has no name on file
+  // (displayName fell back to their email server-side, e.g. a member
+  // whose team_membership row was created without one). Promoting them
+  // straight through used to silently store a blank name, which then
+  // rendered as the literal text "null null" wherever a coach's name is
+  // shown. Asking for a name here instead of guessing keeps
+  // coach_assignment from ever getting a blank one again.
+  const [promoteTarget, setPromoteTarget] = useState<TeamMember | null>(null);
+  const [promoteFirstName, setPromoteFirstName] = useState("");
+  const [promoteLastName, setPromoteLastName] = useState("");
+  const [promoteBusy, setPromoteBusy] = useState(false);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (!teamId) return;
     getTeamJoinContext(supabase, teamId)
@@ -113,16 +126,52 @@ export default function TeamMembersScreen() {
 
   async function handlePromote(member: TeamMember) {
     if (!teamId) return;
-    setBusyUserId(member.userId);
+    // displayName falls back to the member's email server-side when they
+    // have no name on file -- ask for one instead of promoting them with a
+    // blank name (see the promote-name popup above for why).
+    if (member.displayName === member.email) {
+      setPromoteTarget(member);
+      setPromoteFirstName("");
+      setPromoteLastName("");
+      setPromoteError(null);
+      return;
+    }
+    const [firstName, ...rest] = member.displayName.split(" ");
+    await runPromote(teamId, member.userId, firstName, rest.join(" "));
+  }
+
+  async function runPromote(teamId: string, userId: string, firstName: string, lastName: string) {
+    setBusyUserId(userId);
     setError(null);
     try {
-      const [firstName, ...rest] = member.displayName.includes("@") ? [""] : member.displayName.split(" ");
-      await promoteToAssistantCoach(supabase, teamId, member.userId, firstName, rest.join(" "));
+      await promoteToAssistantCoach(supabase, teamId, userId, firstName, lastName);
       load();
     } catch (err) {
       setError(err instanceof AssistantCoachCapacityError ? err.message : errorMessage(err));
     } finally {
       setBusyUserId(null);
+    }
+  }
+
+  async function handleConfirmPromote() {
+    if (!teamId || !promoteTarget) return;
+    if (!promoteFirstName.trim() || !promoteLastName.trim()) return;
+    setPromoteBusy(true);
+    setPromoteError(null);
+    try {
+      await promoteToAssistantCoach(
+        supabase,
+        teamId,
+        promoteTarget.userId,
+        promoteFirstName.trim(),
+        promoteLastName.trim()
+      );
+      setPromoteTarget(null);
+      load();
+    } catch (err) {
+      setPromoteError(err instanceof AssistantCoachCapacityError ? err.message : errorMessage(err));
+    } finally {
+      setPromoteBusy(false);
     }
   }
 
@@ -410,6 +459,52 @@ export default function TeamMembersScreen() {
                 onPress={handleSendVerification}
               >
                 {verifyBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalSendText}>Send Verification</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!promoteTarget} transparent animationType="fade" onRequestClose={() => setPromoteTarget(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Name This Coach</Text>
+            <Text style={styles.hint}>
+              {promoteTarget?.email} doesn't have a name on file yet. Enter one before promoting them to
+              assistant coach.
+            </Text>
+
+            <Text style={styles.label}>First Name</Text>
+            <TextInput
+              style={styles.input}
+              value={promoteFirstName}
+              onChangeText={setPromoteFirstName}
+              autoCapitalize="words"
+            />
+
+            <Text style={styles.label}>Last Name</Text>
+            <TextInput
+              style={styles.input}
+              value={promoteLastName}
+              onChangeText={setPromoteLastName}
+              autoCapitalize="words"
+            />
+
+            {promoteError && <Text style={styles.error}>{promoteError}</Text>}
+
+            <View style={styles.modalButtonRow}>
+              <Pressable style={styles.modalCancel} disabled={promoteBusy} onPress={() => setPromoteTarget(null)}>
+                <Text style={styles.actionButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalSend,
+                  (promoteBusy || !promoteFirstName.trim() || !promoteLastName.trim()) && styles.modalSendDisabled,
+                ]}
+                disabled={promoteBusy || !promoteFirstName.trim() || !promoteLastName.trim()}
+                onPress={handleConfirmPromote}
+              >
+                {promoteBusy ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.modalSendText}>Promote</Text>}
               </Pressable>
             </View>
           </View>

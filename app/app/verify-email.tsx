@@ -97,7 +97,13 @@ export default function VerifyEmailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center", backgroundColor: colors.background },
+  // Anchored in the upper half (not vertically centered) rather than the
+  // full-screen center -- iOS reports of the Verify button being
+  // unreachable after the 6-digit code is entered traced back to this
+  // block sitting low enough that the keyboard covered the button once it
+  // appeared. Sitting higher keeps the whole form, button included, above
+  // where the keyboard comes up.
+  container: { flex: 1, padding: 24, paddingTop: 48, gap: 12, backgroundColor: colors.background },
   title: { fontSize: 24, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
   body: { fontSize: 16, fontFamily: "Montserrat_400Regular", color: colors.textSecondary, lineHeight: 22, textAlign: "center" },
   emphasis: { fontFamily: "Montserrat_700Bold", color: colors.textPrimary },

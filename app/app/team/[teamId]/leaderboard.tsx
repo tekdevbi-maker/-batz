@@ -87,7 +87,14 @@ export default function TeamLeaderboardScreen() {
   }
 
   const category = CATEGORIES.find((c) => c.key === categoryKey)!;
-  const sorted = useMemo(() => [...roster].sort((a, b) => category.value(b) - category.value(a)), [roster, category]);
+  // A player with nothing recorded in the selected category (0 hits, a
+  // .000 average from zero at-bats, etc.) has no real rank to show --
+  // drop them from this category's list entirely rather than tying for
+  // last with everyone else at 0.
+  const sorted = useMemo(
+    () => roster.filter((r) => category.value(r) > 0).sort((a, b) => category.value(b) - category.value(a)),
+    [roster, category]
+  );
   const ranks = useMemo(() => computeStandardCompetitionRanks(sorted, category.value), [sorted, category]);
 
   if (!session || !teamId) return null;

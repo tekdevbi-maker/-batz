@@ -31,6 +31,15 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
+// coach_assignment.first_name/last_name can be null -- e.g. a member
+// promoted to assistant coach before they ever had a name on file (their
+// team_membership row was created without one) ends up with a literal
+// null here. Template-interpolating a null renders the string "null", so
+// this filters missing parts instead of ever showing that.
+function coachDisplayName(coach: TeamCoach): string {
+  return [coach.firstName, coach.lastName].filter(Boolean).join(" ") || "Unnamed coach";
+}
+
 function fmtRate(n: number): string {
   return n.toFixed(3).replace(/^0\./, ".");
 }
@@ -362,11 +371,9 @@ export default function TeamHomeScreen() {
           const assistants = coaches.filter((c) => c.role === "assistant");
           return (
             <>
+              <Text style={styles.statLine}>Head Coach: {headCoach ? coachDisplayName(headCoach) : ""}</Text>
               <Text style={styles.statLine}>
-                Head Coach: {headCoach ? `${headCoach.firstName} ${headCoach.lastName}` : ""}
-              </Text>
-              <Text style={styles.statLine}>
-                Assistant Coaches: {assistants.map((c) => `${c.firstName} ${c.lastName}`).join(", ")}
+                Assistant Coaches: {assistants.map(coachDisplayName).join(", ")}
               </Text>
             </>
           );
