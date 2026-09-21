@@ -221,7 +221,12 @@ export default function PlayerCardStatsBack({
               bounded to NAME_BLOCK_WIDTH (the gap between the logo and number circles) so long text
               truncates instead of bleeding under either one. */}
           <View style={{ position: "absolute", left: NAME_BLOCK_LEFT * scale, top: (CONTENT_TOP + 8) * scale, width: NAME_BLOCK_WIDTH * scale, alignItems: "center" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", maxWidth: "100%" }}>
+            {/* alignItems: "baseline" (not "center") -- Anton (first name) and
+                Montserrat (last name) have different line-height metrics, so
+                centering their boxes leaves the last name sitting visibly
+                higher/lower than the first; aligning by text baseline is
+                what actually puts both names on the same line. */}
+            <View style={{ flexDirection: "row", alignItems: "baseline", maxWidth: "100%" }}>
               <View style={{ flexShrink: 1 }}>
                 <OutlinedText
                   fontSize={107 * scale}
@@ -235,9 +240,8 @@ export default function PlayerCardStatsBack({
                   // of bleeding into the last name/edge.
                   width={Math.min(firstName.length * 107 * scale * 0.62, NAME_BLOCK_WIDTH * 0.55 * scale)}
                   style={{
-                    fontFamily: "Anton_400Regular",
+                    fontFamily: "Montserrat_400Regular",
                     fontStyle: "italic",
-                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
