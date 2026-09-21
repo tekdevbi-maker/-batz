@@ -193,7 +193,7 @@ export default function Home() {
       <View style={styles.tileGrid}>
         {localPlayers.map((p) => (
           <Pressable key={p.id} style={styles.playerPhotoTile} onPress={() => router.push(`/local-player/${p.id}`)}>
-            <PlayerCard firstName={p.firstName} lastName={p.lastName} photoUrl={p.photoUrl} teamLogoUrl={p.teamLogoUrl} />
+            <PlayerCard firstName={p.firstName} lastName={p.lastName} photoUrl={p.photoUrl} teamLogoUrl={p.teamLogoUrl} cardSet="freecard" />
           </Pressable>
         ))}
         <Pressable style={styles.createPlayerTile} onPress={() => router.push("/create-player")}>

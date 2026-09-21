@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { View, Text, Image, StyleSheet, type LayoutChangeEvent } from "react-native";
 
-const CARD_FRAME = require("../assets/card1_front.png");
+// card1_front.png = the "Level 1" card, used by real (Supabase-backed)
+// players. freecard_front.png = the fully-local "Create A Player" / guest
+// feature's own card identity, kept separate so the two can diverge later
+// even though they're visually identical copies of the same art today.
+// Metro requires static require() paths, so both are required unconditionally
+// and picked between at render time via the cardSet prop, rather than
+// building a dynamic require path.
+const CARD_FRAME_LEVEL1 = require("../assets/card1_front.png");
+const CARD_FRAME_FREE = require("../assets/freecard_front.png");
 // card1_front.png's own pixel dimensions — print-ready size for Snapshot
 // (2.5"x3.5" @ 600 PPI) — drives the wrapper's aspectRatio so the template
 // never gets stretched/cropped, and is also the reference canvas every
@@ -100,13 +108,18 @@ export default function PlayerCard({
   lastName,
   photoUrl,
   teamLogoUrl,
+  cardSet = "card1",
 }: {
   firstName: string;
   lastName: string;
   photoUrl?: string | null;
   teamLogoUrl?: string | null;
+  // "card1" (default) = Level 1 real-player card. "freecard" = the local
+  // "Create A Player" / guest feature's own card identity.
+  cardSet?: "card1" | "freecard";
 }) {
   const [width, setWidth] = useState(0);
+  const CARD_FRAME = cardSet === "freecard" ? CARD_FRAME_FREE : CARD_FRAME_LEVEL1;
 
   function onLayout(e: LayoutChangeEvent) {
     setWidth(e.nativeEvent.layout.width);

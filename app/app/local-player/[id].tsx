@@ -66,7 +66,7 @@ export default function LocalPlayerScreen() {
   // Built once and reused by both FlipStatsCard (on-screen flip) and
   // CardDownloadButton (its own off-screen capture copies).
   const frontFace = (
-    <PlayerCard key="photo" firstName={player.firstName} lastName={player.lastName} photoUrl={player.photoUrl} teamLogoUrl={player.teamLogoUrl} />
+    <PlayerCard key="photo" firstName={player.firstName} lastName={player.lastName} photoUrl={player.photoUrl} teamLogoUrl={player.teamLogoUrl} cardSet="freecard" />
   );
   const backFace = (
     <PlayerCardStatsBack
@@ -103,6 +103,7 @@ export default function LocalPlayerScreen() {
       uniformNumber={player.uniformNumber}
       locked={false}
       activity={[]}
+      cardSet="freecard"
     />
   );
 

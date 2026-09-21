@@ -5,7 +5,12 @@ import type { PlayerSeasonLine } from "../lib/playerRepository";
 import type { BattingCounts, CalculatedStats } from "../lib/stats";
 import { OutlinedText } from "./PlayerCard";
 
-const CARD_FRAME = require("../assets/card1_back_landscape.png");
+// card1_back_landscape.png = the "Level 1" card back, used by real
+// (Supabase-backed) players. freecard_back_landscape.png = the fully-local
+// "Create A Player" / guest feature's own card identity -- kept separate,
+// same reasoning as PlayerCard.tsx's CARD_FRAME_LEVEL1/CARD_FRAME_FREE.
+const CARD_FRAME_LEVEL1 = require("../assets/card1_back_landscape.png");
+const CARD_FRAME_FREE = require("../assets/freecard_back_landscape.png");
 // card1_back_landscape.png is card1_back.png (the print-ready Card1 back
 // template, 1500x2100 @ 600 PPI) rotated 90deg clockwise back to landscape
 // so it fits this face's existing stats-table layout. Every position below
@@ -118,6 +123,7 @@ export default function PlayerCardStatsBack({
   teamLogoUrl,
   uniformNumber,
   locked = false,
+  cardSet = "card1",
 }: {
   firstName: string;
   lastName: string;
@@ -142,8 +148,12 @@ export default function PlayerCardStatsBack({
   // is_coach_fallback — name/team info is already reduced to just the
   // default tag by the caller before this ever gets here.
   locked?: boolean;
+  // "card1" (default) = Level 1 real-player card back. "freecard" = the
+  // local "Create A Player" / guest feature's own card identity.
+  cardSet?: "card1" | "freecard";
 }) {
   const [width, setWidth] = useState(0);
+  const CARD_FRAME = cardSet === "freecard" ? CARD_FRAME_FREE : CARD_FRAME_LEVEL1;
   const scale = width / CANVAS_W;
 
   function onLayout(e: LayoutChangeEvent) {
