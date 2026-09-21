@@ -5,6 +5,9 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
+import { useAuth } from "../lib/AuthContext";
+import { supabase } from "../lib/supabase";
+import { logGuestFeatureEvent } from "../lib/guestAnalytics";
 import { colors } from "../lib/theme";
 
 function errorMessage(err: unknown): string {
@@ -33,6 +36,10 @@ export default function CardDownloadButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // Not useRequireAuth -- this component is also used on the guest/local
+  // player screen, which is reachable signed out. Just read whether
+  // there's a session, don't redirect on it.
+  const { session } = useAuth();
 
   async function handleDownload() {
     setBusy(true);
@@ -112,6 +119,7 @@ export default function CardDownloadButton({
         mimeType: "application/pdf",
         dialogTitle: `${fileNamePrefix} Card`.trim(),
       });
+      logGuestFeatureEvent(supabase, "card_pdf_downloaded", !session);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
