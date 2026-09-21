@@ -1,10 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Modal, RefreshControl } from "react-native";
-import { captureRef } from "react-native-view-shot";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
-import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useRequireAuth } from "../../../lib/AuthContext";
 import { supabase } from "../../../lib/supabase";
@@ -30,13 +25,14 @@ import {
   unfollowPlayer,
   type ActivityFeedPost,
 } from "../../../lib/socialRepository";
-// Block/Report is disabled for now -- kept here, commented out, in case it's
+// Block/Report is disabled for now — kept here, commented out, in case it's
 // wanted again later.
 // import BlockReportButtons from "../../../components/BlockReportButtons";
 import FlipStatsCard from "../../../components/FlipStatsCard";
 import VerificationNoticeModal from "../../../components/VerificationNoticeModal";
 import PlayerCard from "../../../components/PlayerCard";
 import PlayerCardStatsBack from "../../../components/PlayerCardStatsBack";
+import CardDownloadButton from "../../../components/CardDownloadButton";
 import { formatDateDisplay } from "../../../lib/dateFormat";
 import { colors } from "../../../lib/theme";
 
@@ -81,13 +77,10 @@ export default function PlayerProfileScreen() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   // Free, unrestricted download for now (2026-09) while the app is still
-  // small -- intended to be locked down to the paid Snapshot print flow
-  // once usage grows, per this session's card-print backlog notes.
-  const frontCaptureRef = useRef<View>(null);
-  const backCaptureRef = useRef<View>(null);
-  const [downloadBusy, setDownloadBusy] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [captureModalOpen, setCaptureModalOpen] = useState(false);
+  // small — intended to be locked down to the paid Snapshot print flow
+  // once usage grows, per this session's card-print backlog notes. See
+  // CardDownloadButton for the actual capture/PDF logic (shared with the
+  // local "Create A Player" screen).
 
   const load = useCallback(async () => {
     if (!playerId || !session) return;
@@ -163,7 +156,7 @@ export default function PlayerProfileScreen() {
   );
 
   // "Transfer to Parent" is only offered to a coach viewing a player on
-  // their own team -- e.g. one they claimed themselves to get the player
+  // their own team — e.g. one they claimed themselves to get the player
   // on the roster before the real parent had an account.
   useEffect(() => {
     if (!profile || !session) {
@@ -188,7 +181,7 @@ export default function PlayerProfileScreen() {
   }, [profile, session]);
 
   // Whether I (the viewer) already have a pending/decided claim request on
-  // this player's current roster spot -- drives the "I'm the Parent"
+  // this player's current roster spot — drives the "I'm the Parent"
   // button showing "Request pending" instead of being tappable again.
   useEffect(() => {
     if (!profile || !session || profile.isOwner || !profile.isCoachFallback) {
@@ -214,7 +207,7 @@ export default function PlayerProfileScreen() {
 
   // Agreeing to a coach's transfer offer is the same "becoming this
   // player's verified Parent/Legal Guardian" consent as claiming or
-  // getting approved from Home -- same notice, same onboarding wizard
+  // getting approved from Home — same notice, same onboarding wizard
   // hand-off afterward, instead of dropping straight onto Settings.
   async function handleTransferOfferResponse(agree: boolean) {
     if (!transferOffer) return;
@@ -269,7 +262,7 @@ export default function PlayerProfileScreen() {
   }
 
   // Same "Important Profile Verification Notice" consent flow as the
-  // parent-side Home banner (notifications.tsx) -- a Head Coach unlocking
+  // parent-side Home banner (notifications.tsx) — a Head Coach unlocking
   // their own kid's fallback profile still has to read and agree to the
   // notice, and Agree hands off to the same onboarding wizard afterward.
   async function handleAttest() {
@@ -284,93 +277,6 @@ export default function PlayerProfileScreen() {
       setAttestError(errorMessage(err));
     } finally {
       setAttestBusy(false);
-    }
-  }
-
-  async function handleDownloadCard() {
-    setDownloadBusy(true);
-    setDownloadError(null);
-    setCaptureModalOpen(true);
-    try {
-      // The modal needs to actually mount AND get at least one real paint
-      // pass before capturing it -- two animation-frame waits cover layout
-      // commit, and the extra delay gives the (possibly-remote) player
-      // photo time to finish decoding so it isn't captured half-loaded.
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      if (!frontCaptureRef.current || !backCaptureRef.current) return;
-      // Explicit width/height caps the OUTPUT resolution regardless of the
-      // device's pixel density -- captureRef otherwise captures at full
-      // native resolution (e.g. 900px source * 3x density = 2700px), and
-      // base64-encoding an image that large produced a string too big to
-      // pass through the JS<->Native bridge reliably, silently failing
-      // into a totally blank single-page PDF. These are still comfortably
-      // print-quality for a 3.5in page (600px / 3.5in ~= 170 DPI).
-      const frontUri = await captureRef(frontCaptureRef, { format: "png", quality: 1, width: 600, height: 840 });
-      const backUriLandscape = await captureRef(backCaptureRef, { format: "png", quality: 1, width: 840, height: 600 });
-      // The on-screen stats-back face is deliberately landscape (wide table),
-      // but a printed card needs both faces in the same portrait orientation
-      // to line up when cut out -- rotate the captured back image 90deg
-      // clockwise to match the front.
-      const rotatedBack = await ImageManipulator.manipulateAsync(backUriLandscape, [{ rotate: 90 }], {
-        format: ImageManipulator.SaveFormat.PNG,
-      });
-      const backUri = rotatedBack.uri;
-      setCaptureModalOpen(false);
-      const [frontBase64, backBase64] = await Promise.all([
-        FileSystem.readAsStringAsync(frontUri, { encoding: FileSystem.EncodingType.Base64 }),
-        FileSystem.readAsStringAsync(backUri, { encoding: FileSystem.EncodingType.Base64 }),
-      ]);
-      // Embed as base64 data URIs, NOT a file:// path -- tried file:// first
-      // (referencing captureRef's own output path directly) since it seemed
-      // lighter-weight, but Android's WebView-based print renderer can't
-      // reach the app's private cache directory that way (broken-image
-      // icons in the resulting PDF). Base64-embedding what's already a
-      // confirmed-working capture (verified separately by sharing the raw
-      // PNG) is the standard, reliable approach here.
-      // Standard US Letter cardstock page (8.5in x 11in = 612pt x 792pt),
-      // 9 copies per page in a 3x3 grid at exact 2.5in x 3.5in (180pt x
-      // 252pt) each -- 3*180=540pt + 2*6pt gaps = 552pt (fits in 612pt),
-      // 3*252=756pt + 2*6pt gaps = 768pt (fits in 792pt). One page of 9
-      // fronts, one page of 9 backs, for cutting out multiple copies.
-      const frontCell = `<img src="data:image/png;base64,${frontBase64}" />`;
-      const backCell = `<img src="data:image/png;base64,${backBase64}" />`;
-      const html = `
-        <html>
-          <head>
-            <style>
-              * { margin: 0; padding: 0; }
-              .page {
-                width: 612pt; height: 792pt;
-                display: grid;
-                grid-template-columns: repeat(3, 180pt);
-                grid-template-rows: repeat(3, 252pt);
-                gap: 6pt;
-                align-content: center;
-                justify-content: center;
-                page-break-after: always;
-              }
-              /* Fixed physical size (2.5in x 3.5in = 180pt x 252pt) per
-                 cell -- print-ready means each printed card measures
-                 exactly this once cut out, not just "fits its grid cell". */
-              .page img { width: 180pt; height: 252pt; display: block; }
-            </style>
-          </head>
-          <body>
-            <div class="page">${frontCell.repeat(9)}</div>
-            <div class="page">${backCell.repeat(9)}</div>
-          </body>
-        </html>`;
-      const { uri: pdfUri } = await Print.printToFileAsync({ html, width: 612, height: 792, base64: false });
-      await Sharing.shareAsync(pdfUri, {
-        mimeType: "application/pdf",
-        dialogTitle: `${cardFirstName} ${cardLastName} Card`.trim(),
-      });
-    } catch (err) {
-      setDownloadError(errorMessage(err));
-    } finally {
-      setCaptureModalOpen(false);
-      setDownloadBusy(false);
     }
   }
 
@@ -409,7 +315,7 @@ export default function PlayerProfileScreen() {
   const current = currentSeasonLine(profile);
 
   // Real name when the parent opted into "Real Name" display, OR when the
-  // viewer is coaching staff on this locked player's team -- same
+  // viewer is coaching staff on this locked player's team — same
   // exception the Roster screen already makes (statsRepository's
   // displayNameFor), so a coach isn't shown a name on the roster list but
   // then just a uniform number once they tap into the card. Otherwise
@@ -418,6 +324,46 @@ export default function PlayerProfileScreen() {
   const showRealNameOnCard = profile.displayMode === "real_name" || (profile.isCoachFallback && isCoachOnTeam);
   const cardFirstName = showRealNameOnCard ? (profile.realName?.split(" ")[0] ?? "") : "";
   const cardLastName = showRealNameOnCard ? profile.realName?.split(" ").slice(1).join(" ") || "" : profile.displayName;
+
+  // Built once and reused by both FlipStatsCard (on-screen flip) and
+  // CardDownloadButton (its own off-screen capture copies) so the two
+  // never drift out of sync with each other.
+  const frontFace = (
+    <PlayerCard
+      key="photo"
+      firstName={cardFirstName}
+      lastName={cardLastName}
+      photoUrl={profile.photoUrl}
+      teamLogoUrl={current?.teamLogoUrl}
+    />
+  );
+  const backFace = (
+    <PlayerCardStatsBack
+      key="statsback"
+      firstName={cardFirstName}
+      lastName={cardLastName}
+      leagueName={current?.leagueName ?? ""}
+      divisionName={current?.divisionName ?? ""}
+      teamName={current?.teamName ?? ""}
+      season={current?.season ?? ""}
+      year={current?.year ?? 0}
+      heightFeet={profile.heightFeet}
+      heightInches={profile.heightInches}
+      weightLbs={profile.weightLbs}
+      bats={profile.bats}
+      throws={profile.throws}
+      seasons={profile.seasons}
+      careerCounts={profile.careerCounts}
+      careerStats={profile.careerStats}
+      teamLogoUrl={current?.teamLogoUrl}
+      uniformNumber={current?.uniformNumber}
+      locked={profile.isCoachFallback || (profile.visibilityScope === "only_me" && !profile.isOwner)}
+      activity={cardActivity.slice(0, 3).map((post) => ({
+        id: post.id,
+        text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
+      }))}
+    />
+  );
 
   return (
     <ScrollView
@@ -574,7 +520,7 @@ export default function PlayerProfileScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalText}>
               Unlink {profile.displayName} from its current parent? This returns the player to a locked state
-              under the Head Coach's account -- the parent can re-claim it later.
+              under the Head Coach's account — the parent can re-claim it later.
             </Text>
             {unlinkError && <Text style={styles.error}>{unlinkError}</Text>}
             <View style={styles.modalButtonRow}>
@@ -598,7 +544,7 @@ export default function PlayerProfileScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalText}>
               Permanently delete {profile.displayName}? This removes the roster spot and every batting stat
-              recorded for it -- this can't be undone. Nobody has claimed this player, so there's no career
+              recorded for it — this can't be undone. Nobody has claimed this player, so there's no career
               record elsewhere to preserve.
             </Text>
             {deleteError && <Text style={styles.error}>{deleteError}</Text>}
@@ -618,114 +564,16 @@ export default function PlayerProfileScreen() {
         </View>
       </Modal>
 
-      {/* Block/Report disabled for now -- see the commented-out import above.
+      {/* Block/Report disabled for now — see the commented-out import above.
       {session && !profile.isOwner && (
         <BlockReportButtons myUserId={session.user.id} targetUserId={profile.parentUserId} />
       )}
       */}
 
       <Text style={styles.hint}>Tap the card to flip it over</Text>
-      <FlipStatsCard
-        flippable
-        faces={[
-          <PlayerCard
-            key="photo"
-            firstName={cardFirstName}
-            lastName={cardLastName}
-            photoUrl={profile.photoUrl}
-            teamLogoUrl={current?.teamLogoUrl}
-          />,
-          <PlayerCardStatsBack
-            key="statsback"
-            firstName={cardFirstName}
-            lastName={cardLastName}
-            leagueName={current?.leagueName ?? ""}
-            divisionName={current?.divisionName ?? ""}
-            teamName={current?.teamName ?? ""}
-            season={current?.season ?? ""}
-            year={current?.year ?? 0}
-            heightFeet={profile.heightFeet}
-            heightInches={profile.heightInches}
-            weightLbs={profile.weightLbs}
-            bats={profile.bats}
-            throws={profile.throws}
-            seasons={profile.seasons}
-            careerCounts={profile.careerCounts}
-            careerStats={profile.careerStats}
-            teamLogoUrl={current?.teamLogoUrl}
-            uniformNumber={current?.uniformNumber}
-            locked={profile.isCoachFallback || (profile.visibilityScope === "only_me" && !profile.isOwner)}
-            activity={cardActivity.slice(0, 3).map((post) => ({
-              id: post.id,
-              text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
-            }))}
-          />,
-        ]}
-      />
+      <FlipStatsCard flippable faces={[frontFace, backFace]} />
 
-      {downloadError && <Text style={styles.error}>{downloadError}</Text>}
-      <Pressable style={styles.downloadButton} disabled={downloadBusy} onPress={handleDownloadCard}>
-        {downloadBusy ? (
-          <ActivityIndicator size="small" color="white" />
-        ) : (
-          <Text style={styles.downloadButtonText}>Download Card (PDF)</Text>
-        )}
-      </Pressable>
-
-      {/* Genuinely-visible (not clipped/offset/opacity-0'd) copies of both
-          card faces, captured for the PDF download above -- FlipStatsCard
-          only ever mounts one face at a time, so a separate pair is needed
-          to capture both regardless of which side is currently shown.
-          Three earlier attempts to hide this (pushed far off-screen,
-          opacity: 0, and clipped via overflow:hidden) all produced BLANK
-          captures -- Android can skip actually painting a view under any
-          of those, which is exactly what react-native-view-shot needs to
-          have happened. Making it real screen content, covered by the
-          opaque "Preparing your card..." overlay below, is what actually
-          works. Only mounted/visible while capturing (captureModalOpen).
-          collapsable={false} keeps Android from optimizing the wrapper
-          View out of the native tree entirely. Free/unrestricted for now
-          (2026-09) -- see the state declarations above for why. */}
-      <Modal visible={captureModalOpen} transparent={false} animationType="none">
-        <View style={styles.captureModalRoot}>
-          <View ref={frontCaptureRef} collapsable={false} style={{ width: 900 }}>
-            <PlayerCard firstName={cardFirstName} lastName={cardLastName} photoUrl={profile.photoUrl} teamLogoUrl={current?.teamLogoUrl} />
-          </View>
-          <View ref={backCaptureRef} collapsable={false} style={{ width: 1200 }}>
-            <PlayerCardStatsBack
-              firstName={cardFirstName}
-              lastName={cardLastName}
-              leagueName={current?.leagueName ?? ""}
-              divisionName={current?.divisionName ?? ""}
-              teamName={current?.teamName ?? ""}
-              season={current?.season ?? ""}
-              year={current?.year ?? 0}
-              heightFeet={profile.heightFeet}
-              heightInches={profile.heightInches}
-              weightLbs={profile.weightLbs}
-              bats={profile.bats}
-              throws={profile.throws}
-              seasons={profile.seasons}
-              careerCounts={profile.careerCounts}
-              careerStats={profile.careerStats}
-              teamLogoUrl={current?.teamLogoUrl}
-              uniformNumber={current?.uniformNumber}
-              locked={profile.isCoachFallback || (profile.visibilityScope === "only_me" && !profile.isOwner)}
-              activity={cardActivity.slice(0, 3).map((post) => ({
-                id: post.id,
-                text: `Reached ${describeMilestone(post)} on ${formatDateDisplay(post.gameDate)}`,
-              }))}
-            />
-          </View>
-        </View>
-        {/* Opaque cover on top -- the cards above are real, painted screen
-            content (required for capture to work), but the user should
-            just see this loading state, not a flash of raw card art. */}
-        <View style={styles.captureModalCover}>
-          <ActivityIndicator color={colors.accent} />
-          <Text style={styles.captureModalText}>Preparing your card...</Text>
-        </View>
-      </Modal>
+      <CardDownloadButton frontFace={frontFace} backFace={backFace} fileNamePrefix={`${cardFirstName} ${cardLastName}`} />
     </ScrollView>
   );
 }
@@ -736,7 +584,7 @@ const styles = StyleSheet.create({
   hint: { color: colors.textSecondary, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   error: { color: colors.error, fontSize: 14, fontFamily: "Montserrat_400Regular" },
   ownerSection: { gap: 8, marginTop: 8, alignItems: "flex-start" },
-  // alignSelf: "stretch" is required here -- ownerSection uses alignItems:
+  // alignSelf: "stretch" is required here — ownerSection uses alignItems:
   // "flex-start" (so the privacy badge above doesn't stretch full-width),
   // which otherwise leaves this row's own width undetermined and the
   // tiles' percentage widths resolving against nothing, throwing off both
@@ -788,30 +636,4 @@ const styles = StyleSheet.create({
   modalCancel: { paddingVertical: 10 },
   modalAgree: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16 },
   modalAgreeText: { color: "white", fontFamily: "Montserrat_600SemiBold" },
-  downloadButton: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  downloadButtonText: { color: "white", fontFamily: "Montserrat_600SemiBold", fontSize: 15 },
-  // The card copies render here for real (needed so Android actually
-  // paints them -- see the long comment above the Modal in the JSX for
-  // what didn't work) inside a plain, non-scrolling container.
-  captureModalRoot: { flex: 1, backgroundColor: colors.background },
-  // Sits on top of captureModalRoot, covering it entirely -- StyleSheet.absoluteFillObject
-  // pins this to all four edges, matching the Modal's own full-screen size.
-  captureModalCover: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  captureModalText: { fontFamily: "Montserrat_600SemiBold", fontSize: 15, color: colors.textPrimary },
 });

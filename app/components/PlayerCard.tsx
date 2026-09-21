@@ -2,8 +2,8 @@ import { useState } from "react";
 import { View, Text, Image, StyleSheet, type LayoutChangeEvent } from "react-native";
 
 const CARD_FRAME = require("../assets/card1_front.png");
-// card1_front.png's own pixel dimensions -- print-ready size for Snapshot
-// (2.5"x3.5" @ 600 PPI) -- drives the wrapper's aspectRatio so the template
+// card1_front.png's own pixel dimensions — print-ready size for Snapshot
+// (2.5"x3.5" @ 600 PPI) — drives the wrapper's aspectRatio so the template
 // never gets stretched/cropped, and is also the reference canvas every
 // position/size constant below was measured against.
 const CANVAS_W = 1500;
@@ -24,7 +24,7 @@ const LAST_NAME_SIZE = 128;
 const STROKE_W = 4;
 
 // Explicit, hand-placed centers (canvas px) rather than derived from the
-// banner's own geometry -- set directly per feedback on where they should sit.
+// banner's own geometry — set directly per feedback on where they should sit.
 const FIRST_NAME_CENTER_Y = 1805;
 const LAST_NAME_CENTER_Y = 1945;
 const BANNER_CENTER_X = (BANNER_LEFT + BANNER_RIGHT) / 2;
@@ -39,7 +39,7 @@ const TEAM_LOGO_DIAMETER = 310;
 
 // Draws bordered white text by stacking the same string 8x, offset by
 // `stroke` in each direction in the border color, then once more on top in
-// the fill color -- RN's Text has no CSS text-stroke equivalent.
+// the fill color — RN's Text has no CSS text-stroke equivalent.
 function OutlinedText({
   children,
   fontSize,
@@ -57,7 +57,7 @@ function OutlinedText({
   // needed for OutlinedText specifically since, unlike a plain Text, its
   // stroke effect is drawn by stacking multiple absolutely-positioned Text
   // layers on top of each other. adjustsFontSizeToFit only has something to
-  // shrink against if every layer gets the same explicit width -- an
+  // shrink against if every layer gets the same explicit width — an
   // absolutely-positioned Text with no declared width sizes to its own
   // content and never shrinks, no matter what wraps it.
   shrinkToFit?: boolean;
@@ -91,7 +91,7 @@ function OutlinedText({
 }
 
 // The default baseball-card look for an unlocked player: photo (layer 1),
-// the card_template_final frame -- borders, @Batz logo, red name banner all
+// the card_template_final frame — borders, @Batz logo, red name banner all
 // baked in (layer 2), and the player's name (layer 3). Used both as the
 // Roster screen's per-player thumbnail (non-interactive; the surrounding
 // Pressable handles navigation) and as FlipStatsCard's back face.
@@ -116,11 +116,11 @@ export default function PlayerCard({
 
   return (
     <View style={styles.wrapper} onLayout={onLayout}>
-      {/* Layer 1: photo, uploaded by the parent -- a locked player has none
+      {/* Layer 1: photo, uploaded by the parent — a locked player has none
           (photoUrl is already guarded to null at the repo level), so the
           window just shows plain white behind the frame instead. */}
       {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" /> : <View style={styles.photo} />}
-      {/* Layer 2: card frame -- borders, logo, and red banner all baked in */}
+      {/* Layer 2: card frame — borders, logo, and red banner all baked in */}
       <Image source={CARD_FRAME} style={styles.cardBg} resizeMode="contain" />
       {/* Layer 3: player name, italic bordered first name over a plain last name */}
       {width > 0 && (
@@ -142,7 +142,7 @@ export default function PlayerCard({
                 fontFamily: "Anton_400Regular",
                 // skewX transforms are a web-only no-op on native RN (Fabric
                 // silently drops unsupported transform keys), so italics has
-                // to come from the actual font style flag -- the OS applies
+                // to come from the actual font style flag — the OS applies
                 // a synthetic oblique slant to Anton (which has no italic
                 // face) on both iOS and Android, unlike the transform hack.
                 fontStyle: "italic",
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   // card_template_final.png has a REAL alpha-transparent photo window (not
   // a baked-in checkerboard graphic like the old card_template_no_logo.png
   // was), so covering the whole canvas and letting the frame mask it is
-  // the correct approach -- an inset rectangle here would just misalign
+  // the correct approach — an inset rectangle here would just misalign
   // with where the frame's window actually is.
   photo: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "#fff" },
 });

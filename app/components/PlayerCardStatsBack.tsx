@@ -30,14 +30,14 @@ const TABLE_MARGIN_RIGHT = 32;
 const ACTIVITY_LEFT = 154;
 const ACTIVITY_TOP = 1053;
 
-// Team logo, top-left -- kept well inside the white content window (not
+// Team logo, top-left — kept well inside the white content window (not
 // the canvas corner) so it never overlaps the red/dark-red border.
 const LOGO_CENTER_X = 244;
 const LOGO_CENTER_Y = 226;
 const LOGO_DIAMETER = 235;
 const NAME_STROKE_W = 4;
 
-// Uniform number, top-right -- mirrors the logo's inset from its edge so
+// Uniform number, top-right — mirrors the logo's inset from its edge so
 // both stay clear of the red/dark-red border the same amount.
 const NUMBER_CENTER_X = CONTENT_RIGHT - (LOGO_CENTER_X - CONTENT_LEFT);
 const NUMBER_CENTER_Y = LOGO_CENTER_Y;
@@ -45,7 +45,7 @@ const NUMBER_DIAMETER = LOGO_DIAMETER;
 const NUMBER_RING_W = 9;
 
 // Name/league/measurables text is centered up top, but must never bleed
-// under the logo or number circles -- a long custom league/division/team
+// under the logo or number circles — a long custom league/division/team
 // name (e.g. "Orange County Metro Conference" from the free-text league
 // field) can otherwise stretch past them since centering alone doesn't
 // stop at either circle's edge. Bounded to the horizontal gap between the
@@ -97,7 +97,7 @@ export interface CardBackActivityLine {
 // season-by-season stat table with a totals row in the middle (widened to
 // the content window's edges), and the player's activity feed bottom-left.
 // Position constants above are locked in from card_back_mockup_teddy_flipse.png
-// -- change the mockup first, then mirror the numbers here.
+// — change the mockup first, then mirror the numbers here.
 export default function PlayerCardStatsBack({
   firstName,
   lastName,
@@ -139,7 +139,7 @@ export default function PlayerCardStatsBack({
   teamLogoUrl?: string | null;
   // A locked (coach-fallback, unclaimed) player's stats show as "*" and no
   // activity is shown, same reasoning as everywhere else that gates on
-  // is_coach_fallback -- name/team info is already reduced to just the
+  // is_coach_fallback — name/team info is already reduced to just the
   // default tag by the caller before this ever gets here.
   locked?: boolean;
 }) {
@@ -221,7 +221,7 @@ export default function PlayerCardStatsBack({
               bounded to NAME_BLOCK_WIDTH (the gap between the logo and number circles) so long text
               truncates instead of bleeding under either one. */}
           <View style={{ position: "absolute", left: NAME_BLOCK_LEFT * scale, top: (CONTENT_TOP + 8) * scale, width: NAME_BLOCK_WIDTH * scale, alignItems: "center" }}>
-            {/* alignItems: "baseline" (not "center") -- Anton (first name) and
+            {/* alignItems: "baseline" (not "center") — Anton (first name) and
                 Montserrat (last name) have different line-height metrics, so
                 centering their boxes leaves the last name sitting visibly
                 higher/lower than the first; aligning by text baseline is
@@ -233,7 +233,7 @@ export default function PlayerCardStatsBack({
                   stroke={NAME_STROKE_W * scale}
                   shrinkToFit
                   // Sized to the actual name (rough Anton-font char-width
-                  // estimate) instead of a fixed box -- a fixed width left
+                  // estimate) instead of a fixed box — a fixed width left
                   // a visible gap before the last name for anyone shorter
                   // than the reserved space. Still caps at the same 55% of
                   // NAME_BLOCK_WIDTH so a long first name shrinks instead
@@ -304,7 +304,7 @@ export default function PlayerCardStatsBack({
             </View>
           </View>
 
-          {/* Bottom-left: recent activity, all entries -- omitted entirely for a locked player */}
+          {/* Bottom-left: recent activity, all entries — omitted entirely for a locked player */}
           {!locked && (
             <View style={{ position: "absolute", left: ACTIVITY_LEFT * scale, top: ACTIVITY_TOP * scale, width: (CONTENT_RIGHT - ACTIVITY_LEFT - 20) * scale }}>
               <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 54 * scale, color: colors.textPrimary, marginBottom: 13 * scale }}>

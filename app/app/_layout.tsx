@@ -18,11 +18,11 @@ import AdBanner from "../components/AdBanner";
 import SlimHeader from "../components/SlimHeader";
 
 // NOTE: an app-wide default via Text.defaultProps/TextInput.defaultProps
-// was tried here and reverted -- it's an undocumented hack that isn't
+// was tried here and reverted — it's an undocumented hack that isn't
 // supported under React Native's New Architecture (Fabric, which this app
 // runs on) and caused a native SIGSEGV crash on launch. Montserrat is
 // applied per-style instead (see the fontFamily entries alongside
-// fontWeight across the app, added in the codemod pass) -- safe, just not
+// fontWeight across the app, added in the codemod pass) — safe, just not
 // automatically covering styles that never set fontWeight at all.
 
 function Gate({ children }: { children: React.ReactNode }) {
@@ -44,7 +44,7 @@ function Gate({ children }: { children: React.ReactNode }) {
 }
 
 // Persistent reminder that the active session belongs to another user,
-// not the admin -- shown above everything else while impersonating, with
+// not the admin — shown above everything else while impersonating, with
 // a one-tap way back that restores the stashed admin session instead of
 // requiring a re-login.
 function ImpersonationBanner() {
@@ -147,6 +147,9 @@ export default function RootLayout() {
           <Stack.Screen name="team/[teamId]" options={{ headerShown: false }} />
           <Stack.Screen name="player/[playerId]/index" options={{ title: "" }} />
           <Stack.Screen name="player/[playerId]/settings" options={{ title: "Player Settings" }} />
+          <Stack.Screen name="create-player" options={{ title: "Create A Player" }} />
+          <Stack.Screen name="local-player/[id]" options={{ title: "" }} />
+          <Stack.Screen name="guest-players" options={{ headerShown: false }} />
           <Stack.Screen name="search" options={{ title: "Search" }} />
           <Stack.Screen name="user-settings" options={{ title: "User Settings" }} />
           <Stack.Screen name="merge-players" options={{ title: "Merge Players" }} />

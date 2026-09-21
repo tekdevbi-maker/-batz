@@ -4,7 +4,7 @@ import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/theme";
 
-// Wordmark's own pixel aspect ratio (974x433) -- used to size its height
+// Wordmark's own pixel aspect ratio (974x433) — used to size its height
 // from the screen width so it scales cleanly on any device.
 const LOGO_ASPECT_RATIO = 974 / 433;
 
@@ -19,19 +19,19 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Guards the redirect effect below so it only fires because of THIS
-  // screen's own successful sign-in -- not because some unrelated screen
+  // screen's own successful sign-in — not because some unrelated screen
   // (e.g. a signup on /join/[teamId]) happened to update the same shared
   // session. Confirmed via real device testing: on a cold start via deep
   // link, Home briefly mounts first, its useRequireAuth() sees no
   // session yet and redirects here before the deep link finishes
-  // resolving to its real target -- this /login instance then stays
+  // resolving to its real target — this /login instance then stays
   // mounted in the background, and without this guard, ANY later session
   // change (from a totally different screen) would fire this effect and
   // hijack navigation back to Home mid-flow.
   const [attemptedLogin, setAttemptedLogin] = useState(false);
 
   // Navigate off this screen only once AuthContext's session state has
-  // actually updated -- not right after signIn()'s promise resolves.
+  // actually updated — not right after signIn()'s promise resolves.
   // Supabase updates the session via a separate async onAuthStateChange
   // event, so replacing the route immediately after signIn() can land on
   // the next screen before React has re-rendered with the new session,
@@ -97,6 +97,9 @@ export default function LoginScreen() {
       </Link>
       <Link href="/forgot-password" style={styles.link}>
         <Text>Forgot password?</Text>
+      </Link>
+      <Link href="/guest-players" style={styles.link}>
+        <Text>Continue as Guest — Create a Player</Text>
       </Link>
       <Text style={styles.legalText}>
         By continuing, you agree to our{" "}

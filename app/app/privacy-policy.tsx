@@ -11,7 +11,7 @@ import SafeTopSpacer from "../components/SafeTopSpacer";
 // Replace EFFECTIVE_DATE and CONTACT_EMAIL, and have this reviewed by a
 // lawyer before real users onboard -- this is a solid first draft, not
 // legal advice.
-const EFFECTIVE_DATE = "August 14, 2026";
+const EFFECTIVE_DATE = "September 21, 2026";
 const CONTACT_EMAIL = "atbatz@brain-spell.com";
 
 const SECTIONS: Array<{ heading: string; body: string }> = [
@@ -73,9 +73,16 @@ const SECTIONS: Array<{ heading: string; body: string }> = [
       "photo of the player to display on their player card. Uploading a photo is entirely optional and only " +
       "the claiming parent/guardian can add, change, or remove it.\n\n" +
       "User-generated content: text you submit through the Block/Report feature or a Customer Care request.\n\n" +
+      "\"Create A Player\" cards: the standalone card-creation feature (accessible with or without an account) " +
+      "is entirely local to your device — the name, photo, stats, and any other details you enter are stored " +
+      "only on your device and are never sent to or stored by @Batz. The only exception is a single anonymous " +
+      "usage event (which feature action occurred and whether you were signed in) logged with no player data, " +
+      "name, photo, or any other identifying information attached, used solely to gauge how often this feature " +
+      "is used.\n\n" +
       "We do not collect phone numbers, home addresses, precise location, payment information, " +
-      "or any government-issued ID. We do not use analytics tracking SDKs. We use Google AdMob to display " +
-      "ads -- see \"Advertising\" below for what that involves.",
+      "or any government-issued ID. We do not use third-party analytics tracking SDKs (see the anonymous usage " +
+      "event above, which uses our own existing database rather than a third-party tracker). We use Google " +
+      "AdMob to display ads -- see \"Advertising\" below for what that involves.",
   },
   {
     heading: "PlayerTag and stat visibility",

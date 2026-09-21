@@ -6,6 +6,7 @@ import { useRequireAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
 import { listMyCoachedTeams, listMyMemberTeams, type CoachedTeam } from "../lib/teamsRepository";
 import { listMyPlayers, type MyPlayer } from "../lib/playerRepository";
+import { listLocalPlayers, type LocalPlayer } from "../lib/localPlayerRepository";
 import {
   listPendingClaimRequestCountsForCoach,
   listNewlyAssignedPlayers,
@@ -24,6 +25,7 @@ export default function Home() {
   const [memberTeams, setMemberTeams] = useState<CoachedTeam[]>([]);
   const [myPlayers, setMyPlayers] = useState<MyPlayer[]>([]);
   const [myTeamPlayers, setMyTeamPlayers] = useState<MyPlayer[]>([]);
+  const [localPlayers, setLocalPlayers] = useState<LocalPlayer[]>([]);
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   const [newlyAssigned, setNewlyAssigned] = useState<NewlyAssignedPlayer[]>([]);
   const [transferOffers, setTransferOffers] = useState<PendingTransferOffer[]>([]);
@@ -44,10 +46,11 @@ export default function Home() {
           setMyTeamPlayers(myTeamPlayers);
         })
         .catch(() => {}),
+      listLocalPlayers().then(setLocalPlayers).catch(() => {}),
     ]);
   }, [session]);
 
-  // useFocusEffect, not a plain useEffect keyed on session -- session
+  // useFocusEffect, not a plain useEffect keyed on session — session
   // doesn't change when navigating back to an already-mounted Home screen
   // (e.g. after a coach claims a player and returns here), so a plain
   // effect would leave these lists stale until a full app reload.
@@ -182,6 +185,22 @@ export default function Home() {
           </View>
         </>
       )}
+
+      {/* Fully local, device-only players — no team/coach involved at all,
+          created straight from the user's own profile (2026-09-21). */}
+      <Text style={styles.label}>My Custom Players</Text>
+      <Text style={styles.hint}>Personal cards you fill in by hand — no team required.</Text>
+      <View style={styles.tileGrid}>
+        {localPlayers.map((p) => (
+          <Pressable key={p.id} style={styles.playerPhotoTile} onPress={() => router.push(`/local-player/${p.id}`)}>
+            <PlayerCard firstName={p.firstName} lastName={p.lastName} photoUrl={p.photoUrl} teamLogoUrl={p.teamLogoUrl} />
+          </Pressable>
+        ))}
+        <Pressable style={styles.createPlayerTile} onPress={() => router.push("/create-player")}>
+          <Ionicons name="add-circle-outline" size={32} color={colors.accent} />
+          <Text style={styles.createPlayerTileText}>Create A Player</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.spacer} />
 
@@ -384,6 +403,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   playerPhotoTile: { width: "31.5%", borderRadius: 8, overflow: "hidden", marginBottom: 12 },
+  createPlayerTile: {
+    width: "31.5%",
+    aspectRatio: 0.7143,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    padding: 8,
+    marginBottom: 12,
+  },
+  createPlayerTileText: { fontSize: 12, fontFamily: "Montserrat_600SemiBold", color: colors.accent, textAlign: "center" },
   playerTileName: { fontSize: 14, fontFamily: "Montserrat_700Bold", color: colors.textPrimary, textAlign: "center" },
   playerTilePrivate: { fontSize: 10, fontFamily: "Montserrat_400Regular", color: colors.textMuted, textAlign: "center", marginTop: 4 },
   spacer: { flex: 1 },
