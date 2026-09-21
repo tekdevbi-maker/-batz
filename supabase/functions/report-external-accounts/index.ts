@@ -36,6 +36,9 @@ const RUN_HOURS_ET = (Deno.env.get("REPORT_RUN_HOURS_ET") ?? "8,12,16,20")
   .filter((n) => Number.isInteger(n));
 
 type SlimUser = { id: string; email: string; created_at: string };
+type UsageRow = { event_type: string; is_guest: boolean; count: number };
+
+const USAGE_WINDOW_DAYS = 5;
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -100,6 +103,31 @@ Deno.serve(async (req) => {
     })
     .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
 
+  // Usage counts for the "Create A Player" / guest feature and the
+  // "Download Card (PDF)" button (see lib/guestAnalytics.ts) -- the
+  // guest_feature_event table has no SELECT policy for anon/authenticated
+  // (see its migration), so this admin/service-role client is the only
+  // way to read it back at all.
+  const windowStart = new Date(Date.now() - USAGE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data: usageRows, error: usageError } = await admin
+    .from("guest_feature_event")
+    .select("event_type, is_guest")
+    .gte("created_at", windowStart);
+  if (usageError) {
+    return json({ error: "usage_query_failed", detail: usageError.message }, 502);
+  }
+  const usageCounts = new Map<string, number>();
+  for (const row of usageRows ?? []) {
+    const key = `${row.event_type}|${row.is_guest}`;
+    usageCounts.set(key, (usageCounts.get(key) ?? 0) + 1);
+  }
+  const usage: UsageRow[] = [...usageCounts.entries()]
+    .map(([key, count]) => {
+      const [event_type, isGuestStr] = key.split("|");
+      return { event_type, is_guest: isGuestStr === "true", count };
+    })
+    .sort((a, b) => (a.event_type < b.event_type ? -1 : a.event_type > b.event_type ? 1 : Number(b.is_guest) - Number(a.is_guest)));
+
   const summary = {
     ok: true,
     checkedAt: new Date().toISOString(),
@@ -107,14 +135,17 @@ Deno.serve(async (req) => {
     externalCount: external.length,
     excludedDomain: EXCLUDED_DOMAIN,
     external,
+    usageWindowDays: USAGE_WINDOW_DAYS,
+    usage,
   };
 
   if (dryRun) {
     return json({ ...summary, emailed: false, dryRun: true });
   }
 
-  // Silent on empty runs, by design.
-  if (external.length === 0) {
+  // Silent on empty runs, by design -- now also sends if there's any
+  // feature-usage activity to report, not just new external accounts.
+  if (external.length === 0 && usage.length === 0) {
     return json({ ...summary, emailed: false });
   }
 
@@ -127,9 +158,9 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       from: `@Batz Monitor <${FROM_ADDRESS}>`,
       to: RECIPIENTS,
-      subject: `@Batz: ${external.length} non-${EXCLUDED_DOMAIN} account${external.length === 1 ? "" : "s"}`,
-      html: renderHtml(external, all.length),
-      text: renderText(external, all.length),
+      subject: `@Batz: ${external.length} non-${EXCLUDED_DOMAIN} account${external.length === 1 ? "" : "s"}, ${usage.length} usage row${usage.length === 1 ? "" : "s"}`,
+      html: renderUsageHtml(usage) + renderHtml(external, all.length),
+      text: renderUsageText(usage) + "\n\n" + renderText(external, all.length),
     }),
   });
 
@@ -173,19 +204,90 @@ function renderHtml(rows: SlimUser[], total: number): string {
     )
     .join("");
   return (
-    `<div style="max-width:640px;margin:0 auto;padding:32px 24px;font-family:-apple-system,Helvetica,Arial,sans-serif;background-color:#ffffff;">` +
-    `<h1 style="color:#1d4ed8;font-size:20px;font-weight:700;margin:0 0 8px;">@Batz account watch</h1>` +
+    `<div style="max-width:640px;margin:0 auto;padding:0 24px 32px;font-family:-apple-system,Helvetica,Arial,sans-serif;background-color:#ffffff;">` +
+    `<h2 style="color:#1d4ed8;font-size:16px;font-weight:700;margin:24px 0 8px;">Non-${escapeHtml(EXCLUDED_DOMAIN)} accounts</h2>` +
     `<p style="color:#12224a;font-size:15px;line-height:22px;margin:0 0 20px;">` +
     `<strong>${rows.length}</strong> of ${total} auth accounts are not on <code>${escapeHtml(EXCLUDED_DOMAIN)}</code>, newest first.</p>` +
-    `<table style="border-collapse:collapse;width:100%;">` +
-    `<thead><tr>` +
-    `<th style="${head}">Email</th><th style="${head}">Created</th><th style="${head}">User ID</th>` +
-    `</tr></thead>` +
-    `<tbody>${body}</tbody>` +
-    `</table>` +
+    (rows.length === 0
+      ? `<p style="color:#4c5b7d;font-size:14px;">No external accounts.</p>`
+      : `<table style="border-collapse:collapse;width:100%;">` +
+        `<thead><tr>` +
+        `<th style="${head}">Email</th><th style="${head}">Created</th><th style="${head}">User ID</th>` +
+        `</tr></thead>` +
+        `<tbody>${body}</tbody>` +
+        `</table>`) +
     `<p style="color:#8993ac;font-size:12px;line-height:18px;margin:20px 0 0;">` +
     `Automated 4x-daily check from the report-external-accounts Edge Function. ` +
-    `Sent only when the count is at least 1.</p>` +
+    `Sent only when there's something to report.</p>` +
+    `</div>`
+  );
+}
+
+// "Create A Player" / guest feature + "Download Card (PDF)" usage, from
+// lib/guestAnalytics.ts's anonymous guest_feature_event table. is_guest
+// splits signed-in vs. guest/no-account usage for the same event type.
+// Block-character bars since plain text has no real charting -- scaled to
+// a fixed max width so the longest bar always fills it.
+const TEXT_BAR_WIDTH = 20;
+
+function renderUsageText(rows: UsageRow[]): string {
+  const header = [`@Batz account watch`, "", `Card/guest-feature usage, last ${USAGE_WINDOW_DAYS} days:`, ""];
+  if (rows.length === 0) {
+    return [...header, "No events in this window."].join("\n");
+  }
+  const maxCount = Math.max(1, ...rows.map((r) => r.count));
+  const labelWidth = Math.max(...rows.map((r) => `${EVENT_SOURCE[r.event_type] ?? r.event_type} — ${r.event_type} (${r.is_guest ? "guest" : "signed in"})`.length));
+  const lines = rows.map((r) => {
+    const label = `${EVENT_SOURCE[r.event_type] ?? r.event_type} — ${r.event_type} (${r.is_guest ? "guest" : "signed in"})`.padEnd(labelWidth);
+    const barLen = Math.max(1, Math.round((r.count / maxCount) * TEXT_BAR_WIDTH));
+    return `${label}  ${"#".repeat(barLen)} ${r.count}`;
+  });
+  return [...header, ...lines].join("\n");
+}
+
+// Labels the two source files these events come from, per row, for the
+// chart -- guestAnalytics.ts logs guest_players_viewed/local_player_created,
+// CardDownloadButton.tsx logs card_pdf_downloaded.
+const EVENT_SOURCE: Record<string, string> = {
+  guest_players_viewed: "guestAnalytics",
+  local_player_created: "guestAnalytics",
+  card_pdf_downloaded: "CardDownloadButton",
+};
+
+function renderUsageHtml(rows: UsageRow[]): string {
+  const maxCount = Math.max(1, ...rows.map((r) => r.count));
+  // Horizontal bars built from nested divs inside a table -- avoids SVG/
+  // canvas, which many email clients (Outlook especially) don't render.
+  const bars = rows
+    .map((r) => {
+      const pct = Math.max(4, Math.round((r.count / maxCount) * 100));
+      const color = r.is_guest ? "#10b981" : "#1d4ed8";
+      const label = `${EVENT_SOURCE[r.event_type] ?? r.event_type} — ${r.event_type} (${r.is_guest ? "guest" : "signed in"})`;
+      return (
+        `<tr>` +
+        `<td style="padding:5px 10px 5px 0;font-size:13px;color:#12224a;white-space:nowrap;">${escapeHtml(label)}</td>` +
+        `<td style="padding:5px 0;width:100%;">` +
+        `<div style="background:#e5e9f2;border-radius:4px;overflow:hidden;">` +
+        `<div style="background:${color};height:14px;width:${pct}%;"></div>` +
+        `</div>` +
+        `</td>` +
+        `<td style="padding:5px 0 5px 10px;font-size:13px;color:#12224a;text-align:right;font-weight:600;">${r.count}</td>` +
+        `</tr>`
+      );
+    })
+    .join("");
+  const chart =
+    rows.length === 0
+      ? `<p style="color:#4c5b7d;font-size:14px;">No events in this window.</p>`
+      : `<table style="border-collapse:collapse;width:100%;">${bars}</table>`;
+  return (
+    `<div style="max-width:640px;margin:0 auto;padding:32px 24px 0;font-family:-apple-system,Helvetica,Arial,sans-serif;background-color:#ffffff;">` +
+    `<h1 style="color:#1d4ed8;font-size:20px;font-weight:700;margin:0 0 8px;">@Batz account watch</h1>` +
+    `<h2 style="color:#1d4ed8;font-size:16px;font-weight:700;margin:16px 0 8px;">Card/guest-feature usage</h2>` +
+    `<p style="color:#12224a;font-size:14px;line-height:20px;margin:0 0 12px;">` +
+    `"Create A Player" (guestAnalytics) and card PDF downloads (CardDownloadButton) over the last <strong>${USAGE_WINDOW_DAYS} days</strong>. ` +
+    `<span style="color:#1d4ed8;">■</span> signed in &nbsp; <span style="color:#10b981;">■</span> guest.</p>` +
+    chart +
     `</div>`
   );
 }
