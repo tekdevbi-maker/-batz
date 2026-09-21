@@ -1,38 +1,41 @@
 import { useState } from "react";
 import { View, Text, Image, StyleSheet, type LayoutChangeEvent } from "react-native";
 
-const CARD_FRAME = require("../assets/card_template_final.png");
-// card_template_final.png's own pixel dimensions -- drives the wrapper's
-// aspectRatio so the template never gets stretched/cropped, and is also the
-// reference canvas every position/size constant below was measured against.
-const CANVAS_W = 1440;
-const CANVAS_H = 1930;
+const CARD_FRAME = require("../assets/card1_front.png");
+// card1_front.png's own pixel dimensions -- print-ready size for Snapshot
+// (2.5"x3.5" @ 600 PPI) -- drives the wrapper's aspectRatio so the template
+// never gets stretched/cropped, and is also the reference canvas every
+// position/size constant below was measured against.
+const CANVAS_W = 1500;
+const CANVAS_H = 2100;
 export const CARD_ASPECT_RATIO = CANVAS_W / CANVAS_H;
 
-// Name banner geometry, in CANVAS_W/CANVAS_H pixels, arrived at by hand
-// (see card_composite.png iteration): the red/dark-red banner spans
-// y 1603-1877, split into two equal rows, lifted up off strict center.
-const BANNER_LEFT = 100;
-const BANNER_RIGHT = 1340;
-const BANNER_TOP = 1603;
-const BANNER_BOTTOM = 1877;
-const FIRST_NAME_SIZE = 100; // 2 sizes smaller than the last name
-const LAST_NAME_SIZE = 117;
+// Name banner geometry, in CANVAS_W/CANVAS_H pixels, measured directly off
+// card1_front.png (scanning down the center column for the transparent
+// window -> opaque banner transition): the red/dark-red banner spans
+// y 1721-2020, split into two two-tone rows (lighter red on top, darker
+// red on bottom).
+const BANNER_LEFT = 40;
+const BANNER_RIGHT = 1460;
+const BANNER_TOP = 1721;
+const BANNER_BOTTOM = 2020;
+const FIRST_NAME_SIZE = 109; // 2 sizes smaller than the last name
+const LAST_NAME_SIZE = 128;
 const STROKE_W = 4;
 
 // Explicit, hand-placed centers (canvas px) rather than derived from the
 // banner's own geometry -- set directly per feedback on where they should sit.
-const FIRST_NAME_CENTER_Y = 1660;
-const LAST_NAME_CENTER_Y = 1780;
+const FIRST_NAME_CENTER_Y = 1805;
+const LAST_NAME_CENTER_Y = 1945;
 const BANNER_CENTER_X = (BANNER_LEFT + BANNER_RIGHT) / 2;
 const MAX_TEXT_W = BANNER_RIGHT - BANNER_LEFT - 40;
 
 // Layer 4: team logo, locked in from card_composite_with_team_logo.png --
 // already a circular, ring-framed PNG from CircleCropModal's own capture,
 // so it just needs to be placed, not masked again here.
-const TEAM_LOGO_CENTER_X = 1160;
-const TEAM_LOGO_CENTER_Y = 1600;
-const TEAM_LOGO_DIAMETER = 300;
+const TEAM_LOGO_CENTER_X = 1210;
+const TEAM_LOGO_CENTER_Y = 1721;
+const TEAM_LOGO_DIAMETER = 310;
 
 // Draws bordered white text by stacking the same string 8x, offset by
 // `stroke` in each direction in the border color, then once more on top in

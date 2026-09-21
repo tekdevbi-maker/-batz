@@ -5,30 +5,36 @@ import type { PlayerSeasonLine } from "../lib/playerRepository";
 import type { BattingCounts, CalculatedStats } from "../lib/stats";
 import { OutlinedText } from "./PlayerCard";
 
-const CARD_FRAME = require("../assets/card_template_back_final.png");
-// card_template_back_final.png's own pixel dimensions -- every position
-// below was measured against this canvas (see card_back_mockup_teddy_flipse.png).
-const CANVAS_W = 1931;
-const CANVAS_H = 1440;
+const CARD_FRAME = require("../assets/card1_back_landscape.png");
+// card1_back_landscape.png is card1_back.png (the print-ready Card1 back
+// template, 1500x2100 @ 600 PPI) rotated 90deg clockwise back to landscape
+// so it fits this face's existing stats-table layout. Every position below
+// was re-measured against this canvas (content window: left=90 top=85
+// right=2003 bottom=1415, vs. the old card_template_back_final.png's
+// left=75 top=99 right=1878 bottom=1337) and remapped by the resulting
+// ~1.061x horizontal / ~1.074x vertical content-box scale factor.
+const CANVAS_W = 2100;
+const CANVAS_H = 1500;
 const CARD_ASPECT_RATIO = CANVAS_W / CANVAS_H;
 
-const CONTENT_LEFT = 75;
-const CONTENT_TOP = 99;
-const CONTENT_RIGHT = 1878;
+const CONTENT_LEFT = 90;
+const CONTENT_TOP = 85;
+const CONTENT_RIGHT = 2003;
 const CENTER_X = (CONTENT_LEFT + CONTENT_RIGHT) / 2;
 
-// Hand-placed, locked-in per iteration on the mockup.
-const TABLE_LEFT = 117;
-const TABLE_TOP = 500;
-const TABLE_MARGIN_RIGHT = 30;
-const ACTIVITY_LEFT = 135;
-const ACTIVITY_TOP = 1000;
+// Hand-placed, locked-in per iteration on the mockup (remapped from the old
+// canvas via the content-box scale factors above).
+const TABLE_LEFT = 135;
+const TABLE_TOP = 516;
+const TABLE_MARGIN_RIGHT = 32;
+const ACTIVITY_LEFT = 154;
+const ACTIVITY_TOP = 1053;
 
 // Team logo, top-left -- kept well inside the white content window (not
 // the canvas corner) so it never overlaps the red/dark-red border.
-const LOGO_CENTER_X = 220;
-const LOGO_CENTER_Y = 230;
-const LOGO_DIAMETER = 220;
+const LOGO_CENTER_X = 244;
+const LOGO_CENTER_Y = 226;
+const LOGO_DIAMETER = 235;
 const NAME_STROKE_W = 4;
 
 // Uniform number, top-right -- mirrors the logo's inset from its edge so
@@ -36,7 +42,7 @@ const NAME_STROKE_W = 4;
 const NUMBER_CENTER_X = CONTENT_RIGHT - (LOGO_CENTER_X - CONTENT_LEFT);
 const NUMBER_CENTER_Y = LOGO_CENTER_Y;
 const NUMBER_DIAMETER = LOGO_DIAMETER;
-const NUMBER_RING_W = 8;
+const NUMBER_RING_W = 9;
 
 // Name/league/measurables text is centered up top, but must never bleed
 // under the logo or number circles -- a long custom league/division/team
@@ -44,7 +50,7 @@ const NUMBER_RING_W = 8;
 // field) can otherwise stretch past them since centering alone doesn't
 // stop at either circle's edge. Bounded to the horizontal gap between the
 // two circles, with a margin so text never touches either one.
-const NAME_BLOCK_MARGIN = 40;
+const NAME_BLOCK_MARGIN = 42;
 const NAME_BLOCK_LEFT = LOGO_CENTER_X + LOGO_DIAMETER / 2 + NAME_BLOCK_MARGIN;
 const NAME_BLOCK_RIGHT = NUMBER_CENTER_X - NUMBER_DIAMETER / 2 - NAME_BLOCK_MARGIN;
 const NAME_BLOCK_WIDTH = NAME_BLOCK_RIGHT - NAME_BLOCK_LEFT;
@@ -218,7 +224,7 @@ export default function PlayerCardStatsBack({
             <View style={{ flexDirection: "row", alignItems: "center", maxWidth: "100%" }}>
               <View style={{ flexShrink: 1 }}>
                 <OutlinedText
-                  fontSize={100 * scale}
+                  fontSize={107 * scale}
                   stroke={NAME_STROKE_W * scale}
                   shrinkToFit
                   // Sized to the actual name (rough Anton-font char-width
@@ -227,7 +233,7 @@ export default function PlayerCardStatsBack({
                   // than the reserved space. Still caps at the same 55% of
                   // NAME_BLOCK_WIDTH so a long first name shrinks instead
                   // of bleeding into the last name/edge.
-                  width={Math.min(firstName.length * 100 * scale * 0.62, NAME_BLOCK_WIDTH * 0.55 * scale)}
+                  width={Math.min(firstName.length * 107 * scale * 0.62, NAME_BLOCK_WIDTH * 0.55 * scale)}
                   style={{
                     fontFamily: "Anton_400Regular",
                     fontStyle: "italic",
@@ -241,9 +247,9 @@ export default function PlayerCardStatsBack({
               <Text
                 style={{
                   fontFamily: "Montserrat_400Regular",
-                  fontSize: 100 * scale,
+                  fontSize: 107 * scale,
                   color: colors.textPrimary,
-                  marginLeft: 16 * scale,
+                  marginLeft: 17 * scale,
                   textShadowColor: "rgba(0,0,0,0.55)",
                   textShadowOffset: { width: 2 * scale, height: 2 * scale },
                   textShadowRadius: 1,
@@ -257,37 +263,37 @@ export default function PlayerCardStatsBack({
               </Text>
             </View>
             <Text
-              style={{ fontFamily: "Montserrat_600SemiBold", fontSize: 36 * scale, color: colors.textSecondary, marginTop: 10 * scale, maxWidth: "100%", textAlign: "center" }}
+              style={{ fontFamily: "Montserrat_600SemiBold", fontSize: 39 * scale, color: colors.textSecondary, marginTop: 11 * scale, maxWidth: "100%", textAlign: "center" }}
               numberOfLines={2}
             >
               {[leagueName, divisionName, teamName, `${season} ${year}`].filter(Boolean).join("  |  ")}
             </Text>
-            <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 32 * scale, color: colors.textSecondary, marginTop: 8 * scale, maxWidth: "100%" }} numberOfLines={1}>
+            <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 34 * scale, color: colors.textSecondary, marginTop: 9 * scale, maxWidth: "100%" }} numberOfLines={1}>
               {measurables}
             </Text>
           </View>
 
           {/* Middle-middle: season-by-season stat table + totals */}
           <View style={{ position: "absolute", left: TABLE_LEFT * scale, top: TABLE_TOP * scale, width: tableW * scale }}>
-            <View style={{ flexDirection: "row", backgroundColor: "#23305a", height: 58 * scale, alignItems: "center" }}>
+            <View style={{ flexDirection: "row", backgroundColor: "#23305a", height: 62 * scale, alignItems: "center" }}>
               {HEADERS.map((h, i) => (
-                <Text key={h} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_600SemiBold", fontSize: 35 * scale }}>
+                <Text key={h} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_600SemiBold", fontSize: 37 * scale }}>
                   {h}
                 </Text>
               ))}
             </View>
             {rows.map((row, ridx) => (
-              <View key={ridx} style={{ flexDirection: "row", height: 58 * scale, alignItems: "center", backgroundColor: ridx % 2 === 1 ? "#f4f5f8" : "transparent" }}>
+              <View key={ridx} style={{ flexDirection: "row", height: 62 * scale, alignItems: "center", backgroundColor: ridx % 2 === 1 ? "#f4f5f8" : "transparent" }}>
                 {row.map((val, i) => (
-                  <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 35 * scale }}>
+                  <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: colors.textPrimary, fontFamily: "Montserrat_400Regular", fontSize: 37 * scale }}>
                     {val}
                   </Text>
                 ))}
               </View>
             ))}
-            <View style={{ flexDirection: "row", height: 58 * scale, alignItems: "center", backgroundColor: "#dc1e28" }}>
+            <View style={{ flexDirection: "row", height: 62 * scale, alignItems: "center", backgroundColor: "#dc1e28" }}>
               {totals.map((val, i) => (
-                <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_700Bold", fontSize: 35 * scale }}>
+                <Text key={i} style={{ width: colW[i] * scale, textAlign: "center", color: "#fff", fontFamily: "Montserrat_700Bold", fontSize: 37 * scale }}>
                   {val}
                 </Text>
               ))}
@@ -297,16 +303,16 @@ export default function PlayerCardStatsBack({
           {/* Bottom-left: recent activity, all entries -- omitted entirely for a locked player */}
           {!locked && (
             <View style={{ position: "absolute", left: ACTIVITY_LEFT * scale, top: ACTIVITY_TOP * scale, width: (CONTENT_RIGHT - ACTIVITY_LEFT - 20) * scale }}>
-              <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 50 * scale, color: colors.textPrimary, marginBottom: 12 * scale }}>
+              <Text style={{ fontFamily: "Montserrat_700Bold", fontSize: 54 * scale, color: colors.textPrimary, marginBottom: 13 * scale }}>
                 Recent Activity
               </Text>
               {activity.length === 0 && (
-                <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary }}>None yet</Text>
+                <Text style={{ fontFamily: "Montserrat_400Regular", fontSize: 43 * scale, color: colors.textSecondary }}>None yet</Text>
               )}
               {activity.map((line) => (
                 <Text
                   key={line.id}
-                  style={{ fontFamily: "Montserrat_400Regular", fontSize: 40 * scale, color: colors.textSecondary, marginBottom: 6 * scale }}
+                  style={{ fontFamily: "Montserrat_400Regular", fontSize: 43 * scale, color: colors.textSecondary, marginBottom: 6 * scale }}
                   numberOfLines={1}
                 >
                   {`•  ${line.text}`}
