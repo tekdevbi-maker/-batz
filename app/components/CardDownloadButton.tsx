@@ -48,10 +48,17 @@ export default function CardDownloadButton({
     try {
       // The modal needs to actually mount AND get at least one real paint
       // pass before capturing it — two animation-frame waits cover layout
-      // commit, and the extra delay gives the (possibly-remote) player
-      // photo time to finish decoding so it isn't captured half-loaded.
+      // commit, and the extra delay gives every image layer (the local
+      // card frame art AND any remote player photo / team logo) time to
+      // finish decoding so nothing is captured half-loaded. Real players
+      // load 2-3 images at once (frame + remote photo + remote logo)
+      // competing for decode time, unlike guest/local players who usually
+      // have none of the remote ones — bumped from 300ms after real
+      // players' downloaded front card came back with the frame image
+      // missing (name rendered, but no border/background) while local
+      // players' downloads were fine.
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       if (!frontCaptureRef.current || !backCaptureRef.current) return;
       // Explicit width/height caps the OUTPUT resolution regardless of the
       // device's pixel density — captureRef otherwise captures at full
