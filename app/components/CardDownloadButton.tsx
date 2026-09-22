@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Modal } from "react-native";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Modal, Platform } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -122,10 +122,33 @@ export default function CardDownloadButton({
           </body>
         </html>`;
       const { uri: pdfUri } = await Print.printToFileAsync({ html, width: 612, height: 792, base64: false });
-      await Sharing.shareAsync(pdfUri, {
-        mimeType: "application/pdf",
-        dialogTitle: `${fileNamePrefix} Card`.trim(),
-      });
+      const fileName = `${fileNamePrefix} Card`.trim().replace(/[^a-z0-9 _-]/gi, "") + ".pdf";
+      if (Platform.OS === "android") {
+        // Android's share sheet is literally titled "Open with" -- a chooser
+        // of apps to hand the file to, not a save action. The Storage Access
+        // Framework gives a real "Save" experience instead: the user picks a
+        // folder once (their own Downloads, Files app, etc.) and the PDF is
+        // written straight there, no app-chooser involved. Falls back to the
+        // share sheet only if they back out of the folder picker.
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (permissions.granted) {
+          const pdfBase64 = await FileSystem.readAsStringAsync(pdfUri, { encoding: FileSystem.EncodingType.Base64 });
+          const destUri = await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            fileName,
+            "application/pdf"
+          );
+          await FileSystem.writeAsStringAsync(destUri, pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
+        } else {
+          await Sharing.shareAsync(pdfUri, { mimeType: "application/pdf", dialogTitle: fileName });
+        }
+      } else {
+        // iOS has no equivalent direct-save API reachable from Expo -- the
+        // share sheet is the standard mechanism here, and it already
+        // surfaces "Save to Files" as a primary option (unlike Android's
+        // app-chooser framing), so it doesn't need the same workaround.
+        await Sharing.shareAsync(pdfUri, { mimeType: "application/pdf", dialogTitle: fileName });
+      }
       logGuestFeatureEvent(supabase, "card_pdf_downloaded", !session);
     } catch (err) {
       setError(errorMessage(err));
